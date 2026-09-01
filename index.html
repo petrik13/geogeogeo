@@ -1,0 +1,2669 @@
+<title>Prancheta OMT-G</title>
+<meta name="description" content="Editor visual de modelos conceituais OMT-G com exportação para Geodatabase XML, GeoPackage e PostGIS.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* ============ Design tokens ============ */
+  :root{
+    --bg:#eef1ef;
+    --surface:#ffffff;
+    --surface-2:#e3e9e6;
+    --surface-3:#d7ded9;
+    --border:#c7d0cb;
+    --ink:#16211d;
+    --ink-soft:#45534c;
+    --muted:#6d7d75;
+    --accent:#0c6478;
+    --accent-ink:#ffffff;
+    --accent-soft:#e3f0f1;
+    --good:#2f8f4e;
+    --warn:#a86a12;
+    --bad:#b5432f;
+    --bad-soft:#f7e6e1;
+    --shadow:0 1px 2px rgba(20,30,26,.06), 0 6px 20px -8px rgba(20,30,26,.18);
+    --canvas-bg:#ffffff;
+    --canvas-grid:rgba(28,36,32,.06);
+    --canvas-grid-major:rgba(28,36,32,.11);
+    --canvas-ink:#3a453e;
+    --canvas-line:#0c6478;
+    --canvas-card:#fbfbf9;
+    --canvas-card-ink:#1c2420;
+    --canvas-card-border:#d7ddd2;
+    --canvas-card-name:#2f6fed;
+    --canvas-chip-bg:rgba(12,100,120,.10);
+    --canvas-required:#d64545;
+    --canvas-toolbar-bg:rgba(20,30,26,.05);
+    --canvas-toolbar-hover:rgba(20,30,26,.10);
+    --canvas-toolbar-border:rgba(20,30,26,.14);
+    --edge-association:#64748b;
+    --edge-generalization:#111318;
+    --edge-aggregation:#0e7490;
+    --edge-network:#b45309;
+    --edge-spatial:#7c3aed;
+    --radius:10px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#12181a;
+      --surface:#181f22;
+      --surface-2:#1e2629;
+      --surface-3:#26302f;
+      --border:#2c3739;
+      --ink:#e9ede9;
+      --ink-soft:#b9c3bd;
+      --muted:#84928b;
+      --accent:#4fc3d3;
+      --accent-ink:#08191c;
+      --accent-soft:#173137;
+      --good:#57c67c;
+      --warn:#d9a441;
+      --bad:#e2735c;
+      --bad-soft:#3a2420;
+      --shadow:0 1px 2px rgba(0,0,0,.35), 0 10px 30px -12px rgba(0,0,0,.55);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#12181a;
+    --surface:#181f22;
+    --surface-2:#1e2629;
+    --surface-3:#26302f;
+    --border:#2c3739;
+    --ink:#e9ede9;
+    --ink-soft:#b9c3bd;
+    --muted:#84928b;
+    --accent:#4fc3d3;
+    --accent-ink:#08191c;
+    --accent-soft:#173137;
+    --good:#57c67c;
+    --warn:#d9a441;
+    --bad:#e2735c;
+    --bad-soft:#3a2420;
+    --shadow:0 1px 2px rgba(0,0,0,.35), 0 10px 30px -12px rgba(0,0,0,.55);
+  }
+
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font:15px/1.5 "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  ::selection{ background:var(--accent); color:var(--accent-ink); }
+  button, input, select, textarea{ font:inherit; color:inherit; }
+  button{ cursor:pointer; }
+  input, select, textarea{
+    background:var(--surface); border:1px solid var(--border); color:var(--ink);
+    border-radius:6px; padding:6px 8px;
+  }
+  input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible, [tabindex]:focus-visible{
+    outline:2px solid var(--accent); outline-offset:1px;
+  }
+  .mono{ font-family:"IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace; }
+  h1,h2,h3{ text-wrap:balance; margin:0; }
+  hr{ border:none; border-top:1px solid var(--border); margin:10px 0; }
+
+  /* ============ App shell ============ */
+  #app{
+    height:100vh; display:grid;
+    grid-template-rows:auto 1fr;
+    grid-template-columns:1fr;
+  }
+  .topbar{
+    display:flex; align-items:center; gap:14px;
+    padding:10px 16px; background:var(--surface); border-bottom:1px solid var(--border);
+    box-shadow:var(--shadow); position:relative; z-index:5;
+  }
+  .brand{ display:flex; align-items:center; gap:9px; padding-right:8px; border-right:1px solid var(--border);}
+  .brand .mark{
+    width:26px;height:26px;border-radius:7px;background:var(--accent);color:var(--accent-ink);
+    display:flex;align-items:center;justify-content:center;font-size:14px;flex:none;
+  }
+  .brand .name{ font-weight:600; font-size:14.5px; letter-spacing:.1px; white-space:nowrap;}
+  .brand .name small{ display:block; font-weight:400; color:var(--muted); font-size:10.5px; letter-spacing:.06em; text-transform:uppercase;}
+  .model-name{ min-width:160px; max-width:320px; flex:1; font-weight:500; }
+  .topbar .spacer{ flex:1; }
+  .btnrow{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .btn{
+    display:inline-flex; align-items:center; gap:6px; border:1px solid var(--border);
+    background:var(--surface); padding:7px 11px; border-radius:7px; font-size:13px; font-weight:500;
+    color:var(--ink); white-space:nowrap;
+  }
+  .btn:hover{ background:var(--surface-2); }
+  .btn.primary{ background:var(--accent); border-color:var(--accent); color:var(--accent-ink); }
+  .btn.primary:hover{ filter:brightness(1.06); }
+  .btn.ghost{ background:transparent; border-color:transparent; }
+  .btn.ghost:hover{ background:var(--surface-2); }
+  .btn.danger{ color:var(--bad); }
+  .btn:disabled{ opacity:.45; cursor:not-allowed; }
+  .btn svg{ width:14px; height:14px; flex:none; }
+
+  .layout{
+    display:grid;
+    grid-template-columns:272px 1fr 328px;
+    min-height:0;
+  }
+  .layout > *{ min-width:0; }
+  body{ overflow-x:hidden; }
+  @media (max-width:920px){
+    .layout{ grid-template-columns:1fr; grid-template-rows:auto auto 1fr; }
+    .rail-left, .rail-right{ max-height:260px; }
+    .topbar{ flex-wrap:wrap; row-gap:8px; }
+    .model-name{ min-width:120px; }
+    .brand .name small{ display:none; }
+  }
+
+  .rail{
+    background:var(--surface); min-height:0; display:flex; flex-direction:column;
+    overflow:hidden;
+  }
+  .rail-left{ border-right:1px solid var(--border); }
+  .rail-right{ border-left:1px solid var(--border); }
+  .rail-section{ padding:12px 14px; border-bottom:1px solid var(--border); }
+  .rail-section.grow{ flex:1; overflow-y:auto; min-height:0; }
+  .rail-scroll{ flex:1; overflow-y:auto; min-height:0; display:flex; flex-direction:column; }
+  .rail-label{
+    font-size:10.5px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted);
+    margin-bottom:9px; display:flex; align-items:center; justify-content:space-between; gap:8px;
+  }
+  .rail-label .count{
+    font-family:"IBM Plex Mono"; font-weight:500; background:var(--surface-2); color:var(--ink-soft);
+    border-radius:999px; padding:1px 7px; font-size:10px; letter-spacing:0;
+  }
+
+  .addgrid{ display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+  .addbtn{
+    display:flex; flex-direction:column; align-items:flex-start; gap:5px; text-align:left;
+    border:1px solid var(--border); background:var(--surface); border-radius:8px; padding:8px 9px;
+    font-size:12px; font-weight:500; cursor:grab;
+  }
+  .addbtn:hover{ background:var(--accent-soft); border-color:var(--accent); }
+  .addbtn:active{ cursor:grabbing; }
+  .addbtn.drag-source-active{ opacity:.5; }
+  .addbtn .ic{ width:17px; height:17px; color:var(--accent); }
+  .addbtn.wide{ grid-column:1 / -1; flex-direction:row; align-items:center; }
+  .addhint{ font-size:10.5px; color:var(--muted); margin-top:6px; line-height:1.35; }
+  .stage-wrap.drop-active::after{
+    content:''; position:absolute; inset:0; pointer-events:none; z-index:5;
+    box-shadow:inset 0 0 0 2px var(--accent); background:rgba(12,100,120,.06);
+  }
+
+  select.relselect{ width:100%; margin-bottom:7px; }
+  .relarm{ width:100%; justify-content:center; }
+  .relarm.active{ background:var(--accent); border-color:var(--accent); color:var(--accent-ink); }
+  .relhint{ font-size:11.5px; color:var(--muted); margin-top:7px; line-height:1.45; }
+
+  /* cardinality hint — full (properties panel) */
+  .card-hint{ margin-top:10px; border:1px solid var(--border); border-radius:9px; background:var(--surface-2); overflow:hidden; }
+  .card-hint-diagram{ display:flex; align-items:center; justify-content:center; gap:0; padding:16px 10px 6px; }
+  .ch-box{ font-size:11px; font-weight:700; color:var(--ink); background:var(--surface); border:1.3px solid var(--accent); border-radius:6px; padding:5px 9px; white-space:nowrap; max-width:110px; overflow:hidden; text-overflow:ellipsis; }
+  .ch-line-wrap{ flex:1; display:flex; flex-direction:column; align-items:center; position:relative; min-width:60px; }
+  .ch-line{ width:100%; height:1.6px; background:var(--ink-soft); position:relative; }
+  .ch-mult{ font-family:"IBM Plex Mono",monospace; font-size:12px; font-weight:700; color:var(--accent); background:var(--surface-2); padding:0 4px; position:absolute; top:-9px; }
+  .ch-mult.left{ left:6px; }
+  .ch-mult.right{ right:6px; }
+  .card-hint-text{ padding:9px 12px 12px; font-size:12px; line-height:1.5; color:var(--ink-soft); border-top:1px dashed var(--border); }
+  .card-hint-text b{ color:var(--ink); font-weight:600; }
+  .card-hint-text .ln{ display:flex; gap:6px; margin-top:4px; }
+  .card-hint-text .ln:first-child{ margin-top:0; }
+  .card-hint-text .dot{ width:5px; height:5px; border-radius:50%; background:var(--accent); flex:0 0 auto; margin-top:6px; }
+
+  /* cardinality hint — compact (left "adicionar relacionamento" panel) */
+  .card-hint-mini{ margin-top:8px; border:1px dashed var(--border); border-radius:7px; padding:7px 9px; font-size:11px; line-height:1.45; color:var(--ink-soft); background:var(--surface-2); }
+  .card-hint-mini .chm-title{ font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.03em; color:var(--muted); margin-bottom:3px; }
+  .card-hint-mini b{ color:var(--ink); font-weight:600; }
+
+  .listitem{
+    display:flex; align-items:center; gap:8px; padding:7px 8px; border-radius:7px; cursor:pointer;
+    font-size:12.5px; border:1px solid transparent;
+  }
+  .listitem:hover{ background:var(--surface-2); }
+  .listitem.selected{ background:var(--accent-soft); border-color:var(--accent); }
+  .listitem .ic{ width:18px; height:18px; flex:none; color:var(--accent); }
+  .listitem .tx{ flex:1; min-width:0; }
+  .listitem .tx .t1{ font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .listitem .tx .t2{ color:var(--muted); font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .listitem .del{ opacity:0; flex:none; }
+  .listitem:hover .del{ opacity:1; }
+  .del-x{ width:22px; height:22px; display:flex; align-items:center; justify-content:center; border-radius:5px; color:var(--muted); border:1px solid transparent; }
+  .del-x:hover{ background:var(--bad-soft); color:var(--bad); }
+  .empty-note{ font-size:12px; color:var(--muted); padding:6px 2px; line-height:1.5; }
+
+  .vitem{ display:flex; gap:8px; padding:7px 8px; border-radius:7px; font-size:12px; cursor:pointer; align-items:flex-start;}
+  .vitem:hover{ background:var(--surface-2); }
+  .vitem .dot{ width:7px;height:7px;border-radius:50%; margin-top:5px; flex:none; }
+  .vitem.error .dot{ background:var(--bad); }
+  .vitem.warning .dot{ background:var(--warn); }
+  .vitem .msg{ line-height:1.4; }
+  .vitem .msg b{ font-weight:600; }
+  .vgood{ display:flex; align-items:center; gap:7px; font-size:12px; color:var(--good); padding:4px 2px; }
+
+  /* ============ Canvas / stage ============ */
+  .stage-wrap{ position:relative; min-width:0; min-height:0; background:var(--canvas-bg); overflow:hidden; user-select:none; -webkit-user-select:none; }
+  .stage-wrap svg{ display:block; width:100%; height:100%; touch-action:none; }
+  .stage-toolbar{
+    position:absolute; right:12px; bottom:12px; display:flex; gap:6px; z-index:4;
+  }
+  .stage-toolbar button{
+    width:30px; height:30px; border-radius:7px; background:var(--canvas-toolbar-bg); backdrop-filter:blur(6px);
+    border:1px solid var(--canvas-toolbar-border); color:var(--canvas-ink); display:flex; align-items:center; justify-content:center;
+  }
+  .stage-toolbar button:hover{ background:var(--canvas-toolbar-hover); }
+  .stage-badge{
+    position:absolute; left:12px; bottom:12px; z-index:4; color:var(--canvas-ink); font-size:11px;
+    font-family:"IBM Plex Mono"; opacity:.55; letter-spacing:.02em;
+  }
+  .relmode-banner{
+    position:absolute; top:12px; left:50%; transform:translateX(-50%); z-index:4;
+    background:var(--accent); color:var(--accent-ink); font-size:12.5px; font-weight:500;
+    padding:7px 14px; border-radius:999px; box-shadow:var(--shadow); display:none; align-items:center; gap:8px;
+  }
+  .relmode-banner.show{ display:flex; }
+  .relmode-banner button{ background:rgba(0,0,0,.18); border:none; color:inherit; border-radius:999px; width:18px;height:18px; font-size:11px; display:flex; align-items:center; justify-content:center;}
+
+  .node-card{ cursor:grab; filter:drop-shadow(0 1px 2px rgba(20,30,26,.10)) drop-shadow(0 3px 8px rgba(20,30,26,.07)); }
+  .node-card.dragging{ cursor:grabbing; }
+  .node-card .conn-handle{ opacity:0; fill:var(--canvas-bg); stroke:var(--canvas-line); stroke-width:1.4; cursor:crosshair; transition:opacity .12s,r .1s; }
+  .node-card:hover .conn-handle{ opacity:.9; }
+  .node-card .conn-handle:hover{ opacity:1; fill:var(--canvas-line); }
+  .node-card.conn-target rect.card-bg{ stroke:var(--accent); stroke-width:2.5; }
+  .conn-drag-line{ fill:none; stroke:var(--canvas-line); stroke-width:1.6; stroke-dasharray:5,4; pointer-events:none; opacity:.8; }
+  .node-card rect.card-bg{ fill:var(--canvas-card); stroke:var(--canvas-card-border); stroke-width:1.25; }
+  .node-card.selected rect.card-bg{ stroke:var(--canvas-line); stroke-width:2; }
+  .node-card .card-divider{ stroke:var(--canvas-card-border); stroke-width:1; }
+  .node-card text{ fill:var(--canvas-card-ink); font-family:"IBM Plex Sans"; }
+  .node-card .cname{ font-weight:700; font-size:13px; fill:var(--canvas-card-name); }
+  .node-card .geo-chip{ fill:var(--canvas-chip-bg); stroke:var(--canvas-line); stroke-width:1.1; }
+  .node-card .chip-glyph{ color:var(--canvas-line); }
+  .node-card .cattr{ font-family:"IBM Plex Mono"; font-size:10.5px; fill:var(--canvas-card-ink); }
+  .node-card .cattr .attype{ fill:#7a887f; }
+  .node-card .cpk{ font-weight:700; }
+  .node-card .attr-key{ color:var(--accent); }
+  .node-card .attr-required{ font-family:"IBM Plex Mono"; font-size:12.5px; font-weight:700; fill:var(--canvas-required); }
+
+  .edge-path{ fill:none; stroke-linecap:round; stroke-linejoin:round; }
+  .edge-path.association{ stroke:var(--edge-association); stroke-width:1.5; }
+  .edge-path.generalization{ stroke:var(--edge-generalization); stroke-width:1.5; }
+  .edge-path.aggregation{ stroke:var(--edge-aggregation); stroke-width:1.5; }
+  .edge-path.aggregation.spatial-agg{ stroke-dasharray:5,4; }
+  .edge-path.network{ stroke:var(--edge-network); stroke-width:1.3; stroke-dasharray:5,3; }
+  .edge-path.network-arrow{ stroke:var(--edge-network); stroke-width:1.6; stroke-dasharray:none; }
+  .edge-path.spatial{ stroke:var(--edge-spatial); stroke-width:1.5; stroke-dasharray:5,4; }
+  .edge-path.selected{ stroke-width:2.75 !important; filter:drop-shadow(0 0 3px rgba(127,208,224,.6)); }
+  .edge-label{ font-family:"IBM Plex Mono"; font-size:9.5px; fill:var(--canvas-ink); }
+  .edge-label rect{ fill:var(--canvas-bg); }
+  .edge-card-label{ fill:var(--canvas-ink); opacity:.85; }
+
+  /* ============ Inspector / right rail ============ */
+  .tabs{ display:flex; border-bottom:1px solid var(--border); }
+  .tab{ flex:1; padding:10px 6px; text-align:center; font-size:12px; font-weight:600; color:var(--muted); border-bottom:2px solid transparent; }
+  .tab.active{ color:var(--accent); border-color:var(--accent); }
+  .tab:hover{ background:var(--surface-2); }
+  .panel{ display:none; flex:1; min-height:0; flex-direction:column; }
+  .panel.active{ display:flex; }
+
+  .field{ margin-bottom:11px; }
+  .field label{ display:block; font-size:11px; font-weight:600; color:var(--muted); margin-bottom:4px; text-transform:uppercase; letter-spacing:.04em;}
+  .field input, .field select, .field textarea{ width:100%; }
+  .field-row{ display:flex; gap:8px; }
+  .field-row .field{ flex:1; }
+  .chk{ display:flex; align-items:center; gap:7px; font-size:12.5px; margin-bottom:8px; }
+  .chk input{ width:auto; }
+  .seg{ display:flex; border:1px solid var(--border); border-radius:7px; overflow:hidden; }
+  .seg button{ flex:1; padding:7px 4px; font-size:11.5px; background:var(--surface); border:none; border-right:1px solid var(--border); font-weight:500; }
+  .seg button:last-child{ border-right:none; }
+  .seg button.active{ background:var(--accent); color:var(--accent-ink); }
+
+  .attr-table{ width:100%; border-collapse:collapse; margin-top:4px; }
+  .attr-table th{ text-align:left; font-size:9.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; padding:0 4px 4px; font-weight:600;}
+  .attr-table td{ padding:3px 3px; vertical-align:middle; }
+  .attr-table input[type=text]{ font-size:12px; padding:5px 6px; }
+  .attr-table select{ font-size:11.5px; padding:5px 4px; }
+  .attr-table input[type=checkbox]{ width:15px; height:15px; }
+  .attr-add{ width:100%; margin-top:8px; justify-content:center; }
+  .inspector-empty{ padding:30px 18px; text-align:center; color:var(--muted); font-size:12.5px; line-height:1.6; }
+  .inspector-empty .ic{ width:30px; height:30px; margin:0 auto 10px; opacity:.5; }
+  .inspector-head{ display:flex; align-items:center; gap:8px; margin-bottom:4px; }
+  .inspector-head .badge{ font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; padding:2px 7px; border-radius:999px; background:var(--accent-soft); color:var(--accent); }
+  .inspector-scroll{ padding:14px; overflow-y:auto; overflow-x:auto; flex:1; min-height:0; }
+  .inspector-actions{ padding:10px 14px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; }
+
+  .exp-tabs{ display:flex; flex-wrap:wrap; gap:6px; padding:10px 12px 0; }
+  .exp-tab{ font-size:11.5px; padding:6px 9px; border-radius:6px 6px 0 0; background:var(--surface-2); color:var(--muted); font-weight:600; }
+  .exp-tab.active{ background:var(--surface-3); color:var(--ink); }
+  .exp-opts{ padding:10px 12px; border-bottom:1px solid var(--border); background:var(--surface-3); display:flex; flex-wrap:wrap; gap:8px 14px; }
+  .exp-opts .field{ margin:0; min-width:118px; }
+  .exp-opts .field label{ margin-bottom:3px; }
+  .exp-opts .chk{ margin:0; align-self:flex-end; padding-bottom:6px; }
+  .exp-body{ flex:1; min-height:0; overflow:auto; background:#0c1416; }
+  .exp-body pre{ margin:0; padding:14px; font-size:11.5px; line-height:1.6; color:#dce8e4; white-space:pre; }
+  .exp-actions{ padding:9px 12px; border-top:1px solid var(--border); display:flex; gap:8px; justify-content:flex-end; }
+  .exp-note{ padding:9px 14px; font-size:11px; color:var(--muted); border-top:1px solid var(--border); line-height:1.55; }
+  .exp-warn{ flex:0 0 auto; margin:9px 12px 0; padding:7px 10px; border:1px solid var(--warn); border-radius:8px; background:color-mix(in srgb, var(--warn) 14%, var(--surface)); font-size:11.5px; line-height:1.5; color:var(--ink-soft); }
+  .exp-warn summary{ cursor:pointer; font-weight:700; color:var(--warn); }
+  .exp-warn summary::marker{ color:var(--warn); }
+  .exp-warn b{ color:var(--ink); }
+  .exp-warn-body{ margin-top:6px; padding-top:6px; border-top:1px dashed var(--border); }
+  .exp-warn-body ol{ margin:5px 0 0; padding-left:18px; }
+  .exp-warn-body li{ margin-top:3px; }
+  .exp-warn-body > div{ margin-top:6px; }
+  .exp-warn-body > div:first-child{ margin-top:0; }
+
+  .legend-scroll{ padding:14px; overflow-y:auto; flex:1; }
+  .legend-group{ margin-bottom:16px; }
+  .legend-group h3{ font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin-bottom:8px; }
+  .legend-row{ display:flex; align-items:center; gap:10px; padding:5px 0; font-size:12px; }
+  .legend-row svg{ flex:none; }
+  .legend-row .lt{ font-weight:600; }
+  .legend-row .ld{ color:var(--muted); font-size:11px; }
+
+  [hidden]{ display:none !important; }
+  .sr-only{ position:absolute; width:1px;height:1px; overflow:hidden; clip:rect(0,0,0,0); }
+</style>
+
+<div id="app">
+  <div class="topbar">
+    <div class="brand">
+      <div class="mark">🧭</div>
+      <div class="name">Prancheta OMT-G<small>Modelagem conceitual geográfica</small></div>
+    </div>
+    <input id="modelName" class="model-name" type="text" value="Novo modelo" aria-label="Nome do modelo">
+    <div class="spacer"></div>
+    <div class="btnrow">
+      <button class="btn ghost" id="btnSample" title="Carregar modelo de exemplo">Exemplo</button>
+      <button class="btn ghost" id="btnNew" title="Novo modelo em branco">Novo</button>
+      <button class="btn ghost" id="btnOpen" title="Abrir modelo (.json)">Abrir</button>
+      <input type="file" id="fileOpen" accept="application/json" class="sr-only">
+      <button class="btn" id="btnSave" title="Salvar modelo (.json)">Salvar .json</button>
+    </div>
+  </div>
+
+  <div class="layout">
+    <aside class="rail rail-left">
+      <div class="rail-section">
+        <div class="rail-label">Adicionar classe</div>
+        <div class="addgrid" id="addClassGrid"></div>
+      </div>
+      <div class="rail-section">
+        <div class="rail-label">Adicionar relacionamento</div>
+        <select id="relTypeSelect" class="relselect"></select>
+        <div class="relhint" id="relHint">Escolha o tipo e arraste a partir do conector (○) na borda de uma classe até outra.</div>
+        <div id="relCardHintMini"></div>
+      </div>
+      <div class="rail-scroll">
+        <div class="rail-section">
+          <div class="rail-label">Classes <span class="count" id="countClasses">0</span></div>
+          <div id="classList"></div>
+        </div>
+        <div class="rail-section">
+          <div class="rail-label">Relacionamentos <span class="count" id="countRels">0</span></div>
+          <div id="relList"></div>
+        </div>
+        <div class="rail-section grow">
+          <div class="rail-label">Validação <span class="count" id="countIssues">0</span></div>
+          <div id="validationList"></div>
+        </div>
+      </div>
+    </aside>
+
+    <div class="stage-wrap" id="stageWrap">
+      <svg id="canvasSvg" xmlns="http://www.w3.org/2000/svg">
+        <defs id="svgDefs"></defs>
+        <g id="gridLayer"></g>
+        <g id="edgeLayer"></g>
+        <g id="nodeLayer"></g>
+        <g id="labelLayer"></g>
+        <g id="connDragLayer"></g>
+      </svg>
+      <div class="stage-badge" id="stageBadge">100%</div>
+      <div class="stage-toolbar">
+        <button id="zoomOut" title="Diminuir zoom">−</button>
+        <button id="zoomReset" title="Ajustar à tela">⤢</button>
+        <button id="zoomIn" title="Aumentar zoom">+</button>
+      </div>
+    </div>
+
+    <aside class="rail rail-right">
+      <div class="tabs">
+        <div class="tab active" data-tab="prop">Propriedades</div>
+        <div class="tab" data-tab="export">Exportar</div>
+        <div class="tab" data-tab="legend">Ajuda</div>
+      </div>
+      <div class="panel active" id="panelProp"></div>
+      <div class="panel" id="panelExport"></div>
+      <div class="panel" id="panelLegend"></div>
+    </aside>
+  </div>
+</div>
+
+<script>
+/* ---------- tiny DOM helpers ---------- */
+const SVGNS = "http://www.w3.org/2000/svg";
+function E(tag, attrs, kids){
+  const elx = document.createElement(tag);
+  if(attrs) for(const k in attrs){
+    if(attrs[k]===null || attrs[k]===undefined) continue;
+    if(k==='class') elx.className = attrs[k];
+    else if(k==='html') elx.innerHTML = attrs[k];
+    else if(k==='style') elx.setAttribute('style', attrs[k]);
+    else if(k.indexOf('on')===0 && typeof attrs[k]==='function') elx.addEventListener(k.slice(2), attrs[k]);
+    else elx.setAttribute(k, attrs[k]);
+  }
+  (kids||[]).forEach(k=>{ if(k!==null && k!==undefined) elx.appendChild(typeof k==='string'?document.createTextNode(k):k); });
+  return elx;
+}
+function S(tag, attrs, kids){
+  const elx = document.createElementNS(SVGNS, tag);
+  if(attrs) for(const k in attrs){
+    if(attrs[k]===null || attrs[k]===undefined) continue;
+    if(k==='class') elx.setAttribute('class', attrs[k]);
+    else if(k==='style') elx.setAttribute('style', attrs[k]);
+    else if(k.indexOf('on')===0 && typeof attrs[k]==='function') elx.addEventListener(k.slice(2), attrs[k]);
+    else elx.setAttribute(k, attrs[k]);
+  }
+  (kids||[]).forEach(k=>{ if(k!==null && k!==undefined) elx.appendChild(typeof k==='string'?document.createTextNode(k):k); });
+  return elx;
+}
+function uid(p){ return p+Math.random().toString(36).slice(2,9); }
+function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
+function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
+/* file names the platform's downloads capability accepts as-is; anything else
+   is saved with a .txt suffix appended (still a real, complete file — just
+   rename it after saving to get the extension back). */
+const DOWNLOAD_ALLOWLIST = new Set(['gif','png','jpg','jpeg','webp','mp4','webm','txt','json','md','docx','pptx','epub','csv','ttf','html','svg','pdf']);
+function safeDownloadName(base, wantExt){
+  return DOWNLOAD_ALLOWLIST.has(wantExt) ? (base+'.'+wantExt) : (base+'.'+wantExt+'.txt');
+}
+async function saveFile(filename, text){
+  let ns = null;
+  try{ if(window.claude && window.claude.use) ns = await window.claude.use('downloads'); }catch(e){ ns = null; }
+  if(ns){
+    try{
+      await ns.save({filename, data:text});
+      toast('Arquivo salvo: '+filename);
+      return;
+    }catch(err){
+      const code = err && err.code;
+      if(code==='declined') return;
+      if(code==='rejected_extension' || code==='extension_not_enabled'){
+        toast('Este formato não pode ser salvo diretamente aqui — use "Copiar" e cole em um editor de texto.', true);
+        return;
+      }
+      /* otherwise fall through and try the classic path below */
+    }
+  }
+  try{
+    const blob = new Blob([text], {type:'text/plain'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 2000);
+  }catch(e){
+    toast('Não foi possível baixar o arquivo. Use "Copiar" e cole em um editor de texto.', true);
+  }
+}
+function copyText(text, btn){
+  const done = ()=>{ if(btn){ const old = btn.textContent; btn.textContent='Copiado!'; setTimeout(()=>{btn.textContent=old;}, 1200); } };
+  try{
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(done).catch(()=>fallbackCopy(text, done));
+    } else fallbackCopy(text, done);
+  }catch(e){ fallbackCopy(text, done); }
+}
+function fallbackCopy(text, done){
+  try{
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position='fixed'; ta.style.opacity='0';
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    document.execCommand('copy'); ta.remove(); done();
+  }catch(e){ /* clipboard unavailable in this context */ }
+}
+function escapeXml(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function sqlIdent(s){ return String(s||'').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9_]+/g,'_').replace(/^_+|_+$/g,'').replace(/^(\d)/,'c$1') || 'sem_nome'; }
+function pascalIdent(s){ return String(s||'').trim().replace(/[^a-zA-Z0-9]+/g,' ').split(' ').filter(Boolean).map(w=>w[0].toUpperCase()+w.slice(1)).join('') || 'SemNome'; }
+
+/* ---------- domain constants ---------- */
+const ATTR_TYPES = [
+  {id:'text', label:'Texto'},
+  {id:'integer', label:'Inteiro'},
+  {id:'double', label:'Decimal'},
+  {id:'date', label:'Data'},
+  {id:'datetime', label:'Data/Hora'},
+  {id:'boolean', label:'Booleano'},
+  {id:'blob', label:'Binário (blob)'}
+];
+const ATTR_TYPE_LABEL = Object.fromEntries(ATTR_TYPES.map(t=>[t.id,t.label]));
+
+const GEO_OBJECT_PRIMITIVES = [
+  {id:'point', label:'Ponto'},
+  {id:'line', label:'Linha'},
+  {id:'polygon', label:'Polígono'},
+  {id:'complex', label:'Complexo (composto)'},
+  {id:'node', label:'Nó (rede)'},
+  {id:'arc', label:'Arco (rede)'}
+];
+const GEO_FIELD_PRIMITIVES = [
+  {id:'isoline', label:'Isolinhas'},
+  {id:'tin', label:'TIN (triangulação)'},
+  {id:'tessellation', label:'Tesselação (grade)'},
+  {id:'sample', label:'Amostragem (pontos)'},
+  {id:'partition', label:'Partição planar'}
+];
+const ALL_PRIMITIVE_LABEL = Object.fromEntries([...GEO_OBJECT_PRIMITIVES, ...GEO_FIELD_PRIMITIVES].map(p=>[p.id,p.label]));
+const COMPLEX_KINDS = [
+  {id:'multipoint', label:'Multiponto'},
+  {id:'multiline', label:'Multilinha'},
+  {id:'multipolygon', label:'Multipolígono'},
+  {id:'collection', label:'Coleção heterogênea'}
+];
+/* 7 predicados espaciais oficiais do OMT-G (Borges, Davis & Laender) */
+const TOPO_RULES = [
+  {id:'touches', label:'toca (touches)'},
+  {id:'dentro', label:'está dentro de (dentro)'},
+  {id:'disjunto', label:'é disjunto de (disjunto)'},
+  {id:'em_frente', label:'está em frente a (em frente)'},
+  {id:'proximo', label:'está próximo de (próximo)'},
+  {id:'sobrepoe', label:'sobrepõe (sobrepõe)'},
+  {id:'cruza', label:'cruza (cruza)'}
+];
+const TOPO_RULE_LABEL = Object.fromEntries(TOPO_RULES.map(t=>[t.id,t.label]));
+const TOPO_RULE_SHORT = {touches:'toca', dentro:'dentro', disjunto:'disjunto', em_frente:'em frente', proximo:'próximo', sobrepoe:'sobrepõe', cruza:'cruza'};
+const CARDINALITIES = ['1','0..1','0..*','1..*'];
+const REL_TYPES = {
+  association:    {label:'Associação simples',               short:'Associação'},
+  generalization: {label:'Generalização / Especialização',    short:'Generalização'},
+  aggregation:    {label:'Agregação (todo–parte)',             short:'Agregação'},
+  network:        {label:'Rede (nó–arco)',                     short:'Rede'},
+  spatial:        {label:'Relação espacial (topológica)',      short:'Relação espacial'}
+};
+
+/* ---------- inline icon set (UI chrome, currentColor) ---------- */
+const ICONS = {
+  conventional: '<svg viewBox="0 0 16 16" fill="none"><rect x="2.5" y="3" width="11" height="10" rx="1.5" stroke="currentColor" stroke-width="1.3"/></svg>',
+  geoObject: '<svg viewBox="0 0 16 16" fill="none"><rect x="2.5" y="3" width="11" height="10" rx="1.5" stroke="currentColor" stroke-width="1.3"/><circle cx="8" cy="8" r="2" fill="currentColor"/></svg>',
+  geoField: '<svg viewBox="0 0 16 16" fill="none"><rect x="2.5" y="3" width="11" height="10" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M4 10c1.5-3 2.5-3 4 0s2.5 3 4 0" stroke="currentColor" stroke-width="1.2" fill="none"/></svg>',
+  point: '<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="3" fill="currentColor"/></svg>',
+  line: '<svg viewBox="0 0 16 16"><circle cx="3.2" cy="12" r="1.6" fill="currentColor"/><circle cx="12.8" cy="4" r="1.6" fill="currentColor"/><line x1="4.3" y1="10.9" x2="11.7" y2="5.1" stroke="currentColor" stroke-width="1.4"/></svg>',
+  polygon: '<svg viewBox="0 0 16 16" fill="none"><path d="M8 2.5 13.5 6.5 11.5 13 4.5 13 2.5 6.5Z" stroke="currentColor" stroke-width="1.3" fill="currentColor" fill-opacity=".18"/></svg>',
+  plus: '<svg viewBox="0 0 16 16"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
+  association: '<svg viewBox="0 0 16 16"><line x1="2" y1="13" x2="14" y2="3" stroke="currentColor" stroke-width="1.4"/></svg>',
+  generalization: '<svg viewBox="0 0 16 16" fill="none"><line x1="2" y1="13" x2="10" y2="6" stroke="currentColor" stroke-width="1.4"/><path d="M10 6 14 4 12 8Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>',
+  aggregation: '<svg viewBox="0 0 16 16" fill="none"><line x1="6" y1="10" x2="13" y2="3" stroke="currentColor" stroke-width="1.4"/><path d="M2 10 4.4 7.6 6.8 10 4.4 12.4Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>',
+  network: '<svg viewBox="0 0 16 16" fill="none"><circle cx="3" cy="12" r="1.8" stroke="currentColor" stroke-width="1.2"/><circle cx="13" cy="4" r="1.8" stroke="currentColor" stroke-width="1.2"/><line x1="4.6" y1="10.6" x2="11.4" y2="5.4" stroke="currentColor" stroke-width="1.3" stroke-dasharray="1,2.3"/></svg>',
+  spatial: '<svg viewBox="0 0 16 16" fill="none"><circle cx="6" cy="8" r="4.2" stroke="currentColor" stroke-width="1.2"/><circle cx="10.5" cy="8" r="4.2" stroke="currentColor" stroke-width="1.2"/></svg>',
+  trash: '<svg viewBox="0 0 16 16" fill="none"><path d="M3 5h10M6.5 5V3.5h3V5M4.5 5l.6 8.2a1 1 0 0 0 1 .8h3.8a1 1 0 0 0 1-.8L11.5 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  empty: '<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="14" rx="2" stroke="currentColor" stroke-width="1.3"/><path d="M3 9h18" stroke="currentColor" stroke-width="1.3"/></svg>'
+};
+function classIcon(c){
+  if(c.kind!=='geo') return ICONS.conventional;
+  if(c.geoType==='field') return ICONS.geoField;
+  if(c.primitive==='point'||c.primitive==='node') return ICONS.point;
+  if(c.primitive==='line'||c.primitive==='arc') return ICONS.line;
+  if(c.primitive==='polygon') return ICONS.polygon;
+  return ICONS.geoObject;
+}
+
+/* ---------- canvas glyphs (drawn inside the SVG stage) ---------- */
+function primitiveGlyph(c){
+  const g = S('g', {class:'pglyph'});
+  const st = 'var(--canvas-line)';
+  if(c.kind!=='geo' || !c.primitive) return g;
+  const p = c.primitive;
+  if(p==='point' || p==='node'){
+    g.appendChild(S('circle',{cx:0,cy:0,r:3.4,style:'fill:'+st}));
+    if(p==='node') g.appendChild(S('circle',{cx:0,cy:0,r:5.6,style:'fill:none;stroke:'+st+';stroke-width:1'}));
+  } else if(p==='line' || p==='arc'){
+    g.appendChild(S('line',{x1:-6,y1:4,x2:6,y2:-4,style:'stroke:'+st+';stroke-width:1.5'}));
+    g.appendChild(S('circle',{cx:-6,cy:4,r:1.6,style:'fill:'+st}));
+    g.appendChild(S('circle',{cx:6,cy:-4,r:1.6,style:'fill:'+st}));
+    if(p==='arc') g.appendChild(S('path',{d:'M1,-5.6 L6,-4 L3.4,-0.4', style:'fill:none;stroke:'+st+';stroke-width:1.3'}));
+  } else if(p==='polygon'){
+    g.appendChild(S('path',{d:'M0,-6 L6,-1 L4,6 L-4,6 L-6,-1 Z', style:'fill:'+st+';fill-opacity:.22;stroke:'+st+';stroke-width:1.2'}));
+  } else if(p==='complex'){
+    g.appendChild(S('circle',{cx:-3,cy:2,r:3.2,style:'fill:none;stroke:'+st+';stroke-width:1.2'}));
+    g.appendChild(S('path',{d:'M2,-6 L7,3 L-3,3 Z',style:'fill:none;stroke:'+st+';stroke-width:1.2'}));
+  } else if(p==='isoline'){
+    g.appendChild(S('path',{d:'M-7,4 Q-3,-5 0,0 Q3,5 7,-4', style:'fill:none;stroke:'+st+';stroke-width:1.1'}));
+  } else if(p==='tin'){
+    g.appendChild(S('path',{d:'M-6,5 L0,-6 L6,5 Z M0,-6 L0,5', style:'fill:none;stroke:'+st+';stroke-width:1'}));
+  } else if(p==='tessellation'){
+    g.appendChild(S('path',{d:'M-6,-6 H6 M-6,0 H6 M-6,6 H6 M-6,-6 V6 M0,-6 V6 M6,-6 V6', style:'fill:none;stroke:'+st+';stroke-width:.9'}));
+  } else if(p==='sample'){
+    [[-5,3],[0,-4],[5,3],[-1,4]].forEach(pt=>g.appendChild(S('circle',{cx:pt[0],cy:pt[1],r:1.4,style:'fill:'+st})));
+  } else if(p==='partition'){
+    g.appendChild(S('path',{d:'M-7,-3 L-1,-6 L6,-4 L7,3 L1,6 L-6,4 Z M-1,-6 L-1,6 M-1,0 L7,3 M-1,0 L-7,-3', style:'fill:none;stroke:'+st+';stroke-width:.9'}));
+  }
+  return g;
+}
+function topoGlyph(rule){
+  // small reference icons for the 7 official OMT-G spatial predicates (legend only)
+  const g = S('g',{class:'topoglyph'});
+  const c = 'var(--canvas-ink)';
+  const mk = (attrs)=>S('circle', Object.assign({r:5, style:'fill:none;stroke:'+c+';stroke-width:1'}, attrs));
+  if(rule==='touches'){ g.appendChild(mk({cx:-5,cy:0})); g.appendChild(mk({cx:5,cy:0})); }
+  else if(rule==='disjunto'){ g.appendChild(mk({cx:-7,cy:0})); g.appendChild(mk({cx:7,cy:0})); }
+  else if(rule==='dentro'){ g.appendChild(mk({cx:0,cy:0,r:7})); g.appendChild(mk({cx:0,cy:0,r:2.6})); }
+  else if(rule==='sobrepoe'){ g.appendChild(mk({cx:-3,cy:0})); g.appendChild(mk({cx:3,cy:0})); }
+  else if(rule==='cruza'){ g.appendChild(S('path',{d:'M-5,-5 L5,5 M-5,5 L5,-5', style:'stroke:'+c+';stroke-width:1.1'})); }
+  else if(rule==='proximo'){ g.appendChild(mk({cx:-4.5,cy:0,r:4})); g.appendChild(mk({cx:4.5,cy:0,r:4})); g.appendChild(S('line',{x1:-0.5,y1:0,x2:0.5,y2:0, style:'stroke:'+c+';stroke-width:1;stroke-dasharray:1.2,1.2'})); }
+  else if(rule==='em_frente'){ g.appendChild(S('line',{x1:-3,y1:-5,x2:-3,y2:5, style:'stroke:'+c+';stroke-width:1.4'})); g.appendChild(S('line',{x1:3,y1:-5,x2:3,y2:5, style:'stroke:'+c+';stroke-width:1.4'})); }
+  return g;
+}
+
+/* ---------- application state ---------- */
+let state = null;
+let selection = {type:null, id:null};
+let relMode = {type:'association'};
+let view = {x:-40, y:-40, w:1200, h:800};
+let drag = null;
+let panning = null;
+let connDrag = null; // {sourceId, sourceSide, x, y} — dragging a relationship from a class connector handle
+let activeRightTab = 'prop';
+let activeExportTab = 'arcpy';
+
+function emptyModel(name){
+  return { meta:{ name: name||'Novo modelo', srid:4326, schema:'public', workspaceName:'ModeloOMTG', srsAuthority:'EPSG' }, classes:[], relationships:[] };
+}
+function newClassObj(kind, idx){
+  const id = uid('c');
+  const c = {
+    id, name: (kind==='geo' ? 'NovaClasseGeo' : 'NovaClasse') + (idx+1),
+    kind,
+    geoType: kind==='geo' ? 'object' : null,
+    primitive: kind==='geo' ? 'point' : null,
+    complexKind: null,
+    attributes: [{id:uid('a'), name:'id', type:'integer', pk:true, nullable:false}],
+    x: 40 + (idx % 4) * 250,
+    y: 40 + Math.floor(idx / 4) * 210,
+    w: 208, h: 60
+  };
+  return c;
+}
+function addClass(kind){
+  const c = newClassObj(kind, state.classes.length);
+  state.classes.push(c);
+  selection = {type:'class', id:c.id};
+  touch();
+}
+function addClassAt(kind, x, y){
+  const c = newClassObj(kind, state.classes.length);
+  c.x = Math.round(x); c.y = Math.round(y);
+  state.classes.push(c);
+  selection = {type:'class', id:c.id};
+  touch();
+}
+function deleteClass(id){
+  state.classes = state.classes.filter(c=>c.id!==id);
+  state.relationships = state.relationships.filter(r=>r.sourceId!==id && r.targetId!==id);
+  if(selection.type==='class' && selection.id===id) selection = {type:null,id:null};
+  touch();
+}
+function deleteRel(id){
+  state.relationships = state.relationships.filter(r=>r.id!==id);
+  if(selection.type==='rel' && selection.id===id) selection = {type:null,id:null};
+  touch();
+}
+function createRelationship(type, sourceId, targetId){
+  const base = { id: uid('r'), type, sourceId, targetId, name:'' };
+  if(type==='association'){ base.cardSource='1'; base.cardTarget='0..*'; }
+  else if(type==='generalization'){ base.total=false; base.disjoint=true; }
+  else if(type==='aggregation'){ base.cardSource='1'; base.cardTarget='0..*'; base.spatialControl=false; }
+  else if(type==='network'){ base.directed=false; }
+  else if(type==='spatial'){ base.topoRule='touches'; }
+  state.relationships.push(base);
+  selection = {type:'rel', id:base.id};
+  return base;
+}
+function selectClass(id){ selection = {type:'class', id}; switchRightTab('prop'); touch(); }
+function selectRel(id){ selection = {type:'rel', id}; switchRightTab('prop'); touch(); }
+
+function handleNodeClick(classId){
+  selectClass(classId);
+}
+
+/* ---------- sample model ---------- */
+function sampleModel(){
+  const m = emptyModel('Bacia Hidrográfica (exemplo)');
+  m.meta.srid = 4674; m.meta.schema='hidrografia'; m.meta.workspaceName='BaciaHidrografica';
+  const municipio = { id:uid('c'), name:'Municipio', kind:'geo', geoType:'object', primitive:'polygon', complexKind:null,
+    attributes:[{id:uid('a'),name:'id',type:'integer',pk:true,nullable:false},{id:uid('a'),name:'nome',type:'text',pk:false,nullable:false},{id:uid('a'),name:'populacao',type:'integer',pk:false,nullable:true}],
+    x:30,y:30 };
+  const bacia = { id:uid('c'), name:'BaciaHidrografica', kind:'geo', geoType:'object', primitive:'polygon', complexKind:null,
+    attributes:[{id:uid('a'),name:'id',type:'integer',pk:true,nullable:false},{id:uid('a'),name:'nome',type:'text',pk:false,nullable:false},{id:uid('a'),name:'area_km2',type:'double',pk:false,nullable:true}],
+    x:360,y:30 };
+  const subBacia = { id:uid('c'), name:'SubBacia', kind:'geo', geoType:'object', primitive:'polygon', complexKind:null,
+    attributes:[{id:uid('a'),name:'id',type:'integer',pk:true,nullable:false},{id:uid('a'),name:'nome',type:'text',pk:false,nullable:false}],
+    x:360,y:250 };
+  const rio = { id:uid('c'), name:'Rio', kind:'geo', geoType:'object', primitive:'line', complexKind:null,
+    attributes:[{id:uid('a'),name:'id',type:'integer',pk:true,nullable:false},{id:uid('a'),name:'nome',type:'text',pk:false,nullable:true},{id:uid('a'),name:'perene',type:'boolean',pk:false,nullable:true}],
+    x:30,y:250 };
+  const trecho = { id:uid('c'), name:'TrechoRio', kind:'geo', geoType:'object', primitive:'arc', complexKind:null,
+    attributes:[{id:uid('a'),name:'id',type:'integer',pk:true,nullable:false},{id:uid('a'),name:'comprimento_m',type:'double',pk:false,nullable:true}],
+    x:30,y:470 };
+  const confluencia = { id:uid('c'), name:'Confluencia', kind:'geo', geoType:'object', primitive:'node', complexKind:null,
+    attributes:[{id:uid('a'),name:'id',type:'integer',pk:true,nullable:false},{id:uid('a'),name:'cota_m',type:'double',pk:false,nullable:true}],
+    x:360,y:470 };
+  const estacao = { id:uid('c'), name:'EstacaoPluviometrica', kind:'geo', geoType:'object', primitive:'point', complexKind:null,
+    attributes:[{id:uid('a'),name:'id',type:'integer',pk:true,nullable:false},{id:uid('a'),name:'codigo',type:'text',pk:false,nullable:false}],
+    x:690,y:30 };
+  const relevo = { id:uid('c'), name:'Relevo', kind:'geo', geoType:'field', primitive:'isoline', complexKind:null,
+    attributes:[{id:uid('a'),name:'id',type:'integer',pk:true,nullable:false},{id:uid('a'),name:'cota_m',type:'double',pk:false,nullable:false}],
+    x:690,y:250 };
+  const responsavel = { id:uid('c'), name:'OrgaoResponsavel', kind:'conventional', geoType:null, primitive:null, complexKind:null,
+    attributes:[{id:uid('a'),name:'id',type:'integer',pk:true,nullable:false},{id:uid('a'),name:'nome',type:'text',pk:false,nullable:false}],
+    x:690,y:470 };
+  [municipio,bacia,subBacia,rio,trecho,confluencia,estacao,relevo,responsavel].forEach((c,i)=>{ c.w=208; c.h=60; m.classes.push(c); });
+  m.relationships.push({ id:uid('r'), type:'aggregation', sourceId:bacia.id, targetId:subBacia.id, name:'', cardSource:'1', cardTarget:'1..*', spatialControl:true });
+  m.relationships.push({ id:uid('r'), type:'generalization', sourceId:trecho.id, targetId:rio.id, name:'', total:true, disjoint:true });
+  m.relationships.push({ id:uid('r'), type:'network', sourceId:confluencia.id, targetId:trecho.id, name:'', directed:true });
+  m.relationships.push({ id:uid('r'), type:'spatial', sourceId:bacia.id, targetId:municipio.id, name:'', topoRule:'sobrepoe' });
+  m.relationships.push({ id:uid('r'), type:'spatial', sourceId:estacao.id, targetId:bacia.id, name:'', topoRule:'dentro' });
+  m.relationships.push({ id:uid('r'), type:'association', sourceId:bacia.id, targetId:responsavel.id, name:'monitorada_por', cardSource:'0..*', cardTarget:'1' });
+  return m;
+}
+
+/* ---------- validation ---------- */
+function computeValidation(){
+  const issues = [];
+  const byId = Object.fromEntries(state.classes.map(c=>[c.id,c]));
+  const nameCount = {};
+  state.classes.forEach(c=>{ nameCount[c.name]=(nameCount[c.name]||0)+1; });
+  state.classes.forEach(c=>{
+    if(nameCount[c.name]>1) issues.push({sev:'error', ref:{type:'class',id:c.id}, msg:'Nome de classe duplicado: "'+c.name+'"'});
+    if(c.kind==='geo' && !c.primitive) issues.push({sev:'error', ref:{type:'class',id:c.id}, msg:'"'+c.name+'" é geográfica mas não tem primitiva definida'});
+    if(!c.attributes.length) issues.push({sev:'warning', ref:{type:'class',id:c.id}, msg:'"'+c.name+'" não possui atributos'});
+    if(c.attributes.length && !c.attributes.some(a=>a.pk)) issues.push({sev:'warning', ref:{type:'class',id:c.id}, msg:'"'+c.name+'" não tem chave primária marcada'});
+  });
+  state.relationships.forEach(r=>{
+    const a = byId[r.sourceId], b = byId[r.targetId];
+    if(!a || !b) return;
+    if(r.type==='generalization'){
+      if(a.kind!==b.kind || (a.kind==='geo' && a.geoType!==b.geoType)) issues.push({sev:'warning', ref:{type:'rel',id:r.id}, msg:'Especialização "'+a.name+'" → "'+b.name+'": subclasse e superclasse deveriam ter a mesma natureza de representação'});
+    }
+    if(r.type==='network'){
+      if(a.primitive!=='node') issues.push({sev:'warning', ref:{type:'rel',id:r.id}, msg:'Rede: "'+a.name+'" deveria ter primitiva "Nó"'});
+      if(b.primitive!=='arc') issues.push({sev:'warning', ref:{type:'rel',id:r.id}, msg:'Rede: "'+b.name+'" deveria ter primitiva "Arco"'});
+    }
+    if(r.type==='spatial'){
+      if(a.kind!=='geo' || b.kind!=='geo') issues.push({sev:'error', ref:{type:'rel',id:r.id}, msg:'Relação espacial entre "'+a.name+'" e "'+b.name+'" exige que ambas as classes sejam geográficas'});
+    }
+    if(r.type==='aggregation' && r.spatialControl){
+      if(a.kind!=='geo' || b.kind!=='geo') issues.push({sev:'warning', ref:{type:'rel',id:r.id}, msg:'Agregação espacial "'+a.name+'"–"'+b.name+'" com controle topológico deveria envolver classes geográficas'});
+    }
+  });
+  return issues;
+}
+
+/* ---------- top-level render orchestration ---------- */
+function touch(skipInspector){
+  renderClassList();
+  renderRelList();
+  renderValidation();
+  renderCanvas();
+  renderExport();
+  if(!skipInspector) renderInspector();
+  scheduleAutosave();
+}
+
+/* ---------- left rail: class/rel lists + validation ---------- */
+function renderClassList(){
+  const wrap = document.getElementById('classList');
+  wrap.innerHTML = '';
+  document.getElementById('countClasses').textContent = state.classes.length;
+  if(!state.classes.length){
+    wrap.appendChild(E('div',{class:'empty-note'},['Nenhuma classe ainda. Use os botões acima para adicionar.']));
+    return;
+  }
+  state.classes.forEach(c=>{
+    const sub = c.kind==='geo' ? (c.geoType==='field' ? 'geo-campo · '+ALL_PRIMITIVE_LABEL[c.primitive] : 'geo-objeto · '+ALL_PRIMITIVE_LABEL[c.primitive]) : 'convencional';
+    const row = E('div',{class:'listitem'+(selection.type==='class'&&selection.id===c.id?' selected':''), onclick:()=>selectClass(c.id)},[
+      E('span',{class:'ic', html:classIcon(c)}),
+      E('div',{class:'tx'},[ E('div',{class:'t1'},[c.name]), E('div',{class:'t2'},[sub]) ]),
+      E('button',{class:'del-x', title:'Excluir classe', html:ICONS.trash, onclick:(e)=>{ e.stopPropagation(); deleteClass(c.id); }})
+    ]);
+    wrap.appendChild(row);
+  });
+}
+function renderRelList(){
+  const wrap = document.getElementById('relList');
+  wrap.innerHTML = '';
+  document.getElementById('countRels').textContent = state.relationships.length;
+  if(!state.relationships.length){
+    wrap.appendChild(E('div',{class:'empty-note'},['Nenhum relacionamento ainda.']));
+    return;
+  }
+  state.relationships.forEach(r=>{
+    const a = state.classes.find(x=>x.id===r.sourceId), b = state.classes.find(x=>x.id===r.targetId);
+    const row = E('div',{class:'listitem'+(selection.type==='rel'&&selection.id===r.id?' selected':''), onclick:()=>selectRel(r.id)},[
+      E('span',{class:'ic', html:ICONS[r.type]||ICONS.association}),
+      E('div',{class:'tx'},[ E('div',{class:'t1'},[REL_TYPES[r.type].short]), E('div',{class:'t2'},[(a?a.name:'?')+' — '+(b?b.name:'?')]) ]),
+      E('button',{class:'del-x', title:'Excluir relacionamento', html:ICONS.trash, onclick:(e)=>{ e.stopPropagation(); deleteRel(r.id); }})
+    ]);
+    wrap.appendChild(row);
+  });
+}
+function renderValidation(){
+  const wrap = document.getElementById('validationList');
+  wrap.innerHTML = '';
+  const issues = computeValidation();
+  document.getElementById('countIssues').textContent = issues.length;
+  if(!issues.length){
+    wrap.appendChild(E('div',{class:'vgood'},['✓ Nenhum problema encontrado']));
+    return;
+  }
+  issues.forEach(is=>{
+    const row = E('div',{class:'vitem '+is.sev, onclick:()=>{ if(is.ref.type==='class') selectClass(is.ref.id); else selectRel(is.ref.id); }},[
+      E('span',{class:'dot'}),
+      E('div',{class:'msg'},[is.msg])
+    ]);
+    wrap.appendChild(row);
+  });
+}
+
+/* ---------- canvas rendering ---------- */
+const CARD_HEAD_H = 34;
+const CARD_ROW_H = 19;
+function classHeight(c){
+  const rows = Math.max(1, c.attributes.length);
+  return CARD_HEAD_H + rows*CARD_ROW_H + 11;
+}
+const CARD_W = 208;
+function topRoundedRectPath(w,h,r){
+  return 'M0,'+r+' A'+r+','+r+' 0 0 1 '+r+',0 H'+(w-r)+' A'+r+','+r+' 0 0 1 '+w+','+r+' V'+h+' H0 Z';
+}
+function keyGlyph(){
+  const g = S('g',{class:'attr-key'});
+  g.appendChild(S('circle',{cx:0,cy:0,r:2.5, style:'fill:none;stroke:currentColor;stroke-width:1.25'}));
+  g.appendChild(S('line',{x1:1.7,y1:1.7,x2:6.6,y2:6.6, style:'stroke:currentColor;stroke-width:1.25;stroke-linecap:round'}));
+  g.appendChild(S('line',{x1:5,y1:5,x2:5,y2:7.6, style:'stroke:currentColor;stroke-width:1.25;stroke-linecap:round'}));
+  g.appendChild(S('line',{x1:6.6,y1:6.6,x2:8.5,y2:4.7, style:'stroke:currentColor;stroke-width:1.25;stroke-linecap:round'}));
+  return g;
+}
+function buildNode(c){
+  const isSel = selection.type==='class' && selection.id===c.id;
+  const g = S('g', {
+    class:'node-card'+(isSel?' selected':''),
+    'data-class-id': c.id,
+    transform:'translate('+c.x+','+c.y+')',
+    onpointerdown:(evt)=>{
+      evt.stopPropagation();
+      const p = svgPoint(evt);
+      drag = {id:c.id, offX:p.x-c.x, offY:p.y-c.y, moved:false};
+      try{ evt.currentTarget.setPointerCapture(evt.pointerId); }catch(e){}
+    }
+  });
+  g.appendChild(S('rect',{class:'card-bg', x:0,y:0,width:c.w,height:c.h, rx:9}));
+  g.appendChild(S('text',{class:'cname', x:12, y:22},[c.name]));
+  // geometry chip (top-right) — presence/absence + icon replaces the old text stereotype
+  if(c.kind==='geo' && c.primitive){
+    const chipSize = 20, chx = c.w-11-chipSize, chy = 8;
+    g.appendChild(S('rect',{class:'geo-chip', x:chx, y:chy, width:chipSize, height:chipSize, rx:5}));
+    const glyph = primitiveGlyph(c);
+    glyph.setAttribute('transform','translate('+(chx+chipSize/2)+','+(chy+chipSize/2)+')');
+    glyph.setAttribute('class','pglyph chip-glyph');
+    g.appendChild(glyph);
+  }
+  g.appendChild(S('line',{class:'card-divider', x1:0,y1:CARD_HEAD_H,x2:c.w,y2:CARD_HEAD_H}));
+  const nameX = 12 + 15; // fixed prefix slot so attribute names line up regardless of key/required marker
+  if(!c.attributes.length){
+    g.appendChild(S('text',{class:'cattr', x:nameX, y:CARD_HEAD_H+CARD_ROW_H-6, style:'fill:var(--muted);font-style:italic;'},['(sem atributos)']));
+  } else {
+    c.attributes.forEach((a,i)=>{
+      const y = CARD_HEAD_H + CARD_ROW_H*(i+1) - 6;
+      if(a.pk){
+        const k = keyGlyph();
+        k.setAttribute('transform','translate('+15+','+(y-3.6)+')');
+        g.appendChild(k);
+      } else if(!a.nullable){
+        g.appendChild(S('text',{class:'attr-required', x:13, y:y},['*']));
+      }
+      const t = S('text',{class:'cattr', x:nameX, y:y});
+      const nameSpan = S('tspan',{class: a.pk ? 'cpk' : ''},[a.name]);
+      const typeSpan = S('tspan',{class:'attype'},[' : '+ATTR_TYPE_LABEL[a.type]]);
+      t.appendChild(nameSpan); t.appendChild(typeSpan);
+      g.appendChild(t);
+    });
+  }
+  // connection handles — one on each side, hidden until hover; drag from one
+  // to another class to create a relationship (of the type currently picked
+  // in the "Adicionar relacionamento" panel) without any separate mode.
+  const handleDefs = [
+    {side:'top', x:c.w/2, y:0}, {side:'bottom', x:c.w/2, y:c.h},
+    {side:'left', x:0, y:c.h/2}, {side:'right', x:c.w, y:c.h/2}
+  ];
+  handleDefs.forEach(hd=>{
+    g.appendChild(S('circle',{class:'conn-handle', 'data-side':hd.side, cx:hd.x, cy:hd.y, r:5,
+      onpointerdown:(evt)=>{
+        evt.stopPropagation();
+        const p = svgPoint(evt);
+        connDrag = {sourceId:c.id, sourceSide:hd.side, x:p.x, y:p.y};
+        try{ evt.currentTarget.setPointerCapture(evt.pointerId); }catch(e){}
+        renderConnDragOverlay();
+      }
+    }));
+  });
+  return g;
+}
+/* Live preview line + drop-target highlight while dragging a relationship
+   out of a class's connection handle (see buildNode / connDrag). */
+function renderConnDragOverlay(){
+  const layer = document.getElementById('connDragLayer');
+  if(!layer) return;
+  layer.innerHTML = '';
+  document.querySelectorAll('.node-card.conn-target').forEach(el=>el.classList.remove('conn-target'));
+  if(!connDrag) return;
+  const src = state.classes.find(c=>c.id===connDrag.sourceId);
+  if(!src) return;
+  const srcRect = {x:src.x, y:src.y, w:src.w||CARD_W, h:src.h||classHeight(src)};
+  const startPt = pointOnSide(srcRect, connDrag.sourceSide, 0);
+  layer.appendChild(S('path',{class:'conn-drag-line', d:'M'+startPt.x+','+startPt.y+' L'+connDrag.x+','+connDrag.y}));
+  const target = state.classes.find(cl=> cl.id!==connDrag.sourceId
+    && connDrag.x>=cl.x && connDrag.x<=cl.x+(cl.w||CARD_W) && connDrag.y>=cl.y && connDrag.y<=cl.y+(cl.h||classHeight(cl)));
+  if(target){
+    const el = document.querySelector('.node-card[data-class-id="'+target.id+'"]');
+    if(el) el.classList.add('conn-target');
+  }
+}
+function rectBorderPoint(rect, toward){
+  const cx=rect.x+rect.w/2, cy=rect.y+rect.h/2;
+  const dx=toward.x-cx, dy=toward.y-cy;
+  if(dx===0 && dy===0) return {x:cx,y:cy};
+  const hw=rect.w/2, hh=rect.h/2;
+  const scale = 1/Math.max(Math.abs(dx)/hw, Math.abs(dy)/hh);
+  return {x:cx+dx*scale, y:cy+dy*scale};
+}
+function edgeText(x,y,text,extraClass,onclick){
+  return S('text',{class:'edge-card-label'+(extraClass?' '+extraClass:''), x:x, y:y, 'text-anchor':'middle',
+    style: onclick ? 'cursor:pointer;' : undefined, onclick}, [text]);
+}
+
+/* ---------- orthogonal (UML-style) edge routing ---------- */
+const HOP_R = 9;
+/* Which border ("left"/"right"/"top"/"bottom") each end of a relationship
+   exits from — driven by the same gap comparison the old single-route
+   builder used, just exposed as named sides so ports can be assigned. */
+function decideSides(aRect, bRect){
+  const acx=aRect.x+aRect.w/2, acy=aRect.y+aRect.h/2;
+  const bcx=bRect.x+bRect.w/2, bcy=bRect.y+bRect.h/2;
+  const dx = bcx-acx, dy = bcy-acy;
+  const hGap = Math.max(aRect.x-(bRect.x+bRect.w), bRect.x-(aRect.x+aRect.w));
+  const vGap = Math.max(aRect.y-(bRect.y+bRect.h), bRect.y-(aRect.y+aRect.h));
+  if(hGap >= vGap){
+    return { aSide: dx>=0 ? 'right':'left', bSide: dx>=0 ? 'left':'right' };
+  }
+  return { aSide: dy>=0 ? 'bottom':'top', bSide: dy>=0 ? 'top':'bottom' };
+}
+/* Exact point on a rect's border for a given side, offset along that side
+   from its center (used to spread multiple edges out along one border
+   instead of all of them meeting at the dead-center point). */
+function pointOnSide(rect, side, offset){
+  const cx=rect.x+rect.w/2, cy=rect.y+rect.h/2;
+  if(side==='left') return {x:rect.x, y:cy+offset};
+  if(side==='right') return {x:rect.x+rect.w, y:cy+offset};
+  if(side==='top') return {x:cx+offset, y:rect.y};
+  return {x:cx+offset, y:rect.y+rect.h}; // bottom
+}
+/* Build the orthogonal point list between two already-placed port points,
+   given the side each was placed on (both sides always share the same
+   orientation, since decideSides picks one axis for both ends). */
+function buildElbowPoints(a, aSide, b, bSide){
+  const horiz = (aSide==='left' || aSide==='right');
+  let pts;
+  if(horiz){
+    if(Math.abs(a.y-b.y)<0.5){ pts = [a, b]; }
+    else { const midX = (a.x+b.x)/2; pts = [a, {x:midX,y:a.y}, {x:midX,y:b.y}, b]; }
+  } else {
+    if(Math.abs(a.x-b.x)<0.5){ pts = [a, b]; }
+    else { const midY = (a.y+b.y)/2; pts = [a, {x:a.x,y:midY}, {x:b.x,y:midY}, b]; }
+  }
+  const out = [pts[0]];
+  for(let i=1;i<pts.length;i++){
+    const p=pts[i], q=out[out.length-1];
+    if(Math.abs(p.x-q.x)>0.01 || Math.abs(p.y-q.y)>0.01) out.push(p);
+  }
+  return out;
+}
+const OBSTACLE_MARGIN = 12;
+function rectHitsObstacles(x1,y1,x2,y2, obstacles){
+  const lox=Math.min(x1,x2), hix=Math.max(x1,x2), loy=Math.min(y1,y2), hiy=Math.max(y1,y2);
+  return obstacles.some(o=> lox < o.x2 && hix > o.x1 && loy < o.y2 && hiy > o.y1);
+}
+/* Grid/BFS orthogonal router: a plain midpoint elbow can cut straight through
+   an unrelated class card when the two endpoints sit on a diagonal (e.g. one
+   node directly above another that itself sits between source and target).
+   This routes around every OTHER class's card instead, using the standard
+   technique of only needing grid lines through obstacle corners (+ the two
+   port points) to find an optimal Manhattan path, with a 0-1 BFS that
+   prefers straight runs over extra turns. Returns null (caller falls back
+   to the simple elbow) if no route is found or the model is too large to
+   route this way cheaply. */
+function routeOrthogonal(a, aSide, b, bSide, obstacles){
+  const xsSet = new Set([a.x, b.x]), ysSet = new Set([a.y, b.y]);
+  obstacles.forEach(o=>{ xsSet.add(o.x1); xsSet.add(o.x2); ysSet.add(o.y1); ysSet.add(o.y2); });
+  const xs = [...xsSet].sort((p,q)=>p-q);
+  const ys = [...ysSet].sort((p,q)=>p-q);
+  if(xs.length>44 || ys.length>44) return null; // keep this cheap; caller falls back
+  const xi = xs.reduce((m,v,i)=>(m[v]=i,m),{}), yi = ys.reduce((m,v,i)=>(m[v]=i,m),{});
+  const W = xs.length, H = ys.length;
+  const blockedH = {}, blockedV = {}; // blockedH[ix+','+iy] = segment (ix,iy)-(ix+1,iy) blocked
+  for(let iy=0; iy<H; iy++) for(let ix=0; ix<W-1; ix++) blockedH[ix+','+iy] = rectHitsObstacles(xs[ix],ys[iy],xs[ix+1],ys[iy], obstacles);
+  for(let ix=0; ix<W; ix++) for(let iy=0; iy<H-1; iy++) blockedV[ix+','+iy] = rectHitsObstacles(xs[ix],ys[iy],xs[ix],ys[iy+1], obstacles);
+  const startIx = xi[a.x], startIy = yi[a.y], endIx = xi[b.x], endIy = yi[b.y];
+  if(startIx===undefined||startIy===undefined||endIx===undefined||endIy===undefined) return null;
+  const DIRV = [[0,-1],[0,1],[-1,0],[1,0]]; // 0 up, 1 down, 2 left, 3 right
+  const sideDir = side=> side==='top'?0 : side==='bottom'?1 : side==='left'?2 : 3;
+  const aRequiredDir = sideDir(aSide);
+  // last move must travel toward bSide's outward normal to land on that port
+  const bRequiredDir = bSide==='top'?1 : bSide==='bottom'?0 : bSide==='left'?3 : 2;
+  const startKey = startIx+','+startIy+',-1';
+  const dist = new Map([[startKey,0]]);
+  const prev = new Map();
+  const visited = new Set();
+  const dq = [startKey];
+  while(dq.length){
+    const cur = dq.shift();
+    if(visited.has(cur)) continue;
+    visited.add(cur);
+    const [cixS,ciyS,cdirS] = cur.split(',');
+    const ix=+cixS, iy=+ciyS, cdir=+cdirS;
+    const d0 = dist.get(cur);
+    for(let dIdx=0; dIdx<4; dIdx++){
+      if(cdir===-1 && dIdx!==aRequiredDir) continue;
+      const [ddx,ddy] = DIRV[dIdx];
+      const nix=ix+ddx, niy=iy+ddy;
+      if(nix<0||nix>=W||niy<0||niy>=H) continue;
+      const blocked = ddx!==0 ? blockedH[Math.min(ix,nix)+','+iy] : blockedV[ix+','+Math.min(iy,niy)];
+      if(blocked) continue;
+      const atTarget = (nix===endIx && niy===endIy);
+      if(atTarget && dIdx!==bRequiredDir) continue;
+      const turnCost = (cdir===-1 || cdir===dIdx) ? 0 : 1;
+      const nd = d0 + turnCost;
+      const nkey = nix+','+niy+','+dIdx;
+      if(!dist.has(nkey) || dist.get(nkey) > nd){
+        dist.set(nkey, nd);
+        prev.set(nkey, cur);
+        if(turnCost===0) dq.unshift(nkey); else dq.push(nkey);
+      }
+    }
+  }
+  const finalKey = endIx+','+endIy+','+bRequiredDir;
+  if(!dist.has(finalKey)) return null;
+  const path = [];
+  let cur = finalKey;
+  while(cur !== startKey){
+    const [cixS,ciyS] = cur.split(',');
+    path.push({x:xs[+cixS], y:ys[+ciyS]});
+    cur = prev.get(cur);
+  }
+  path.push({x:xs[startIx], y:ys[startIy]});
+  path.reverse();
+  const out = [path[0]];
+  for(let i=1;i<path.length;i++){
+    const p = path[i];
+    if(out.length>=2){
+      const q = out[out.length-1], r = out[out.length-2];
+      if((r.x===q.x && q.x===p.x) || (r.y===q.y && q.y===p.y)){ out[out.length-1] = p; continue; }
+    }
+    out.push(p);
+  }
+  return out;
+}
+/* Route one edge's points, preferring a path that steers clear of every
+   OTHER class card; falls back to the plain midpoint elbow (which can cut
+   through an unrelated card on a diagonal layout) if no clean route is
+   found or the model is too large to route this way. */
+function routeEdge(a, aSide, b, bSide, obstacles){
+  const horiz = (aSide==='left' || aSide==='right');
+  const aligned = horiz ? Math.abs(a.y-b.y)<0.5 : Math.abs(a.x-b.x)<0.5;
+  if(aligned && !rectHitsObstacles(a.x,a.y,b.x,b.y,obstacles)) return [a,b];
+  const routed = routeOrthogonal(a, aSide, b, bSide, obstacles);
+  if(routed && routed.length>=2) return routed;
+  return buildElbowPoints(a, aSide, b, bSide);
+}
+function selfLoopPoints(aRect){
+  // self-relationship fallback: small loop off the right side
+  const y0 = aRect.y+aRect.h*0.3, y1 = aRect.y+aRect.h*0.7, x0 = aRect.x+aRect.w;
+  return [{x:x0,y:y0},{x:x0+42,y:y0},{x:x0+42,y:y1},{x:x0,y:y1}];
+}
+function segmentsOf(points){
+  const segs = [];
+  for(let i=0;i<points.length-1;i++){
+    const p1=points[i], p2=points[i+1];
+    segs.push({x1:p1.x,y1:p1.y,x2:p2.x,y2:p2.y, horiz: Math.abs(p1.y-p2.y)<0.01});
+  }
+  return segs;
+}
+const LANE_GAP = 12;
+const PORT_GAP = 14, PORT_MARGIN = 10;
+/* Port assignment: every relationship end is grouped by (classId, side) with
+   every OTHER relationship that also leaves that same node from that same
+   side, then spread out along the border instead of all meeting at its
+   dead-center point. This is what keeps two different relationships from
+   ever starting (or ending) with a literally identical first/last segment —
+   the case the old lane-only fix couldn't reach. Returns points keyed by
+   relationship index; entries are null for relationships missing a rect. */
+function assignPorts(relationships, rects){
+  const sideInfo = [];
+  const portGroups = {}; // classId|side -> [{idx, isSource, otherCx, otherCy}]
+  relationships.forEach((r, idx)=>{
+    const aRect = rects[r.sourceId], bRect = rects[r.targetId];
+    if(!aRect || !bRect){ sideInfo[idx] = null; return; }
+    if(r.sourceId===r.targetId){ sideInfo[idx] = 'self'; return; }
+    const {aSide,bSide} = decideSides(aRect, bRect);
+    sideInfo[idx] = {aSide, bSide};
+    const acx=aRect.x+aRect.w/2, acy=aRect.y+aRect.h/2;
+    const bcx=bRect.x+bRect.w/2, bcy=bRect.y+bRect.h/2;
+    const keyA = r.sourceId+'|'+aSide;
+    (portGroups[keyA] = portGroups[keyA] || []).push({idx, isSource:true, otherCx:bcx, otherCy:bcy});
+    const keyB = r.targetId+'|'+bSide;
+    (portGroups[keyB] = portGroups[keyB] || []).push({idx, isSource:false, otherCx:acx, otherCy:acy});
+  });
+  const portOffset = {}; // idx|s or idx|t -> offset
+  Object.entries(portGroups).forEach(([key, items])=>{
+    const bar = key.lastIndexOf('|');
+    const classId = key.slice(0,bar), side = key.slice(bar+1);
+    const rect = rects[classId];
+    const vertical = (side==='left' || side==='right'); // sort along the border by the other node's position
+    const usable = Math.max(0, (vertical ? rect.h : rect.w) - 2*PORT_MARGIN);
+    const n = items.length;
+    const gap = n>1 ? Math.min(PORT_GAP, usable/(n-1)) : 0;
+    items.sort((p,q)=> vertical ? (p.otherCy-q.otherCy) : (p.otherCx-q.otherCx));
+    items.forEach((it,i)=>{
+      portOffset[it.idx+'|'+(it.isSource?'s':'t')] = n>1 ? (i-(n-1)/2)*gap : 0;
+    });
+  });
+  const rectEntries = Object.entries(rects);
+  return relationships.map((r, idx)=>{
+    const aRect = rects[r.sourceId], bRect = rects[r.targetId];
+    if(!aRect || !bRect) return null;
+    if(sideInfo[idx]==='self') return selfLoopPoints(aRect);
+    const {aSide,bSide} = sideInfo[idx];
+    const aPt = pointOnSide(aRect, aSide, portOffset[idx+'|s']||0);
+    const bPt = pointOnSide(bRect, bSide, portOffset[idx+'|t']||0);
+    // every OTHER class card is an obstacle this edge's route must go around —
+    // this is what keeps a relationship's line from cutting through a class
+    // card that isn't even part of it.
+    const obstacles = [];
+    rectEntries.forEach(([cid,rect])=>{
+      if(cid===r.sourceId || cid===r.targetId) return;
+      obstacles.push({x1:rect.x-OBSTACLE_MARGIN, y1:rect.y-OBSTACLE_MARGIN, x2:rect.x+rect.w+OBSTACLE_MARGIN, y2:rect.y+rect.h+OBSTACLE_MARGIN});
+    });
+    return routeEdge(aPt, aSide, bPt, bSide, obstacles);
+  });
+}
+/* Safety net for the rare case where two DIFFERENT node pairs' free middle
+   segments still land on the same line purely by coincidence of layout
+   (port assignment already keeps every border-touching segment apart).
+   Mutates route.points in place. */
+function separateOverlappingMiddleSegments(routes){
+  const mids = [];
+  routes.forEach((route, idx)=>{
+    if(!route || route.points.length!==4) return;
+    const pts = route.points;
+    const horiz = Math.abs(pts[1].y-pts[2].y)<0.5;
+    const coord = horiz ? pts[1].y : pts[1].x;
+    const lo = horiz ? Math.min(pts[1].x,pts[2].x) : Math.min(pts[1].y,pts[2].y);
+    const hi = horiz ? Math.max(pts[1].x,pts[2].x) : Math.max(pts[1].y,pts[2].y);
+    mids.push({idx, horiz, coord, lo, hi});
+  });
+  const used = new Set();
+  mids.forEach((seg,i)=>{
+    if(used.has(i)) return;
+    const cluster = [seg]; used.add(i);
+    let grew = true;
+    while(grew){
+      grew = false;
+      mids.forEach((other,j)=>{
+        if(used.has(j)) return;
+        const hit = cluster.some(c=> c.horiz===other.horiz && Math.abs(c.coord-other.coord)<=2 && other.lo<c.hi-3 && c.lo<other.hi-3);
+        if(hit){ cluster.push(other); used.add(j); grew = true; }
+      });
+    }
+    if(cluster.length<2) return;
+    const n = cluster.length;
+    cluster.forEach((c,k)=>{
+      const lane = k-(n-1)/2;
+      const pts = routes[c.idx].points;
+      if(c.horiz){
+        const ny = pts[1].y + lane*LANE_GAP;
+        pts[1] = {x:pts[1].x, y:ny}; pts[2] = {x:pts[2].x, y:ny};
+      } else {
+        const nx = pts[1].x + lane*LANE_GAP;
+        pts[1] = {x:nx, y:pts[1].y}; pts[2] = {x:nx, y:pts[2].y};
+      }
+    });
+  });
+}
+function segPathPiece(p1, p2, hops){
+  const horiz = Math.abs(p1.y-p2.y)<0.01;
+  let d = 'M'+p1.x+','+p1.y;
+  if(horiz && hops && hops.length){
+    const dir = p2.x>p1.x ? 1 : -1;
+    const sorted = hops.slice().sort((x1,x2)=> dir>0 ? x1-x2 : x2-x1);
+    const y = p1.y, r = HOP_R;
+    sorted.forEach(cx=>{
+      const leftX = cx-r, rightX = cx+r;
+      if(dir>0) d += ' L'+leftX+','+y+' A'+r+','+r+' 0 0 1 '+rightX+','+y;
+      else d += ' L'+rightX+','+y+' A'+r+','+r+' 0 0 0 '+leftX+','+y;
+    });
+  }
+  d += ' L'+p2.x+','+p2.y;
+  return d;
+}
+function buildOrthoPathD(points, hopsPerSegment){
+  let d = 'M'+points[0].x+','+points[0].y;
+  for(let i=0;i<points.length-1;i++){
+    const hops = (hopsPerSegment && hopsPerSegment[i]) || [];
+    // strip the leading 'M..' from the piece — we're continuing one single path
+    d += segPathPiece(points[i], points[i+1], hops).replace(/^M[^L]*/, '');
+  }
+  return d;
+}
+/* network relationships render as two parallel dashed lines (OMT-G "rede" notation)
+   rather than a single line — offset each segment perpendicular to its direction. */
+function buildNetworkParallelPaths(points, hopsPerSegment, gap){
+  let dA = '', dB = '';
+  for(let i=0;i<points.length-1;i++){
+    const p1=points[i], p2=points[i+1];
+    const horiz = Math.abs(p1.y-p2.y)<0.01;
+    const off = horiz ? {x:0,y:gap} : {x:gap,y:0};
+    const hops = (hopsPerSegment && hopsPerSegment[i]) || [];
+    dA += segPathPiece({x:p1.x+off.x,y:p1.y+off.y}, {x:p2.x+off.x,y:p2.y+off.y}, hops) + ' ';
+    dB += segPathPiece({x:p1.x-off.x,y:p1.y-off.y}, {x:p2.x-off.x,y:p2.y-off.y}, hops) + ' ';
+  }
+  return {dA, dB};
+}
+function edgeLabelAnchors(points){
+  const n = points.length;
+  const midSeg = n>=4
+    ? {x:(points[1].x+points[2].x)/2, y:(points[1].y+points[2].y)/2}
+    : {x:(points[0].x+points[n-1].x)/2, y:(points[0].y+points[n-1].y)/2};
+  const perp = (p0,p1,t,off)=>{
+    const mx=p0.x+(p1.x-p0.x)*t, my=p0.y+(p1.y-p0.y)*t;
+    const horiz = Math.abs(p0.y-p1.y)<0.01;
+    return horiz ? {x:mx,y:my-off} : {x:mx+off,y:my};
+  };
+  const nearA = perp(points[0], points[1], 0.55, 7);
+  const nearB = perp(points[n-1], points[n-2], 0.55, 7);
+  return {mid: midSeg, nearA, nearB};
+}
+function buildEdgeDom(route, labelLayer){
+  const r = route.r;
+  const g = S('g', {class:'edge '+r.type});
+  const points = route.points;
+  const dPlain = buildOrthoPathD(points, null);
+  const isSel = selection.type==='rel' && selection.id===r.id;
+
+  if(r.type==='network'){
+    // OMT-G notation: network (arc-node/arc-arc) relationships are drawn as
+    // two parallel dashed lines, not a single line.
+    const netGap = 2.4;
+    let drawPoints = points, tip=null, back=null, ux=0, uy=0, px=0, py=0;
+    if(r.directed){
+      // Stop the dashed lines short of the tip so the dash pattern never
+      // leaves a stray fragment poking out next to the arrowhead — the
+      // solid chevron alone caps the last stretch of the line.
+      const n = points.length;
+      tip = points[n-1]; const prev = points[n-2];
+      ux = tip.x-prev.x; uy = tip.y-prev.y;
+      const len = Math.hypot(ux,uy) || 1; ux/=len; uy/=len;
+      px = -uy; py = ux;
+      const arrowLen = 10;
+      back = {x:tip.x-ux*arrowLen, y:tip.y-uy*arrowLen};
+      drawPoints = points.slice(0,-1).concat([back]);
+    }
+    const {dA, dB} = buildNetworkParallelPaths(drawPoints, route.hops, netGap);
+    const pathA = S('path', {class:'edge-path network'+(isSel?' selected':''), d:dA});
+    const pathB = S('path', {class:'edge-path network'+(isSel?' selected':''), d:dB});
+    g.appendChild(pathA); g.appendChild(pathB);
+    if(r.directed){
+      // A single small marker on just one of the two parallel lines reads
+      // as belonging to that line alone — instead draw one wide chevron,
+      // centered on the (unoffset) route endpoint, that visually spans
+      // both parallel lines as a single arrowhead symbol.
+      const halfW = netGap*3.1;
+      const left = {x:back.x+px*halfW, y:back.y+py*halfW};
+      const right = {x:back.x-px*halfW, y:back.y-py*halfW};
+      const arrow = S('path', {class:'edge-path network-arrow'+(isSel?' selected':''),
+        d:'M'+left.x+','+left.y+' L'+tip.x+','+tip.y+' L'+right.x+','+right.y});
+      g.appendChild(arrow);
+    }
+  } else {
+    const dHopped = buildOrthoPathD(points, route.hops);
+    const extraCls = (r.type==='aggregation' && r.spatialControl) ? ' spatial-agg' : '';
+    const path = S('path', {class:'edge-path '+r.type+extraCls+(isSel?' selected':''), d:dHopped});
+    if(r.type==='generalization'){
+      // OMT-G: triangle fill encodes disjoint(hollow)/overlapping(filled); a
+      // dot at the apex encodes total coverage (absent = partial).
+      const markerId = 'marker-gen-'+(r.total?'t':'p')+(r.disjoint?'d':'o');
+      path.setAttribute('marker-end','url(#'+markerId+')');
+    }
+    if(r.type==='aggregation'){
+      // OMT-G: diamond is always hollow; spatial aggregation (topological
+      // control) is instead encoded by the dashed line (.spatial-agg above).
+      path.setAttribute('marker-start','url(#marker-diamond)');
+    }
+    g.appendChild(path);
+  }
+
+  const hit = S('path', {d:dPlain, style:'fill:none;stroke:transparent;stroke-width:16;cursor:pointer',
+    // the SVG background's own pointerdown starts a pan-or-click-to-deselect;
+    // without stopping it here it fires first, deselects, and rebuilds the
+    // canvas out from under this element before the click handler runs —
+    // clicking a relationship's line would silently do nothing.
+    onpointerdown:(e)=>{ e.stopPropagation(); },
+    onclick:(e)=>{ e.stopPropagation(); selectRel(r.id); }});
+  g.appendChild(hit);
+  const {mid, nearA, nearB} = edgeLabelAnchors(points);
+  const lbl = (x,y,text)=>{
+    if(!labelLayer) return;
+    // SVG text only hits on its actual painted glyphs, not its bounding box —
+    // clicking just beside a short label like "1" would silently do nothing.
+    // Wrap it with a padded transparent rect so the whole label area (and a
+    // few px around it) is clickable, sized after the text is measurable.
+    const wrap = S('g', {style:'cursor:pointer;',
+      onpointerdown:(e)=>{ e.stopPropagation(); }, // see the same note on the edge hit-path above
+      onclick:(e)=>{ e.stopPropagation(); selectRel(r.id); }});
+    const t = edgeText(x,y,text);
+    wrap.appendChild(t);
+    labelLayer.appendChild(wrap);
+    try{
+      const b = t.getBBox();
+      const pad = 4;
+      const hit = S('rect', {x:b.x-pad, y:b.y-pad, width:b.width+pad*2, height:b.height+pad*2, style:'fill:transparent;'});
+      wrap.insertBefore(hit, t);
+    }catch(e){}
+  };
+  if(r.type==='association'){
+    lbl(nearA.x, nearA.y, r.cardSource||'1');
+    lbl(nearB.x, nearB.y, r.cardTarget||'0..*');
+    if(r.name) lbl(mid.x, mid.y-8, r.name);
+  } else if(r.type==='aggregation'){
+    lbl(nearA.x, nearA.y, r.cardSource||'1');
+    lbl(nearB.x, nearB.y, r.cardTarget||'0..*');
+  } else if(r.type==='network'){
+    lbl(mid.x, mid.y-9, 'rede'+(r.directed?' →':''));
+  } else if(r.type==='spatial'){
+    // OMT-G: dashed line + the predicate's name as a «stereotype» on the line.
+    lbl(mid.x, mid.y-8, '«'+(TOPO_RULE_SHORT[r.topoRule]||r.topoRule)+'»');
+  }
+  // generalization has no floating label anymore — the triangle itself
+  // (fill + apex dot) encodes total/partial and disjoint/overlapping.
+  return g;
+}
+function renderCanvas(){
+  const nodeLayer = document.getElementById('nodeLayer');
+  const edgeLayer = document.getElementById('edgeLayer');
+  const labelLayer = document.getElementById('labelLayer');
+  nodeLayer.innerHTML = ''; edgeLayer.innerHTML = ''; if(labelLayer) labelLayer.innerHTML = '';
+  const rects = {};
+  state.classes.forEach(c=>{ c.w = CARD_W; c.h = classHeight(c); rects[c.id] = {x:c.x,y:c.y,w:c.w,h:c.h}; });
+
+  // Phase 1: assign a border port to every relationship end (spreading
+  // multiple edges off the same node+side apart) and route each edge
+  // orthogonally between its two ports.
+  const allPoints = assignPorts(state.relationships, rects);
+  const routes = state.relationships.map((r,idx)=>{
+    const points = allPoints[idx];
+    if(!points) return null;
+    return { r, points };
+  });
+
+  separateOverlappingMiddleSegments(routes);
+
+  // finalize segments/hop buckets from the (possibly lane-separated) points
+  routes.forEach(route=>{
+    if(!route) return;
+    route.segs = segmentsOf(route.points);
+    route.hops = route.segs.map(()=>[]);
+  });
+
+  // Phase 2: detect crossings — a horizontal segment "hops" over any vertical
+  // segment of another edge that crosses it in its interior (UML jump-over).
+  const EPS = HOP_R + 3;
+  for(let i=0;i<routes.length;i++){
+    const ri = routes[i];
+    if(!ri) continue;
+    for(let j=0;j<routes.length;j++){
+      if(i===j) continue;
+      const rj = routes[j];
+      if(!rj) continue;
+      ri.segs.forEach((segH, hi)=>{
+        if(!segH.horiz) return;
+        const hy = segH.y1, hx1 = Math.min(segH.x1,segH.x2), hx2 = Math.max(segH.x1,segH.x2);
+        rj.segs.forEach(segV=>{
+          if(segV.horiz) return;
+          const vx = segV.x1, vy1 = Math.min(segV.y1,segV.y2), vy2 = Math.max(segV.y1,segV.y2);
+          if(vx>hx1+EPS && vx<hx2-EPS && hy>vy1+EPS && hy<vy2-EPS){
+            ri.hops[hi].push(vx);
+          }
+        });
+      });
+    }
+  }
+
+  // Phase 3: build DOM
+  routes.forEach(route=>{ if(route) edgeLayer.appendChild(buildEdgeDom(route, labelLayer)); });
+  state.classes.forEach(c=> nodeLayer.appendChild(buildNode(c)) );
+}
+
+/* ---------- defs: markers + grid pattern ---------- */
+function initDefs(){
+  const defs = document.getElementById('svgDefs');
+  // Generalization markers: OMT-G encodes disjoint/overlapping via hollow/filled
+  // triangle, and total/partial via a dot at the triangle apex (absent = partial).
+  // refX sits exactly at the triangle apex (the touching point) so the marker
+  // fully covers the line end — no gap where the raw stroke would poke through.
+  function genMarker(id, filled, dot){
+    const kids = [S('path',{d:'M1,1 L12,6 L1,11 Z', style:'fill:'+(filled?'var(--edge-generalization)':'var(--canvas-bg)')+';stroke:var(--edge-generalization);stroke-width:1.3;stroke-linejoin:round'})];
+    if(dot) kids.push(S('circle',{cx:9.3,cy:6,r:1.25, style:'fill:var(--edge-generalization)'}));
+    return S('marker',{id:id, viewBox:'0 0 13 12', refX:12, refY:6, markerWidth:13, markerHeight:12, orient:'auto'}, kids);
+  }
+  defs.appendChild(genMarker('marker-gen-pd', false, false)); // parcial, disjunta
+  defs.appendChild(genMarker('marker-gen-td', false, true));  // total, disjunta
+  defs.appendChild(genMarker('marker-gen-po', true,  false)); // parcial, sobreposta
+  defs.appendChild(genMarker('marker-gen-to', true,  true));  // total, sobreposta
+  defs.appendChild(S('marker',{id:'marker-diamond', viewBox:'0 0 14 10', refX:1, refY:5, markerWidth:13, markerHeight:9, orient:'auto'},[
+    S('path',{d:'M1,5 L7,1 L13,5 L7,9 Z', style:'fill:var(--canvas-bg);stroke:var(--edge-aggregation);stroke-width:1.3;stroke-linejoin:round'})
+  ]));
+  defs.appendChild(S('marker',{id:'marker-arrow', viewBox:'0 0 10 10', refX:9, refY:5, markerWidth:8, markerHeight:8, orient:'auto'},[
+    S('path',{d:'M1,1 L9,5 L1,9', style:'fill:none;stroke:var(--edge-network);stroke-width:1.6;stroke-linejoin:round;stroke-linecap:round'})
+  ]));
+  const minor = S('pattern',{id:'gridMinor', width:24, height:24, patternUnits:'userSpaceOnUse'},[
+    S('path',{d:'M0,24 L0,0 L24,0', style:'fill:none;stroke:var(--canvas-grid);stroke-width:1'})
+  ]);
+  const major = S('pattern',{id:'gridMajor', width:120, height:120, patternUnits:'userSpaceOnUse'},[
+    S('path',{d:'M0,120 L0,0 L120,0', style:'fill:none;stroke:var(--canvas-grid-major);stroke-width:1'})
+  ]);
+  defs.appendChild(minor); defs.appendChild(major);
+  const gridLayer = document.getElementById('gridLayer');
+  gridLayer.appendChild(S('rect',{x:-8000,y:-8000,width:16000,height:16000, fill:'url(#gridMinor)'}));
+  gridLayer.appendChild(S('rect',{x:-8000,y:-8000,width:16000,height:16000, fill:'url(#gridMajor)'}));
+}
+
+/* ---------- pan / zoom / drag ---------- */
+function applyViewBox(){
+  const svg = document.getElementById('canvasSvg');
+  svg.setAttribute('viewBox', view.x+' '+view.y+' '+view.w+' '+view.h);
+  document.getElementById('stageBadge').textContent = Math.round((1200/view.w)*100)+'%';
+}
+/* The SVG keeps its default preserveAspectRatio ("xMidYMid meet"), so when
+   the viewBox's aspect ratio doesn't exactly match the element's rendered
+   box (a resize before the next fitView, or any rounding in between) the
+   browser letterboxes it — equal scale on both axes, centered, with blank
+   margins on whichever axis has room to spare. Any screen<->canvas mapping
+   has to invert that same transform, not just divide width/height
+   independently, or clicks/drags drift off their target on that axis. */
+function svgTransform(){
+  const svg = document.getElementById('canvasSvg');
+  const rect = svg.getBoundingClientRect();
+  const scale = Math.min(rect.width/view.w, rect.height/view.h) || 1;
+  const offX = (rect.width - view.w*scale)/2, offY = (rect.height - view.h*scale)/2;
+  return {rect, scale, offX, offY};
+}
+function svgPoint(evt){
+  const {rect, scale, offX, offY} = svgTransform();
+  return { x: view.x + (evt.clientX-rect.left-offX)/scale, y: view.y + (evt.clientY-rect.top-offY)/scale };
+}
+function fitView(){
+  if(!state.classes.length){ view = {x:-40,y:-40,w:1200,h:800}; applyViewBox(); return; }
+  let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+  state.classes.forEach(c=>{
+    minX=Math.min(minX,c.x); minY=Math.min(minY,c.y);
+    maxX=Math.max(maxX,c.x+(c.w||CARD_W)); maxY=Math.max(maxY,c.y+(c.h||60));
+  });
+  const pad=60;
+  const w = Math.max(400,(maxX-minX)+pad*2), h = Math.max(300,(maxY-minY)+pad*2);
+  const cx = (minX+maxX)/2, cy=(minY+maxY)/2;
+  const ar = document.getElementById('stageWrap').clientWidth / Math.max(1,document.getElementById('stageWrap').clientHeight);
+  let vw = w, vh = w/ar;
+  if(vh < h){ vh = h; vw = h*ar; }
+  view = {x: cx-vw/2, y: cy-vh/2, w: vw, h: vh};
+  applyViewBox();
+}
+function initStageEvents(){
+  const stage = document.getElementById('stageWrap');
+  const svg = document.getElementById('canvasSvg');
+  svg.addEventListener('pointerdown', (evt)=>{
+    panning = {x:evt.clientX, y:evt.clientY, vx:view.x, vy:view.y, moved:false};
+    try{ svg.setPointerCapture(evt.pointerId); }catch(e){}
+  });
+  document.addEventListener('pointermove', (evt)=>{
+    if(drag){
+      const p = svgPoint(evt);
+      const nx = p.x - drag.offX, ny = p.y - drag.offY;
+      const c = state.classes.find(x=>x.id===drag.id);
+      if(!c) return;
+      if(Math.abs(nx-c.x)>1 || Math.abs(ny-c.y)>1) drag.moved = true;
+      c.x = nx; c.y = ny;
+      renderCanvas();
+    } else if(panning){
+      const {scale} = svgTransform();
+      const dx = (evt.clientX-panning.x), dy=(evt.clientY-panning.y);
+      if(Math.abs(dx)>3 || Math.abs(dy)>3) panning.moved = true;
+      view.x = panning.vx - dx/scale;
+      view.y = panning.vy - dy/scale;
+      applyViewBox();
+    } else if(connDrag){
+      const p = svgPoint(evt);
+      connDrag.x = p.x; connDrag.y = p.y;
+      renderConnDragOverlay();
+    }
+  });
+  document.addEventListener('pointerup', (evt)=>{
+    if(drag){
+      const wasDrag = drag.moved, id = drag.id;
+      drag = null;
+      if(!wasDrag) handleNodeClick(id); else { renderCanvas(); scheduleAutosave(); }
+    }
+    if(panning){
+      if(!panning.moved){ selection = {type:null,id:null}; renderInspector(); renderCanvas(); renderClassList(); renderRelList(); }
+      panning = null;
+    }
+    if(connDrag){
+      const p = svgPoint(evt);
+      const sourceId = connDrag.sourceId;
+      const target = state.classes.find(cl=> cl.id!==sourceId
+        && p.x>=cl.x && p.x<=cl.x+(cl.w||CARD_W) && p.y>=cl.y && p.y<=cl.y+(cl.h||classHeight(cl)));
+      connDrag = null;
+      if(target){ createRelationship(relMode.type, sourceId, target.id); touch(); }
+      renderConnDragOverlay();
+    }
+  });
+  stage.addEventListener('wheel', (evt)=>{
+    evt.preventDefault();
+    const p = svgPoint(evt);
+    const factor = evt.deltaY>0 ? 1.09 : 1/1.09;
+    const newW = clamp(view.w*factor, 260, 5000);
+    const newH = newW*(view.h/view.w);
+    view.x = p.x - (p.x-view.x)*(newW/view.w);
+    view.y = p.y - (p.y-view.y)*(newH/view.h);
+    view.w = newW; view.h = newH;
+    applyViewBox();
+  }, {passive:false});
+  document.getElementById('zoomIn').addEventListener('click', ()=>zoomBy(1/1.25));
+  document.getElementById('zoomOut').addEventListener('click', ()=>zoomBy(1.25));
+  document.getElementById('zoomReset').addEventListener('click', fitView);
+
+  // drag-and-drop: drop a class kind from the left palette onto the canvas
+  stage.addEventListener('dragover', (evt)=>{
+    if(!evt.dataTransfer || !Array.from(evt.dataTransfer.types||[]).includes('application/x-omtg-kind')) return;
+    evt.preventDefault();
+    evt.dataTransfer.dropEffect = 'copy';
+    stage.classList.add('drop-active');
+  });
+  stage.addEventListener('dragleave', (evt)=>{
+    if(evt.target===stage) stage.classList.remove('drop-active');
+  });
+  stage.addEventListener('drop', (evt)=>{
+    stage.classList.remove('drop-active');
+    if(!evt.dataTransfer) return;
+    const kind = evt.dataTransfer.getData('application/x-omtg-kind');
+    if(kind!=='conventional' && kind!=='geo') return;
+    evt.preventDefault();
+    const p = svgPoint(evt);
+    addClassAt(kind, p.x - CARD_W/2, p.y - 22);
+  });
+  document.addEventListener('keydown', (evt)=>{
+    if(evt.key==='Escape'){
+      if(connDrag){ connDrag=null; renderConnDragOverlay(); }
+    }
+    if((evt.key==='Delete'||evt.key==='Backspace') && selection.type && document.activeElement.tagName!=='INPUT' && document.activeElement.tagName!=='TEXTAREA' && document.activeElement.tagName!=='SELECT'){
+      if(selection.type==='class') deleteClass(selection.id);
+      else if(selection.type==='rel') deleteRel(selection.id);
+    }
+  });
+}
+function zoomBy(factor){
+  const cx = view.x+view.w/2, cy = view.y+view.h/2;
+  const newW = clamp(view.w*factor, 260, 5000);
+  const newH = newW*(view.h/view.w);
+  view = {x:cx-newW/2, y:cy-newH/2, w:newW, h:newH};
+  applyViewBox();
+}
+
+/* ---------- left rail: add-class + relationship-mode controls ---------- */
+function makeDraggableAddBtn(kind, iconHtml, label){
+  const btn = E('button',{class:'addbtn', draggable:'true', onclick:()=>addClass(kind)},[
+    E('span',{class:'ic', html:iconHtml}), label
+  ]);
+  btn.addEventListener('dragstart', (evt)=>{
+    btn.classList.add('drag-source-active');
+    if(evt.dataTransfer){
+      evt.dataTransfer.setData('application/x-omtg-kind', kind);
+      evt.dataTransfer.effectAllowed = 'copy';
+    }
+  });
+  btn.addEventListener('dragend', ()=> btn.classList.remove('drag-source-active'));
+  return btn;
+}
+function initAddControls(){
+  const grid = document.getElementById('addClassGrid');
+  grid.appendChild(makeDraggableAddBtn('conventional', ICONS.conventional, 'Convencional'));
+  grid.appendChild(makeDraggableAddBtn('geo', ICONS.geoObject, 'Geográfica'));
+  grid.parentNode.insertBefore(E('div',{class:'addhint'},['Arraste para o canvas para posicionar, ou clique para adicionar.']), grid.nextSibling);
+
+  const relSelect = document.getElementById('relTypeSelect');
+  Object.keys(REL_TYPES).forEach(k=>relSelect.appendChild(E('option',{value:k},[REL_TYPES[k].label])));
+  relSelect.value = relMode.type;
+  relSelect.addEventListener('change', (e)=>{ relMode.type = e.target.value; renderRelControls(); });
+  renderRelControls();
+}
+/* [instruction, [sourceEndLabel, targetEndLabel]] per relationship type — the
+   instruction drives the "Adicionar relacionamento" hint, the end labels are
+   reused by buildRelInspector to name each side in the properties panel. */
+const REL_HINTS = {
+  association: ['Arraste do conector (○) da classe de origem até a de destino.', ['Origem','Destino']],
+  generalization: ['Arraste do conector (○) da subclasse até a superclasse.', ['Subclasse','Superclasse']],
+  aggregation: ['Arraste do conector (○) da classe todo até a classe parte.', ['Todo','Parte']],
+  network: ['Arraste do conector (○) da classe Nó até a classe Arco.', ['Nó','Arco']],
+  spatial: ['Arraste do conector (○) da primeira classe geográfica até a segunda.', ['Classe A','Classe B']]
+};
+function renderRelControls(){
+  const hint = document.getElementById('relHint');
+  if(hint) hint.textContent = REL_HINTS[relMode.type][0];
+  const mini = document.getElementById('relCardHintMini');
+  if(mini){
+    mini.innerHTML = '';
+    if(relMode.type==='association' || relMode.type==='aggregation'){
+      const ends = REL_HINTS[relMode.type][1];
+      mini.appendChild(buildCardHintMini(ends[0], '1', ends[1], '0..*'));
+    }
+  }
+}
+
+/* ---------- cardinality hint (visual explainer for relationship multiplicities) ---------- */
+function cardDesc(v){
+  switch(v){
+    case '1': return 'exatamente 1';
+    case '0..1': return '0 ou 1';
+    case '0..*': return '0..* (zero ou vários)';
+    case '1..*': return '1..* (um ou vários)';
+    default: return v;
+  }
+}
+function buildCardHint(nameA, cardA, nameB, cardB){
+  return E('div',{class:'card-hint'},[
+    E('div',{class:'card-hint-diagram'},[
+      E('div',{class:'ch-box'},[nameA]),
+      E('div',{class:'ch-line-wrap'},[
+        E('span',{class:'ch-mult left'},[cardA]),
+        E('div',{class:'ch-line'}),
+        E('span',{class:'ch-mult right'},[cardB])
+      ]),
+      E('div',{class:'ch-box'},[nameB])
+    ]),
+    E('div',{class:'card-hint-text'},[
+      E('div',{class:'ln'},[E('span',{class:'dot'}), E('span',{html:'O número perto de uma classe conta quantas instâncias <b>dela</b> entram na relação, para uma instância do outro lado.'})]),
+      E('div',{class:'ln'},[E('span',{class:'dot'}), E('span',{html:`Cada <b>${escapeXml(nameB)}</b> se relaciona com ${cardDesc(cardA)} ${escapeXml(nameA)}.`})]),
+      E('div',{class:'ln'},[E('span',{class:'dot'}), E('span',{html:`Cada <b>${escapeXml(nameA)}</b> pode se relacionar com <b>${cardDesc(cardB)}</b> ${escapeXml(nameB)}.`})])
+    ])
+  ]);
+}
+function buildCardHintMini(labelA, cardA, labelB, cardB){
+  return E('div',{class:'card-hint-mini'},[
+    E('div',{class:'chm-title'},['Como ler a cardinalidade']),
+    E('div',{html:`O número perto de cada classe conta as instâncias <b>dela</b> por instância do outro lado — ex.: <b>${escapeXml(labelA)}</b> "${cardA}" e <b>${escapeXml(labelB)}</b> "${cardB}".`})
+  ]);
+}
+
+/* ---------- inspector field builders ---------- */
+function fieldText(label, value, onInput){
+  const inp = E('input',{type:'text', value:value, oninput:(e)=>onInput(e.target.value)});
+  return E('div',{class:'field'},[E('label',{},[label]), inp]);
+}
+function fieldSelect(label, value, options, onChange){
+  const sel = E('select',{onchange:(e)=>onChange(e.target.value)});
+  options.forEach(o=>sel.appendChild(E('option',{value:o.id, selected:(o.id===value)?'':null},[o.label])));
+  return E('div',{class:'field'},[E('label',{},[label]), sel]);
+}
+function fieldSeg(label, value, options, onChange){
+  const wrap = E('div',{class:'seg'});
+  options.forEach(o=>wrap.appendChild(E('button',{type:'button', class:(o.id===value?'active':''), onclick:()=>onChange(o.id)},[o.label])));
+  return E('div',{class:'field'},[E('label',{},[label]), wrap]);
+}
+function fieldCheck(label, checked, onChange){
+  const inp = E('input',{type:'checkbox', onchange:(e)=>onChange(e.target.checked)});
+  if(checked) inp.checked = true;
+  return E('label',{class:'chk'},[inp, label]);
+}
+function readout(label, value){
+  return E('div',{class:'field'},[E('label',{},[label]), E('div',{class:'mono', style:'padding:6px 8px;background:var(--surface-2);border-radius:6px;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'},[value])]);
+}
+
+function buildAttrTable(c){
+  const table = E('table',{class:'attr-table'});
+  table.appendChild(E('tr',{},[E('th',{},['Nome']),E('th',{},['Tipo']),E('th',{},['PK']),E('th',{},['Obrig.']),E('th',{})]));
+  c.attributes.forEach(a=>{
+    const nameInp = E('input',{type:'text', value:a.name, oninput:(e)=>{ a.name=e.target.value; touch(true); }});
+    const typeSel = E('select',{onchange:(e)=>{ a.type=e.target.value; touch(); }});
+    ATTR_TYPES.forEach(t=>typeSel.appendChild(E('option',{value:t.id, selected:(t.id===a.type)?'':null},[t.label])));
+    const pkChk = E('input',{type:'checkbox', onchange:(e)=>{ a.pk=e.target.checked; if(a.pk) a.nullable=false; touch(); }});
+    if(a.pk) pkChk.checked = true;
+    const reqChk = E('input',{type:'checkbox', onchange:(e)=>{ a.nullable = !e.target.checked; touch(); }});
+    if(!a.nullable) reqChk.checked = true;
+    const delBtn = E('button',{class:'del-x', title:'Remover atributo', html:ICONS.trash, onclick:()=>{ c.attributes = c.attributes.filter(x=>x.id!==a.id); touch(); }});
+    table.appendChild(E('tr',{},[
+      E('td',{},[nameInp]), E('td',{},[typeSel]),
+      E('td',{style:'text-align:center'},[pkChk]), E('td',{style:'text-align:center'},[reqChk]),
+      E('td',{},[delBtn])
+    ]));
+  });
+  return table;
+}
+
+function buildClassInspector(c){
+  const root = E('div',{style:'display:flex;flex-direction:column;flex:1;min-height:0;'});
+  const scroll = E('div',{class:'inspector-scroll'});
+  scroll.appendChild(E('div',{class:'inspector-head'},[
+    E('span',{class:'badge'},[c.kind==='geo' ? (c.geoType==='field'?'geo-campo':'geo-objeto') : 'convencional'])
+  ]));
+  scroll.appendChild(fieldText('Nome da classe', c.name, v=>{ c.name=v; touch(true); }));
+  scroll.appendChild(fieldSeg('Tipo', c.kind, [{id:'conventional',label:'Convencional'},{id:'geo',label:'Geográfica'}], v=>{
+    c.kind=v;
+    if(v==='geo' && !c.geoType){ c.geoType='object'; c.primitive='point'; }
+    if(v==='conventional'){ c.geoType=null; c.primitive=null; c.complexKind=null; }
+    touch();
+  }));
+  if(c.kind==='geo'){
+    scroll.appendChild(fieldSeg('Natureza', c.geoType, [{id:'object',label:'Geo-objeto'},{id:'field',label:'Geo-campo'}], v=>{
+      c.geoType=v; c.primitive = v==='object' ? 'point' : 'isoline'; c.complexKind=null; touch();
+    }));
+    const prims = c.geoType==='object' ? GEO_OBJECT_PRIMITIVES : GEO_FIELD_PRIMITIVES;
+    scroll.appendChild(fieldSelect('Primitiva geométrica', c.primitive, prims, v=>{ c.primitive=v; if(v!=='complex') c.complexKind=null; touch(); }));
+    if(c.primitive==='complex'){
+      scroll.appendChild(fieldSelect('Composição', c.complexKind||'multipolygon', COMPLEX_KINDS, v=>{ c.complexKind=v; touch(); }));
+    }
+  }
+  scroll.appendChild(E('hr'));
+  scroll.appendChild(E('div',{class:'rail-label'},['Atributos']));
+  scroll.appendChild(buildAttrTable(c));
+  scroll.appendChild(E('button',{class:'btn attr-add', onclick:()=>{ c.attributes.push({id:uid('a'),name:'novo_atributo',type:'text',pk:false,nullable:true}); touch(); }},['+ Adicionar atributo']));
+  root.appendChild(scroll);
+  root.appendChild(E('div',{class:'inspector-actions'},[
+    E('button',{class:'btn danger ghost', onclick:()=>deleteClass(c.id)},['Excluir classe'])
+  ]));
+  return root;
+}
+
+function buildRelInspector(r){
+  const a = state.classes.find(x=>x.id===r.sourceId), b = state.classes.find(x=>x.id===r.targetId);
+  const root = E('div',{style:'display:flex;flex-direction:column;flex:1;min-height:0;'});
+  const scroll = E('div',{class:'inspector-scroll'});
+  scroll.appendChild(E('div',{class:'inspector-head'},[E('span',{class:'badge'},[REL_TYPES[r.type].label])]));
+  const ends = REL_HINTS[r.type][1];
+  scroll.appendChild(E('div',{class:'field-row'},[ readout(ends[0], a?a.name:'?'), readout(ends[1], b?b.name:'?') ]));
+  scroll.appendChild(E('button',{class:'btn ghost', style:'margin-bottom:11px;width:100%;justify-content:center;', onclick:()=>{ const t=r.sourceId; r.sourceId=r.targetId; r.targetId=t; touch(); }},['⇄ Inverter sentido']));
+
+  if(r.type==='association'){
+    scroll.appendChild(fieldText('Nome (opcional)', r.name||'', v=>{ r.name=v; touch(true); }));
+    scroll.appendChild(E('div',{class:'field-row'},[
+      fieldSelect('Card. origem', r.cardSource, CARDINALITIES.map(x=>({id:x,label:x})), v=>{ r.cardSource=v; touch(); }),
+      fieldSelect('Card. destino', r.cardTarget, CARDINALITIES.map(x=>({id:x,label:x})), v=>{ r.cardTarget=v; touch(); })
+    ]));
+    scroll.appendChild(buildCardHint(a?a.name:'?', r.cardSource, b?b.name:'?', r.cardTarget));
+  } else if(r.type==='generalization'){
+    scroll.appendChild(fieldSeg('Cobertura', r.total?'total':'partial', [{id:'total',label:'Total'},{id:'partial',label:'Parcial'}], v=>{ r.total=(v==='total'); touch(); }));
+    scroll.appendChild(fieldSeg('Sobreposição', r.disjoint?'disjoint':'overlap', [{id:'disjoint',label:'Disjunta'},{id:'overlap',label:'Sobreposta'}], v=>{ r.disjoint=(v==='disjoint'); touch(); }));
+  } else if(r.type==='aggregation'){
+    scroll.appendChild(E('div',{class:'field-row'},[
+      fieldSelect('Card. todo', r.cardSource, CARDINALITIES.map(x=>({id:x,label:x})), v=>{ r.cardSource=v; touch(); }),
+      fieldSelect('Card. parte', r.cardTarget, CARDINALITIES.map(x=>({id:x,label:x})), v=>{ r.cardTarget=v; touch(); })
+    ]));
+    scroll.appendChild(buildCardHint(a?a.name:'?', r.cardSource, b?b.name:'?', r.cardTarget));
+    scroll.appendChild(fieldCheck('Agregação espacial (controle topológico)', r.spatialControl, v=>{ r.spatialControl=v; touch(); }));
+  } else if(r.type==='network'){
+    scroll.appendChild(fieldCheck('Direcionado', r.directed, v=>{ r.directed=v; touch(); }));
+  } else if(r.type==='spatial'){
+    scroll.appendChild(fieldSelect('Regra topológica', r.topoRule, TOPO_RULES, v=>{ r.topoRule=v; touch(); }));
+    scroll.appendChild(fieldText('Rótulo (opcional)', r.name||'', v=>{ r.name=v; touch(true); }));
+  }
+  root.appendChild(scroll);
+  root.appendChild(E('div',{class:'inspector-actions'},[
+    E('button',{class:'btn danger ghost', onclick:()=>deleteRel(r.id)},['Excluir relacionamento'])
+  ]));
+  return root;
+}
+
+function renderInspector(){
+  const panel = document.getElementById('panelProp');
+  panel.innerHTML = '';
+  if(selection.type==='class'){
+    const c = state.classes.find(x=>x.id===selection.id);
+    if(!c){ selection={type:null,id:null}; renderInspector(); return; }
+    panel.appendChild(buildClassInspector(c));
+  } else if(selection.type==='rel'){
+    const r = state.relationships.find(x=>x.id===selection.id);
+    if(!r){ selection={type:null,id:null}; renderInspector(); return; }
+    panel.appendChild(buildRelInspector(r));
+  } else {
+    panel.appendChild(E('div',{class:'inspector-empty'},[
+      E('div',{class:'ic', html:ICONS.empty}),
+      E('div',{},['Selecione uma classe ou relacionamento no diagrama, ou crie um novo pela barra à esquerda.'])
+    ]));
+  }
+}
+
+/* ============================================================
+   EXPORT — shared helpers
+   ============================================================ */
+function geomKind(c){
+  if(c.kind!=='geo' || !c.primitive) return null;
+  const map = {
+    point:    {esri:'esriGeometryPoint',    ogc:'POINT',           approx:false},
+    node:     {esri:'esriGeometryPoint',    ogc:'POINT',           approx:false},
+    line:     {esri:'esriGeometryPolyline', ogc:'LINESTRING',      approx:false},
+    arc:      {esri:'esriGeometryPolyline', ogc:'LINESTRING',      approx:false},
+    polygon:  {esri:'esriGeometryPolygon',  ogc:'POLYGON',         approx:false},
+    isoline:      {esri:'esriGeometryPolyline', ogc:'MULTILINESTRING', approx:true},
+    tin:          {esri:'esriGeometryPolygon',  ogc:'MULTIPOLYGON',    approx:true},
+    tessellation: {esri:'esriGeometryPolygon',  ogc:'MULTIPOLYGON',    approx:true},
+    sample:       {esri:'esriGeometryPoint',    ogc:'MULTIPOINT',      approx:true},
+    partition:    {esri:'esriGeometryPolygon',  ogc:'MULTIPOLYGON',    approx:true}
+  };
+  if(c.primitive==='complex'){
+    const ck = c.complexKind||'multipolygon';
+    const cm = {multipoint:{esri:'esriGeometryMultipoint',ogc:'MULTIPOINT'}, multiline:{esri:'esriGeometryPolyline',ogc:'MULTILINESTRING'}, multipolygon:{esri:'esriGeometryPolygon',ogc:'MULTIPOLYGON'}, collection:{esri:'esriGeometryBag',ogc:'GEOMETRYCOLLECTION'}};
+    return Object.assign({approx:false}, cm[ck]);
+  }
+  return map[c.primitive] || null;
+}
+function esriFieldType(t){ return {text:'esriFieldTypeString', integer:'esriFieldTypeInteger', double:'esriFieldTypeDouble', date:'esriFieldTypeDate', datetime:'esriFieldTypeDate', boolean:'esriFieldTypeSmallInteger', blob:'esriFieldTypeBlob'}[t] || 'esriFieldTypeString'; }
+function esriFieldLen(t){ return {text:255, integer:4, double:8, date:8, datetime:8, boolean:2, blob:0}[t] ?? 255; }
+function arcpyFieldType(t){ return {text:'TEXT', integer:'LONG', double:'DOUBLE', date:'DATE', datetime:'DATE', boolean:'SHORT', blob:'BLOB'}[t] || 'TEXT'; }
+function arcpyGeomType(gk){ return gk ? ({esriGeometryPoint:'POINT', esriGeometryMultipoint:'MULTIPOINT', esriGeometryPolyline:'POLYLINE', esriGeometryPolygon:'POLYGON'}[gk.esri] || null) : null; }
+function pyStr(s){ return String(s==null?'':s).replace(/\\/g,'\\\\').replace(/"/g,'\\"'); }
+function gpkgType(t){ return {text:'TEXT', integer:'INTEGER', double:'REAL', date:'DATE', datetime:'DATETIME', boolean:'BOOLEAN', blob:'BLOB'}[t] || 'TEXT'; }
+function pgType(t){ return {text:'text', integer:'integer', double:'double precision', date:'date', datetime:'timestamp', boolean:'boolean', blob:'bytea'}[t] || 'text'; }
+
+/* synthetic FK fields derived from generalization / aggregation / network relationships */
+function computeExportFields(c){
+  const fields = c.attributes.map(a=>({name:sqlIdent(a.name), type:a.type, pk:a.pk, nullable:a.nullable, fkTable:null}));
+  state.relationships.forEach(r=>{
+    if(r.type==='generalization' && r.sourceId===c.id){
+      const sup = state.classes.find(x=>x.id===r.targetId);
+      if(sup) fields.push({name: sqlIdent(sup.name)+'_id', type:'integer', pk:false, nullable:false, fkTable: sqlIdent(sup.name), fkClassId: sup.id, fkNote:'generalização (' + (r.total?'total':'parcial') + ', ' + (r.disjoint?'disjunta':'sobreposta') + ')'});
+    }
+    if(r.type==='aggregation' && r.targetId===c.id){
+      const whole = state.classes.find(x=>x.id===r.sourceId);
+      if(whole) fields.push({name: sqlIdent(whole.name)+'_id', type:'integer', pk:false, nullable:(r.cardTarget==='0..*'||r.cardTarget==='0..1'), fkTable: sqlIdent(whole.name), fkClassId: whole.id, fkNote:'agregação todo-parte'+(r.spatialControl?' (com controle topológico espacial)':'')});
+    }
+    if(r.type==='network' && r.targetId===c.id){
+      const node = state.classes.find(x=>x.id===r.sourceId);
+      if(node){
+        fields.push({name: sqlIdent(node.name)+'_no_origem_id', type:'integer', pk:false, nullable:true, fkTable: sqlIdent(node.name), fkClassId: node.id, fkNote:'rede: nó de origem do arco'});
+        fields.push({name: sqlIdent(node.name)+'_no_destino_id', type:'integer', pk:false, nullable:true, fkTable: sqlIdent(node.name), fkClassId: node.id, fkNote:'rede: nó de destino do arco'});
+      }
+    }
+    if(r.type==='association'){
+      const plan = associationPlan(r);
+      if(plan.mode==='fk' && plan.fkOn===c.id){
+        const refClass = state.classes.find(x=>x.id===plan.refTo);
+        if(refClass){
+          const ownCard = (plan.fkOn===r.sourceId) ? r.cardSource : r.cardTarget;
+          fields.push({name: sqlIdent(refClass.name)+'_id', type:'integer', pk:false, nullable:(ownCard==='0..*'||ownCard==='0..1'), fkTable: sqlIdent(refClass.name), fkClassId: refClass.id, fkNote:'associação'+(r.name?' ('+r.name+')':'')});
+        }
+      }
+    }
+  });
+  return fields;
+}
+/* how to realize a simple association relationally */
+function associationPlan(r){
+  const many = (v)=> v==='0..*' || v==='1..*';
+  const one = (v)=> v==='1' || v==='0..1';
+  if(many(r.cardSource) && one(r.cardTarget)) return {mode:'fk', fkOn:r.sourceId, refTo:r.targetId};
+  if(one(r.cardSource) && many(r.cardTarget)) return {mode:'fk', fkOn:r.targetId, refTo:r.sourceId};
+  if(one(r.cardSource) && one(r.cardTarget)) return {mode:'fk', fkOn:r.sourceId, refTo:r.targetId};
+  return {mode:'junction'};
+}
+
+/* ============================================================
+   EXPORT #1 — Esri Geodatabase XML Workspace Document
+   ============================================================ */
+function buildEsriXML(){
+  const srid = state.meta.srid || 4326;
+  const wsName = pascalIdent(state.meta.workspaceName || state.meta.name || 'ModeloOMTG');
+  const geoClasses = state.classes.filter(c=>c.kind==='geo');
+  const flatClasses = state.classes.filter(c=>c.kind!=='geo');
+  const fdsName = wsName + '_FD';
+
+  function sref(){
+    return "<SpatialReference xsi:type='esri:GeographicCoordinateSystem'><WKID>"+srid+"</WKID><LatestWKID>"+srid+"</LatestWKID></SpatialReference>";
+  }
+  function fieldXml(f, isOid){
+    if(isOid){
+      return "<Field xsi:type='esri:Field'><Name>OBJECTID</Name><Type>esriFieldTypeOID</Type><IsNullable>false</IsNullable><Length>4</Length><Precision>0</Precision><Scale>0</Scale><Required>true</Required><Editable>false</Editable><ModelName>OBJECTID</ModelName></Field>";
+    }
+    const t = esriFieldType(f.type);
+    const len = f.type==='text' ? 255 : esriFieldLen(f.type);
+    return "<Field xsi:type='esri:Field'><Name>"+escapeXml(f.name)+"</Name><Type>"+t+"</Type><IsNullable>"+(f.nullable!==false)+"</IsNullable><Length>"+len+"</Length><Precision>0</Precision><Scale>0</Scale><Required>"+(f.nullable===false)+"</Required><Editable>true</Editable><ModelName>"+escapeXml(f.name)+"</ModelName></Field>"
+      + (f.fkTable ? "<!-- FK -> "+f.fkTable+" ("+(f.fkNote||'')+") -->" : "");
+  }
+  function shapeFieldXml(gk){
+    return "<Field xsi:type='esri:Field'><Name>Shape</Name><Type>esriFieldTypeGeometry</Type><IsNullable>true</IsNullable><Length>0</Length><Precision>0</Precision><Scale>0</Scale><Required>false</Required><Editable>true</Editable><ModelName>Shape</ModelName>"
+      + "<GeometryDef xsi:type='esri:GeometryDef'><AvgNumPoints>0</AvgNumPoints><GeometryType>"+gk.esri+"</GeometryType><HasM>false</HasM><HasZ>false</HasZ>"+sref()+"</GeometryDef></Field>";
+  }
+  function dataElement(c){
+    const fields = computeExportFields(c);
+    const gk = geomKind(c);
+    const isFC = !!gk;
+    const catalogPath = "\\\\"+wsName+(isFC?("\\\\"+fdsName):"")+"\\\\"+pascalIdent(c.name);
+    let fieldsXml = fieldXml(null,true) + fields.map(f=>fieldXml(f,false)).join('');
+    if(isFC) fieldsXml += shapeFieldXml(gk);
+    const note = gk && gk.approx ? "<!-- Observação: primitiva conceitual '"+c.primitive+"' não tem equivalente vetorial direto no geodatabase; exportada como "+gk.esri+" (revisar armazenamento em ArcGIS Pro). -->" : "";
+    if(isFC){
+      return note + "<DataElement xsi:type='esri:DEFeatureClass'><CatalogPath>"+catalogPath+"</CatalogPath><Name>"+escapeXml(pascalIdent(c.name))+"</Name>"
+        + "<DatasetType>esriDTFeatureClass</DatasetType><DSID>-1</DSID><Versioned>false</Versioned><CanVersion>false</CanVersion>"
+        + "<HasOID>true</HasOID><OIDFieldName>OBJECTID</OIDFieldName>"
+        + "<Fields xsi:type='esri:Fields'><FieldArray xsi:type='esri:ArrayOfField'>"+fieldsXml+"</FieldArray></Fields>"
+        + "<Indexes xsi:type='esri:Indexes'><IndexArray xsi:type='esri:ArrayOfIndex' /></Indexes>"
+        + "<CLSID>{52353152-891A-11D0-BEC6-00805F7C4268}</CLSID><EXTCLSID></EXTCLSID>"
+        + "<RelationshipClassNames xsi:type='esri:Names' />"
+        + "<AliasName>"+escapeXml(c.name)+"</AliasName><ModelName></ModelName><HasGlobalID>false</HasGlobalID><GlobalIDFieldName></GlobalIDFieldName><RasterFieldName></RasterFieldName>"
+        + "<ExtensionProperties xsi:type='esri:PropertySet'><PropertyArray xsi:type='esri:ArrayOfPropertySetProperty' /></ExtensionProperties>"
+        + "<ControllerMemberships xsi:type='esri:ArrayOfControllerMembership' />"
+        + "<FeatureType>esriFTSimple</FeatureType><ShapeType>"+gk.esri+"</ShapeType><ShapeFieldName>Shape</ShapeFieldName><HasM>false</HasM><HasZ>false</HasZ><HasSpatialIndex>true</HasSpatialIndex>"
+        + "<AreaFieldName></AreaFieldName><LengthFieldName></LengthFieldName><Extent xsi:nil='true' />"+sref()+"</DataElement>";
+    }
+    return "<DataElement xsi:type='esri:DETable'><CatalogPath>"+catalogPath+"</CatalogPath><Name>"+escapeXml(pascalIdent(c.name))+"</Name>"
+      + "<DatasetType>esriDTTable</DatasetType><DSID>-1</DSID><Versioned>false</Versioned><CanVersion>false</CanVersion>"
+      + "<HasOID>true</HasOID><OIDFieldName>OBJECTID</OIDFieldName>"
+      + "<Fields xsi:type='esri:Fields'><FieldArray xsi:type='esri:ArrayOfField'>"+fieldsXml+"</FieldArray></Fields>"
+      + "<Indexes xsi:type='esri:Indexes'><IndexArray xsi:type='esri:ArrayOfIndex' /></Indexes>"
+      + "<CLSID>{7A566981-C114-11D2-8A28-006097AFF44E}</CLSID><EXTCLSID></EXTCLSID>"
+      + "<RelationshipClassNames xsi:type='esri:Names' />"
+      + "<AliasName>"+escapeXml(c.name)+"</AliasName><ModelName></ModelName><HasGlobalID>false</HasGlobalID><GlobalIDFieldName></GlobalIDFieldName>"
+      + "<ExtensionProperties xsi:type='esri:PropertySet'><PropertyArray xsi:type='esri:ArrayOfPropertySetProperty' /></ExtensionProperties>"
+      + "<ControllerMemberships xsi:type='esri:ArrayOfControllerMembership' /></DataElement>";
+  }
+  function relKey(role, keyName, keyRole){
+    return "<RelationshipClassKey xsi:type='esri:RelationshipClassKey'><ObjectKeyName>"+keyName+"</ObjectKeyName><ClassKeyName>"+keyName+"</ClassKeyName><KeyRole>"+keyRole+"</KeyRole></RelationshipClassKey>";
+  }
+  function relationshipXml(name, originName, destName, cardinality, isComposite, origPk, destFk, fwdLabel, bwdLabel){
+    return "<DataElement xsi:type='esri:DERelationshipClass'><CatalogPath>\\\\"+wsName+"\\\\"+name+"</CatalogPath><Name>"+escapeXml(name)+"</Name>"
+      + "<DatasetType>esriDTRelationshipClass</DatasetType><DSID>-1</DSID><Versioned>false</Versioned><CanVersion>false</CanVersion>"
+      + "<Fields xsi:type='esri:Fields'><FieldArray xsi:type='esri:ArrayOfField'>"+fieldXml(null,true)+"</FieldArray></Fields>"
+      + "<AliasName>"+escapeXml(name)+"</AliasName><ModelName></ModelName>"
+      + "<CardinalityString>"+cardinality+"</CardinalityString><Cardinality>"+cardinality+"</Cardinality>"
+      + "<Notification>esriRelNotificationNone</Notification><IsAttachmentRelationship>false</IsAttachmentRelationship><IsAttributed>false</IsAttributed>"
+      + "<IsComposite>"+isComposite+"</IsComposite><KeyType>esriRelKeyTypeSingle</KeyType>"
+      + "<ClassKey>"+destFk+"</ClassKey><ForwardPathLabel>"+escapeXml(fwdLabel)+"</ForwardPathLabel><BackwardPathLabel>"+escapeXml(bwdLabel)+"</BackwardPathLabel>"
+      + "<OriginClassNames xsi:type='esri:Names'><Name>"+escapeXml(originName)+"</Name></OriginClassNames>"
+      + "<DestinationClassNames xsi:type='esri:Names'><Name>"+escapeXml(destName)+"</Name></DestinationClassNames>"
+      + "<OriginClassKeys xsi:type='esri:ArrayOfRelationshipClassKey'>"+relKey('origin', origPk, 'esriRelKeyTypeOriginPrimary')+"</OriginClassKeys>"
+      + "<DestinationClassKeys xsi:type='esri:ArrayOfRelationshipClassKey'>"+relKey('dest', destFk, 'esriRelKeyTypeOriginForeign')+"</DestinationClassKeys>"
+      + "</DataElement>";
+  }
+
+  const dataElements = [...geoClasses, ...flatClasses].map(dataElement).join('\n      ');
+
+  const relElements = [];
+  const spatialNotes = [];
+  state.relationships.forEach(r=>{
+    const a = state.classes.find(x=>x.id===r.sourceId), b = state.classes.find(x=>x.id===r.targetId);
+    if(!a || !b) return;
+    if(r.type==='generalization'){
+      relElements.push(relationshipXml(pascalIdent(a.name)+'Generaliza'+pascalIdent(b.name), pascalIdent(b.name), pascalIdent(a.name), 'esriRelCardinalityOneToOne', true, 'OBJECTID', sqlIdent(b.name)+'_id', 'é especializada por', 'especializa'));
+    } else if(r.type==='aggregation'){
+      relElements.push(relationshipXml(pascalIdent(a.name)+'Agrega'+pascalIdent(b.name), pascalIdent(a.name), pascalIdent(b.name), 'esriRelCardinalityOneToMany', true, 'OBJECTID', sqlIdent(a.name)+'_id', 'agrega', 'é parte de'));
+    } else if(r.type==='network'){
+      relElements.push(relationshipXml(pascalIdent(a.name)+'ConectaOrigem'+pascalIdent(b.name), pascalIdent(a.name), pascalIdent(b.name), 'esriRelCardinalityOneToMany', false, 'OBJECTID', sqlIdent(a.name)+'_no_origem_id', 'é origem de', 'parte de (nó origem)'));
+      relElements.push(relationshipXml(pascalIdent(a.name)+'ConectaDestino'+pascalIdent(b.name), pascalIdent(a.name), pascalIdent(b.name), 'esriRelCardinalityOneToMany', false, 'OBJECTID', sqlIdent(a.name)+'_no_destino_id', 'é destino de', 'parte de (nó destino)'));
+    } else if(r.type==='association'){
+      const plan = associationPlan(r);
+      const card = plan.mode==='junction' ? 'esriRelCardinalityManyToMany' : 'esriRelCardinalityOneToMany';
+      if(plan.mode==='junction'){
+        relElements.push(relationshipXml(pascalIdent(a.name)+'_'+pascalIdent(b.name), pascalIdent(a.name), pascalIdent(b.name), card, false, 'OBJECTID', 'OBJECTID', r.name||'relaciona-se com', r.name||'relaciona-se com'));
+      } else {
+        const fkClass = state.classes.find(x=>x.id===plan.fkOn), refClass = state.classes.find(x=>x.id===plan.refTo);
+        relElements.push(relationshipXml(pascalIdent(refClass.name)+'_'+pascalIdent(fkClass.name), pascalIdent(refClass.name), pascalIdent(fkClass.name), card, false, 'OBJECTID', sqlIdent(refClass.name)+'_id', r.name||'relaciona-se com', r.name||'relaciona-se com'));
+      }
+    } else if(r.type==='spatial'){
+      spatialNotes.push(a.name+' '+TOPO_RULE_LABEL[r.topoRule]+' '+b.name);
+    }
+  });
+
+  const topoComment = spatialNotes.length
+    ? "\n  <!-- Regras de topologia (relações espaciais do modelo conceitual) — recomenda-se criar um dataset de\n       Topologia dentro do Feature Dataset '"+fdsName+"' via ArcGIS Pro > Catalog > New > Topology, usando estas regras como guia:\n       "+spatialNotes.map(s=>'- '+s).join('\n       ')+"\n  -->\n"
+    : '';
+
+  const xml = "<?xml version='1.0' encoding='UTF-8'?>\n"
+    + "<esri:Workspace xmlns:esri='http://www.esri.com/schemas/ArcGIS/10.8' xmlns:xs='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'>\n"
+    + "  <!-- Gerado pela Prancheta OMT-G a partir de um modelo conceitual. Documento-esquema (sem dados) para\n"
+    + "       importar em ArcGIS Pro / ArcCatalog: Catalog > botão direito na geodatabase > Import > XML Workspace Document.\n"
+    + "       Revise tipos de campo, comprimento de texto e o esquema de topologia sugerido antes do uso em produção. -->\n"
+    + topoComment
+    + "  <WorkspaceDefinition xsi:type='esri:WorkspaceDefinition'>\n"
+    + "    <WorkspaceType>esriLocalDatabaseWorkspace</WorkspaceType>\n"
+    + "    <Version></Version>\n"
+    + "    <Domains xsi:type='esri:ArrayOfDomain' />\n"
+    + "    <DatasetDefinitions xsi:type='esri:ArrayOfDataElement'>\n"
+    + (geoClasses.length ? "      <DataElement xsi:type='esri:DEFeatureDataset'><CatalogPath>\\\\"+wsName+"\\\\"+fdsName+"</CatalogPath><Name>"+fdsName+"</Name><DatasetType>esriDTFeatureDataset</DatasetType><DSID>-1</DSID><Versioned>false</Versioned><CanVersion>false</CanVersion>"+sref()+"</DataElement>\n" : '')
+    + "      " + dataElements + "\n"
+    + "      " + relElements.join('\n      ') + "\n"
+    + "    </DatasetDefinitions>\n"
+    + "  </WorkspaceDefinition>\n"
+    + "</esri:Workspace>\n";
+  return xml;
+}
+
+/* ============================================================
+   EXPORT #1b — Script Python (arcpy) — caminho mais confiável para
+   ArcGIS: usa a API estável/documentada em vez de um XML Workspace
+   Document escrito à mão (formato notoriamente rígido e pouco
+   documentado, cuja validação interna do ArcGIS costuma rejeitar
+   documentos gerados fora do próprio ArcGIS).
+   ============================================================ */
+function buildArcpyScript(){
+  const srid = state.meta.srid || 4326;
+  const wsName = pascalIdent(state.meta.workspaceName || state.meta.name || 'ModeloOMTG');
+  const geoClasses = state.classes.filter(c=>c.kind==='geo');
+  const flatClasses = state.classes.filter(c=>c.kind!=='geo');
+  const fdsName = wsName + '_FD';
+  const L = [];
+
+  function classIsFC(c){ return !!arcpyGeomType(geomKind(c)); }
+  function classPathExpr(c){
+    return classIsFC(c) ? ('os.path.join(FDS_PATH, "'+pascalIdent(c.name)+'")') : ('os.path.join(GDB_PATH, "'+pascalIdent(c.name)+'")');
+  }
+  function fieldLines(c, targetVar){
+    computeExportFields(c).forEach(f=>{
+      const t = arcpyFieldType(f.type);
+      const extra = [];
+      if(t==='TEXT') extra.push('field_length=255');
+      if(f.nullable===false) extra.push('field_is_nullable="NON_NULLABLE"');
+      const note = f.fkTable ? '  # FK -> '+f.fkTable+(f.fkNote?' ('+f.fkNote+')':'') : '';
+      L.push('arcpy.management.AddField('+targetVar+', "'+f.name+'", "'+t+'"'+(extra.length?', '+extra.join(', '):'')+')'+note);
+    });
+  }
+  function relCall(origin, dest, outName, cardinality, isComposite, fwdLabel, bwdLabel, fkField){
+    L.push('arcpy.management.CreateRelationshipClass(');
+    L.push('    '+classPathExpr(origin)+',');
+    L.push('    '+classPathExpr(dest)+',');
+    L.push('    os.path.join(GDB_PATH, "'+outName+'"),');
+    L.push('    relationship_type="'+(isComposite?'COMPOSITE':'SIMPLE')+'",');
+    L.push('    forward_label="'+pyStr(fwdLabel)+'",');
+    L.push('    backward_label="'+pyStr(bwdLabel)+'",');
+    L.push('    message_direction="NONE",');
+    L.push('    cardinality="'+cardinality+'",');
+    L.push('    attributed="NONE",');
+    if(fkField){
+      L.push('    origin_primary_key="OBJECTID",');
+      L.push('    origin_foreign_key="'+fkField+'"');
+    } else {
+      L.push('    origin_primary_key="OBJECTID"');
+    }
+    L.push(')');
+    L.push('');
+  }
+
+  L.push('# -*- coding: utf-8 -*-');
+  L.push('"""');
+  L.push('Script gerado pela Prancheta OMT-G — cria o esquema do modelo "'+pyStr(state.meta.name||'Modelo')+'"');
+  L.push('em uma File Geodatabase usando arcpy (a API oficial e estável do ArcGIS), em vez de um');
+  L.push('XML Workspace Document escrito à mão — mais confiável para importar sem erros.');
+  L.push('');
+  L.push('Como usar:');
+  L.push('  1. Abra o ArcGIS Pro e a janela Python (Analysis > Python Window), ou rode este');
+  L.push('     arquivo com o Python do ArcGIS Pro (ex.: no prompt "Python Command Prompt" do');
+  L.push('     ArcGIS: python este_script.py).');
+  L.push('  2. Ajuste GDB_FOLDER abaixo para a pasta onde a geodatabase deve ficar.');
+  L.push('  3. Execute. O script cria a geodatabase (se ainda não existir), o feature dataset,');
+  L.push('     as classes/tabelas com seus campos, e as classes de relacionamento.');
+  L.push('  4. Revise tipos de campo e o esquema de topologia sugerido nos comentários antes');
+  L.push('     de usar em produção — em especial as relações espaciais, que viram comentários');
+  L.push('     de orientação para criar um dataset de Topologia manualmente.');
+  L.push('"""');
+  L.push('import arcpy');
+  L.push('import os');
+  L.push('');
+  L.push('GDB_FOLDER = r"C:\\caminho\\para\\a\\pasta"   # <-- ajuste este caminho antes de rodar');
+  L.push('GDB_NAME = "'+wsName+'.gdb"');
+  L.push('SRID = '+srid+'   # código EPSG do sistema de referência espacial do modelo');
+  L.push('');
+  L.push('GDB_PATH = os.path.join(GDB_FOLDER, GDB_NAME)');
+  L.push('if not arcpy.Exists(GDB_PATH):');
+  L.push('    arcpy.management.CreateFileGDB(GDB_FOLDER, GDB_NAME)');
+  L.push('');
+  L.push('sr = arcpy.SpatialReference(SRID)');
+  L.push('');
+
+  if(geoClasses.length){
+    L.push('FDS_NAME = "'+fdsName+'"');
+    L.push('FDS_PATH = os.path.join(GDB_PATH, FDS_NAME)');
+    L.push('if not arcpy.Exists(FDS_PATH):');
+    L.push('    arcpy.management.CreateFeatureDataset(GDB_PATH, FDS_NAME, sr)');
+    L.push('');
+  }
+
+  L.push('# ---- Classes e tabelas ----');
+  [...geoClasses, ...flatClasses].forEach(c=>{
+    const gk = geomKind(c);
+    const gt = arcpyGeomType(gk);
+    const varName = pascalIdent(c.name);
+    if(gt){
+      L.push('# '+c.name+' ('+c.primitive+(gk.approx?' — sem equivalente vetorial direto; aproximado como '+gt:'')+')');
+      L.push('arcpy.management.CreateFeatureclass(FDS_PATH, "'+varName+'", "'+gt+'", spatial_reference=sr)');
+      fieldLines(c, 'os.path.join(FDS_PATH, "'+varName+'")');
+    } else {
+      if(c.kind==='geo') L.push('# '+c.name+': primitiva "'+c.primitive+'" não tem equivalente direto de geometria no arcpy — criada como tabela; adicione a geometria manualmente se necessário.');
+      else L.push('# '+c.name);
+      L.push('arcpy.management.CreateTable(GDB_PATH, "'+varName+'")');
+      fieldLines(c, 'os.path.join(GDB_PATH, "'+varName+'")');
+    }
+    L.push('');
+  });
+
+  const spatialNotes = [];
+  L.push('# ---- Classes de relacionamento ----');
+  state.relationships.forEach(r=>{
+    const a = state.classes.find(x=>x.id===r.sourceId), b = state.classes.find(x=>x.id===r.targetId);
+    if(!a || !b) return;
+    if(r.type==='generalization'){
+      relCall(b, a, pascalIdent(a.name)+'_Generaliza_'+pascalIdent(b.name), 'ONE_TO_ONE', true, 'é especializada por', 'especializa', sqlIdent(b.name)+'_id');
+    } else if(r.type==='aggregation'){
+      relCall(a, b, pascalIdent(a.name)+'_Agrega_'+pascalIdent(b.name), 'ONE_TO_MANY', true, 'agrega', 'é parte de', sqlIdent(a.name)+'_id');
+    } else if(r.type==='network'){
+      relCall(a, b, pascalIdent(a.name)+'_ConectaOrigem_'+pascalIdent(b.name), 'ONE_TO_MANY', false, 'é origem de', 'parte de (nó origem)', sqlIdent(a.name)+'_no_origem_id');
+      relCall(a, b, pascalIdent(a.name)+'_ConectaDestino_'+pascalIdent(b.name), 'ONE_TO_MANY', false, 'é destino de', 'parte de (nó destino)', sqlIdent(a.name)+'_no_destino_id');
+    } else if(r.type==='association'){
+      const plan = associationPlan(r);
+      if(plan.mode==='junction'){
+        L.push('# associação N:N "'+(r.name||'')+'" ('+a.name+' <-> '+b.name+') — sem atributos próprios;');
+        L.push('# o arcpy cria e gerencia a tabela de junção internamente.');
+        relCall(a, b, pascalIdent(a.name)+'_'+pascalIdent(b.name), 'MANY_TO_MANY', false, r.name||'relaciona-se com', r.name||'relaciona-se com', null);
+      } else {
+        const fkClass = state.classes.find(x=>x.id===plan.fkOn), refClass = state.classes.find(x=>x.id===plan.refTo);
+        relCall(refClass, fkClass, pascalIdent(refClass.name)+'_'+pascalIdent(fkClass.name), 'ONE_TO_MANY', false, r.name||'relaciona-se com', r.name||'relaciona-se com', sqlIdent(refClass.name)+'_id');
+      }
+    } else if(r.type==='spatial'){
+      spatialNotes.push(a.name+' '+TOPO_RULE_LABEL[r.topoRule]+' '+b.name);
+    }
+  });
+
+  if(spatialNotes.length){
+    L.push('# ---- Regras de topologia (relações espaciais do modelo conceitual) ----');
+    L.push('# O arcpy não cria automaticamente as regras de topologia — recomenda-se criar um');
+    L.push('# dataset de Topologia dentro do Feature Dataset (arcpy.management.CreateTopology +');
+    L.push('# AddFeatureClassToTopology + AddRuleToTopology) usando estas regras como guia:');
+    spatialNotes.forEach(s=>L.push('#   - '+s));
+    L.push('');
+  }
+
+  L.push('print("Esquema criado em: " + GDB_PATH)');
+  return L.join('\n');
+}
+
+function pkFieldName(c){
+  const pk = c.attributes.find(a=>a.pk);
+  return pk ? sqlIdent(pk.name) : 'id';
+}
+function tblName(c){ return sqlIdent(c.name); }
+
+/* ============================================================
+   EXPORT #2 — GeoPackage (SQL DDL, OGC GeoPackage 1.2/1.3 system tables)
+   ============================================================ */
+function buildGpkgSql(){
+  const srid = state.meta.srid || 4326;
+  const authority = state.meta.srsAuthority || 'EPSG';
+  const lines = [];
+  lines.push('-- ============================================================');
+  lines.push('-- GeoPackage (OGC) — DDL gerado pela Prancheta OMT-G');
+  lines.push('-- Como usar: crie um GeoPackage vazio (ex.: QGIS > Novo > GeoPackage,');
+  lines.push('-- ou "ogrinfo -so out.gpkg" após criação), abra o arquivo com um cliente');
+  lines.push('-- SQLite (DB Browser for SQLite) e execute este script inteiro.');
+  lines.push('-- ============================================================\n');
+
+  lines.push('CREATE TABLE IF NOT EXISTS gpkg_spatial_ref_sys (');
+  lines.push('  srs_name TEXT NOT NULL, srs_id INTEGER NOT NULL PRIMARY KEY,');
+  lines.push('  organization TEXT NOT NULL, organization_coordsys_id INTEGER NOT NULL,');
+  lines.push('  definition TEXT NOT NULL, description TEXT);\n');
+  lines.push('CREATE TABLE IF NOT EXISTS gpkg_contents (');
+  lines.push('  table_name TEXT NOT NULL PRIMARY KEY, data_type TEXT NOT NULL,');
+  lines.push('  identifier TEXT UNIQUE, description TEXT DEFAULT \'\',');
+  lines.push('  last_change DATETIME NOT NULL DEFAULT (strftime(\'%Y-%m-%dT%H:%M:%fZ\',\'now\')),');
+  lines.push('  min_x DOUBLE, min_y DOUBLE, max_x DOUBLE, max_y DOUBLE, srs_id INTEGER,');
+  lines.push('  FOREIGN KEY (srs_id) REFERENCES gpkg_spatial_ref_sys(srs_id));\n');
+  lines.push('CREATE TABLE IF NOT EXISTS gpkg_geometry_columns (');
+  lines.push('  table_name TEXT NOT NULL, column_name TEXT NOT NULL, geometry_type_name TEXT NOT NULL,');
+  lines.push('  srs_id INTEGER NOT NULL, z TINYINT NOT NULL, m TINYINT NOT NULL,');
+  lines.push('  PRIMARY KEY (table_name, column_name),');
+  lines.push('  FOREIGN KEY (table_name) REFERENCES gpkg_contents(table_name),');
+  lines.push('  FOREIGN KEY (srs_id) REFERENCES gpkg_spatial_ref_sys(srs_id));\n');
+
+  lines.push("INSERT OR IGNORE INTO gpkg_spatial_ref_sys VALUES ('Undefined cartesian SRS', -1, 'NONE', -1, 'undefined', 'undefined cartesian coordinate reference system');");
+  lines.push("INSERT OR IGNORE INTO gpkg_spatial_ref_sys VALUES ('Undefined geographic SRS', 0, 'NONE', 0, 'undefined', 'undefined geographic coordinate reference system');");
+  lines.push("INSERT OR IGNORE INTO gpkg_spatial_ref_sys VALUES ('WGS 84 geodetic', 4326, 'EPSG', 4326, 'GEOGCRS[\"WGS 84\"]', 'longitude/latitude WGS84');");
+  if(srid!==4326 && srid!==0 && srid!==-1){
+    lines.push("INSERT OR IGNORE INTO gpkg_spatial_ref_sys VALUES ('"+authority+':'+srid+"', "+srid+", '"+authority+"', "+srid+", 'definir WKT do SRID "+srid+" manualmente se necessario', 'SRS do modelo (SRID "+srid+")');");
+  }
+  lines.push('');
+
+  state.classes.forEach(c=>{
+    const table = tblName(c);
+    const fields = computeExportFields(c);
+    const pkName = pkFieldName(c);
+    const gk = geomKind(c);
+    const cols = [];
+    cols.push('  "'+pkName+'" INTEGER PRIMARY KEY AUTOINCREMENT');
+    fields.filter(f=>f.name!==pkName).forEach(f=>{
+      let refClass = f.fkClassId ? state.classes.find(x=>x.id===f.fkClassId) : null;
+      const refCol = refClass ? pkFieldName(refClass) : 'id';
+      cols.push('  "'+f.name+'" '+gpkgType(f.type)+(f.nullable===false?' NOT NULL':'')+(refClass ? ' REFERENCES "'+tblName(refClass)+'"("'+refCol+'") /* '+(f.fkNote||'')+' */' : ''));
+    });
+    if(gk) cols.push('  "geom" BLOB /* geometria '+gk.ogc+(gk.approx?' - aproximação; primitiva conceitual: '+c.primitive:'')+' */');
+    lines.push('CREATE TABLE "'+table+'" (\n'+cols.join(',\n')+'\n);');
+    if(gk){
+      lines.push("INSERT INTO gpkg_contents (table_name, data_type, identifier, description, srs_id) VALUES ('"+table+"', 'features', '"+table+"', '"+(c.name.replace(/'/g,"''"))+"', "+srid+");");
+      lines.push("INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) VALUES ('"+table+"', 'geom', '"+gk.ogc+"', "+srid+", 0, 0);");
+    } else {
+      lines.push("INSERT INTO gpkg_contents (table_name, data_type, identifier, description) VALUES ('"+table+"', 'attributes', '"+table+"', '"+(c.name.replace(/'/g,"''"))+"');");
+    }
+    lines.push('');
+  });
+
+  const junctions = [];
+  state.relationships.forEach(r=>{
+    if(r.type!=='association') return;
+    const plan = associationPlan(r);
+    if(plan.mode!=='junction') return;
+    const a = state.classes.find(x=>x.id===r.sourceId), b = state.classes.find(x=>x.id===r.targetId);
+    const jt = tblName(a)+'_'+tblName(b);
+    junctions.push('CREATE TABLE "'+jt+'" (\n  "'+tblName(a)+'_id" INTEGER NOT NULL REFERENCES "'+tblName(a)+'"("'+pkFieldName(a)+'"),\n  "'+tblName(b)+'_id" INTEGER NOT NULL REFERENCES "'+tblName(b)+'"("'+pkFieldName(b)+'"),\n  PRIMARY KEY ("'+tblName(a)+'_id", "'+tblName(b)+'_id")\n); -- associação N:N'+(r.name?' ('+r.name+')':''));
+  });
+  if(junctions.length){ lines.push('-- Tabelas de junção (associações N:N)'); junctions.forEach(j=>lines.push(j+'\n')); }
+
+  const spatialNotes = state.relationships.filter(r=>r.type==='spatial').map(r=>{
+    const a = state.classes.find(x=>x.id===r.sourceId), b = state.classes.find(x=>x.id===r.targetId);
+    return (a&&b) ? ('-- '+a.name+' '+TOPO_RULE_LABEL[r.topoRule]+' '+b.name) : null;
+  }).filter(Boolean);
+  if(spatialNotes.length){
+    lines.push('-- Relações espaciais / topológicas do modelo conceitual (documentação — o GeoPackage');
+    lines.push('-- não possui um mecanismo nativo de regras topológicas; valide estas regras na aplicação');
+    lines.push('-- ou com rotinas de QA em QGIS/GDAL):');
+    spatialNotes.forEach(n=>lines.push(n));
+  }
+  return lines.join('\n');
+}
+
+/* ============================================================
+   EXPORT #3 — PostGIS (SQL DDL + esquema opcional postgis.topology)
+   ============================================================ */
+function buildPostgisSql(opts){
+  opts = opts || {};
+  const srid = state.meta.srid || 4326;
+  const schema = sqlIdent(state.meta.schema || 'public');
+  const useTopology = !!opts.useTopology;
+  const lines = [];
+  lines.push('-- ============================================================');
+  lines.push('-- PostGIS — DDL gerado pela Prancheta OMT-G');
+  lines.push('-- Requer as extensões postgis'+(useTopology?' e postgis_topology':'')+'.');
+  lines.push('-- ============================================================\n');
+  lines.push('CREATE EXTENSION IF NOT EXISTS postgis;');
+  if(useTopology) lines.push('CREATE EXTENSION IF NOT EXISTS postgis_topology;');
+  if(schema!=='public') lines.push('CREATE SCHEMA IF NOT EXISTS "'+schema+'";');
+  lines.push('');
+
+  const topoName = sqlIdent(state.meta.workspaceName||state.meta.name||'modelo')+'_topo';
+  const networkOrTopoClasses = state.classes.filter(c=>c.kind==='geo' && (c.primitive==='node' || c.primitive==='arc'));
+  if(useTopology && networkOrTopoClasses.length){
+    lines.push('-- Esquema de topologia PostGIS para as classes de rede (nó/arco)');
+    lines.push("SELECT topology.CreateTopology('"+topoName+"', "+srid+");");
+    lines.push('');
+  }
+
+  const deferredFks = [];
+  state.classes.forEach(c=>{
+    const table = tblName(c);
+    const fields = computeExportFields(c);
+    const pkName = pkFieldName(c);
+    const gk = geomKind(c);
+    const cols = [];
+    cols.push('  "'+pkName+'" serial PRIMARY KEY');
+    fields.filter(f=>f.name!==pkName).forEach(f=>{
+      let refClass = f.fkClassId ? state.classes.find(x=>x.id===f.fkClassId) : null;
+      const refCol = refClass ? pkFieldName(refClass) : 'id';
+      cols.push('  "'+f.name+'" '+pgType(f.type)+(f.nullable===false?' NOT NULL':''));
+      if(refClass) deferredFks.push({table, col:f.name, refTable:tblName(refClass), refCol, note:f.fkNote||''});
+    });
+    if(gk && !(useTopology && (c.primitive==='node'||c.primitive==='arc'))){
+      cols.push('  geom geometry('+gk.ogc+', '+srid+')'+(gk.approx?' /* aproximação; primitiva conceitual: '+c.primitive+' */':''));
+    }
+    lines.push('CREATE TABLE "'+schema+'"."'+table+'" (\n'+cols.join(',\n')+'\n);');
+    if(gk && !(useTopology && (c.primitive==='node'||c.primitive==='arc'))){
+      lines.push('CREATE INDEX "'+table+'_geom_idx" ON "'+schema+'"."'+table+'" USING GIST (geom);');
+    }
+    if(useTopology && (c.primitive==='node'||c.primitive==='arc')){
+      lines.push("SELECT topology.AddTopoGeometryColumn('"+topoName+"', '"+schema+"', '"+table+"', 'topo_geom', '"+(c.primitive==='node'?'POINT':'LINESTRING')+"');");
+    }
+    lines.push('');
+  });
+
+  if(deferredFks.length){
+    lines.push('-- Chaves estrangeiras (declaradas após a criação de todas as tabelas, para não depender da ordem das classes)');
+    deferredFks.forEach(fk=>{
+      const cname = fk.table+'_'+fk.col+'_fkey';
+      lines.push('ALTER TABLE "'+schema+'"."'+fk.table+'" ADD CONSTRAINT "'+cname+'" FOREIGN KEY ("'+fk.col+'") REFERENCES "'+schema+'"."'+fk.refTable+'"("'+fk.refCol+'");'+(fk.note?' -- '+fk.note:''));
+    });
+    lines.push('');
+  }
+
+  const junctions = [];
+  state.relationships.forEach(r=>{
+    if(r.type!=='association') return;
+    const plan = associationPlan(r);
+    if(plan.mode!=='junction') return;
+    const a = state.classes.find(x=>x.id===r.sourceId), b = state.classes.find(x=>x.id===r.targetId);
+    const jt = tblName(a)+'_'+tblName(b);
+    junctions.push('CREATE TABLE "'+schema+'"."'+jt+'" (\n  "'+tblName(a)+'_id" integer NOT NULL REFERENCES "'+schema+'"."'+tblName(a)+'"("'+pkFieldName(a)+'") ON DELETE CASCADE,\n  "'+tblName(b)+'_id" integer NOT NULL REFERENCES "'+schema+'"."'+tblName(b)+'"("'+pkFieldName(b)+'") ON DELETE CASCADE,\n  PRIMARY KEY ("'+tblName(a)+'_id", "'+tblName(b)+'_id")\n); -- associação N:N'+(r.name?' ('+r.name+')':''));
+  });
+  if(junctions.length){ lines.push('-- Tabelas de junção (associações N:N)'); junctions.forEach(j=>lines.push(j+'\n')); }
+
+  const spatialRels = state.relationships.filter(r=>r.type==='spatial');
+  if(spatialRels.length){
+    lines.push('-- ------------------------------------------------------------');
+    lines.push('-- Regras de topologia / relações espaciais do modelo conceitual');
+    lines.push('-- Implementadas como gatilhos de validação (constraint triggers) usando PostGIS.');
+    lines.push('-- Ajuste a coluna de geometria caso os nomes das tabelas mudem.');
+    lines.push('-- ------------------------------------------------------------');
+    // mapeia os 7 predicados oficiais do OMT-G para as funções PostGIS equivalentes
+    const fnDef = {
+      touches:   {fn:'ST_Touches'},
+      dentro:    {fn:'ST_Within'},
+      disjunto:  {fn:'ST_Disjoint'},
+      sobrepoe:  {fn:'ST_Overlaps'},
+      cruza:     {fn:'ST_Crosses'},
+      proximo:   {fn:'ST_DWithin', extra:', 100', note:"'próximo' usa ST_DWithin com distância de exemplo (100, nas unidades do SRID) — ajuste o limiar conforme a escala do seu modelo."},
+      em_frente: {fn:'ST_Intersects', note:"'em frente' é uma relação de orientação/adjacência sem predicado espacial direto no PostGIS; ST_Intersects é usado apenas como aproximação — ajuste a lógica manualmente se precisar de um teste mais específico (ex.: buffer + ST_Azimuth)."}
+    };
+    spatialRels.forEach((r,i)=>{
+      const a = state.classes.find(x=>x.id===r.sourceId), b = state.classes.find(x=>x.id===r.targetId);
+      if(!a||!b) return;
+      const def = fnDef[r.topoRule] || {fn:'ST_Intersects'};
+      const fn = def.fn, extra = def.extra || '';
+      const fname = 'chk_'+tblName(a)+'_'+r.topoRule+'_'+tblName(b);
+      if(def.note) lines.push('-- '+def.note);
+      lines.push('CREATE OR REPLACE FUNCTION "'+schema+'".'+fname+'() RETURNS trigger AS $$');
+      lines.push('BEGIN');
+      lines.push('  IF EXISTS (');
+      lines.push('    SELECT 1 FROM "'+schema+'"."'+tblName(b)+'" b');
+      lines.push('    WHERE NOT '+fn+'(NEW.geom, b.geom'+extra+')');
+      lines.push('  ) THEN');
+      lines.push("    RAISE WARNING '% pode violar a regra espacial % com %', TG_TABLE_NAME, '"+r.topoRule+"', '"+tblName(b)+"';");
+      lines.push('  END IF;');
+      lines.push('  RETURN NEW;');
+      lines.push('END;');
+      lines.push('$$ LANGUAGE plpgsql;');
+      lines.push('-- Ative com: CREATE CONSTRAINT TRIGGER '+fname+'_trg AFTER INSERT OR UPDATE ON "'+schema+'"."'+tblName(a)+'"');
+      lines.push('--   FOR EACH ROW EXECUTE FUNCTION "'+schema+'".'+fname+'();  -- ('+a.name+' '+TOPO_RULE_LABEL[r.topoRule]+' '+b.name+')');
+      lines.push('');
+    });
+  }
+  return lines.join('\n');
+}
+
+/* ============================================================
+   EXPORT panel UI
+   ============================================================ */
+function miniField(label, value, type, onInput){
+  const inp = E('input',{type:type, value:(value==null?'':value), oninput:(e)=>onInput(e.target.value)});
+  return E('div',{class:'field'},[E('label',{},[label]), inp]);
+}
+function fieldCheckMini(label, checked, onChange){
+  const inp = E('input',{type:'checkbox', onchange:(e)=>onChange(e.target.checked)});
+  if(checked) inp.checked = true;
+  return E('label',{class:'chk', style:'flex-basis:100%;'},[inp, label]);
+}
+function refreshExportBody(){
+  const pre = document.getElementById('exportPre');
+  if(!pre) return;
+  try{
+    let text = '';
+    if(activeExportTab==='arcpy') text = buildArcpyScript();
+    else if(activeExportTab==='esri') text = buildEsriXML();
+    else if(activeExportTab==='gpkg') text = buildGpkgSql();
+    else text = buildPostgisSql({useTopology: !!state.meta.pgTopology});
+    pre.textContent = text;
+  }catch(err){
+    pre.textContent = 'Erro ao gerar exportação: '+(err && err.message ? err.message : err);
+  }
+}
+function renderExport(){
+  const panel = document.getElementById('panelExport');
+  panel.innerHTML = '';
+  const tabsRow = E('div',{class:'exp-tabs'});
+  const tabs = [{id:'arcpy',label:'Script ArcGIS ★'},{id:'esri',label:'Geodatabase XML'},{id:'gpkg',label:'GeoPackage'},{id:'postgis',label:'PostGIS'}];
+  tabs.forEach(t=>tabsRow.appendChild(E('div',{class:'exp-tab'+(activeExportTab===t.id?' active':''), onclick:()=>{ activeExportTab=t.id; renderExport(); }},[t.label])));
+  panel.appendChild(tabsRow);
+
+  const opts = E('div',{class:'exp-opts'});
+  if(activeExportTab==='arcpy' || activeExportTab==='esri'){
+    opts.appendChild(miniField('SRID', state.meta.srid, 'number', v=>{ state.meta.srid=parseInt(v,10)||4326; refreshExportBody(); }));
+    opts.appendChild(miniField('Nome do workspace', state.meta.workspaceName, 'text', v=>{ state.meta.workspaceName=v; refreshExportBody(); }));
+  } else if(activeExportTab==='gpkg'){
+    opts.appendChild(miniField('SRID', state.meta.srid, 'number', v=>{ state.meta.srid=parseInt(v,10)||4326; refreshExportBody(); }));
+    opts.appendChild(miniField('Autoridade', state.meta.srsAuthority, 'text', v=>{ state.meta.srsAuthority=v; refreshExportBody(); }));
+  } else {
+    opts.appendChild(miniField('SRID', state.meta.srid, 'number', v=>{ state.meta.srid=parseInt(v,10)||4326; refreshExportBody(); }));
+    opts.appendChild(miniField('Esquema', state.meta.schema, 'text', v=>{ state.meta.schema=v; refreshExportBody(); }));
+    opts.appendChild(fieldCheckMini('Incluir esquema de topologia (postgis.topology) para classes de rede', !!state.meta.pgTopology, v=>{ state.meta.pgTopology=v; refreshExportBody(); }));
+  }
+  panel.appendChild(opts);
+
+  const body = E('div',{class:'exp-body'});
+  const pre = E('pre',{id:'exportPre'},['']);
+  body.appendChild(pre);
+  panel.appendChild(body);
+
+  const extByTab = {arcpy:'py', esri:'xml', gpkg:'sql', postgis:'sql'};
+  const baseByTab = {arcpy:'_arcgis_schema', esri:'_geodatabase', gpkg:'_gpkg', postgis:'_postgis'};
+  const wantExt = '.'+extByTab[activeExportTab];
+  const dlName = safeDownloadName(sqlIdent(state.meta.name||'modelo')+baseByTab[activeExportTab], extByTab[activeExportTab]);
+  const needsRename = dlName.endsWith('.txt');
+  const finalName = needsRename ? dlName.slice(0,-4) : dlName;
+
+  if(needsRename){
+    const det = E('details',{class:'exp-warn'});
+    det.appendChild(E('summary',{},['⚠ O arquivo baixa como "'+dlName+'" — clique para ver como renomear / usar'+(activeExportTab==='esri'?' no ArcGIS':'')]));
+    det.appendChild(E('div',{class:'exp-warn-body'},[
+      E('div',{},['Esta ferramenta só baixa arquivos com algumas extensões, e "'+wantExt+'" não está entre elas — o conteúdo do arquivo está correto, só o nome sai com ".txt" no final.']),
+      E('ol',{},[
+        E('li',{},[E('b',{},['Baixar e renomear:']), ' baixe pelo botão abaixo, depois apague o ".txt" do final do nome (ficará ', E('b',{},[finalName]), '). Se não conseguir ver a extensão para apagar, ative "mostrar extensões de arquivo" nas opções de exibição de pastas do seu sistema.']),
+        E('li',{},[E('b',{},['Copiar e colar:']), ' clique em "Copiar" abaixo, cole em um editor de texto simples (Bloco de Notas, VS Code etc.) e use "Salvar como", escolhendo o nome já com a extensão "'+wantExt+'".'])
+      ]),
+      activeExportTab==='esri' ? E('div',{},['No ArcGIS Pro/ArcCatalog, o diálogo Import > XML Workspace Document às vezes filtra só ".xml" — se o arquivo renomeado não aparecer na lista, troque o filtro de tipo de arquivo para "Todos os arquivos". Esse formato é notoriamente rígido e mal documentado — se o ArcGIS recusar o arquivo com "Invalid XML Workspace Document", prefira a aba "Script ArcGIS ★", que evita esse problema por completo.']) : null,
+      activeExportTab==='arcpy' ? E('div',{},['Depois de renomear para "'+finalName+'", abra pelo ArcGIS Pro (janela Python) ou rode com o Python do ArcGIS Pro — não precisa de nenhum programa especial além disso.']) : null
+    ]));
+    panel.appendChild(det);
+  }
+
+  const actions = E('div',{class:'exp-actions'});
+  actions.appendChild(E('button',{class:'btn ghost', onclick:(e)=>copyText(pre.textContent, e.currentTarget)},['Copiar']));
+  actions.appendChild(E('button',{class:'btn primary', title:'Salvar como '+dlName, onclick:()=>{ saveFile(dlName, pre.textContent); }},[needsRename ? 'Baixar (.txt)' : 'Baixar arquivo']));
+  panel.appendChild(actions);
+
+  const notes = {
+    arcpy: 'Script Python (arcpy) que recria o esquema chamando a API oficial do ArcGIS (CreateFeatureclass, AddField, CreateRelationshipClass) — mais confiável do que importar um XML Workspace Document escrito à mão, que o ArcGIS costuma rejeitar por ser um formato rígido e pouco documentado. Requer o Python do ArcGIS Pro (já vem instalado com ele). Revise o caminho da geodatabase e os tipos de campo antes de rodar.',
+    esri: 'Documento-esquema (sem dados) no formato XML Workspace Document do ArcGIS, com o esquema de topologia sugerido nos comentários. Importe em ArcGIS Pro/ArcCatalog: Import > XML Workspace Document. Este é um formato interno do ArcGIS notoriamente difícil de gerar manualmente com 100% de fidelidade — se o import falhar, prefira a aba "Script ArcGIS ★".',
+    gpkg: 'Script SQL para aplicar sobre um GeoPackage vazio (crie um no QGIS e rode este script em um cliente SQLite). Sem mecanismo nativo de topologia: as regras espaciais ficam documentadas em comentário.',
+    postgis: 'DDL para PostgreSQL/PostGIS. Ative a opção de topologia para gerar postgis.topology nas classes de rede, e revise os gatilhos de validação espacial derivados das relações espaciais do modelo.'
+  };
+  panel.appendChild(E('div',{class:'exp-note'},[notes[activeExportTab]]));
+  refreshExportBody();
+}
+
+/* ============================================================
+   LEGEND panel (static)
+   ============================================================ */
+function relDesc(k){
+  return {
+    association: 'Ligação simples entre classes, com cardinalidade em cada extremidade.',
+    generalization: 'Superclasse/subclasse com triângulo junto à superclasse: vazado = disjunta, preenchido = sobreposta; ponto no ápice = total, ausência de ponto = parcial.',
+    aggregation: 'Relação todo–parte com losango vazado no lado do "todo"; linha tracejada indica agregação espacial (controle topológico), linha sólida indica agregação convencional.',
+    network: 'Conecta uma classe Nó a uma classe Arco (ou Arco a Arco), formando um grafo/rede — desenhada como duas linhas tracejadas paralelas.',
+    spatial: 'Relação topológica entre duas classes geográficas, com o predicado do OMT-G («toca», «dentro», «sobrepõe»...) como estereótipo na linha tracejada.'
+  }[k] || '';
+}
+function renderLegendOnce(){
+  const panel = document.getElementById('panelLegend');
+  if(panel.childNodes.length) return;
+  const scroll = E('div',{class:'legend-scroll'});
+  function row(iconHtml, title, desc){
+    return E('div',{class:'legend-row'},[ E('span',{class:'ic', style:'width:18px;height:18px;color:var(--accent);', html:iconHtml}), E('div',{},[E('div',{class:'lt'},[title]), desc?E('div',{class:'ld'},[desc]):null]) ]);
+  }
+  const gHelp = E('div',{class:'legend-group'},[E('h3',{},['Como usar'])]);
+  gHelp.appendChild(row(ICONS.plus,'Criar uma classe','Arraste um dos botões em "Adicionar classe" para o canvas, ou clique nele para inserir no centro da tela.'));
+  gHelp.appendChild(row(ICONS.association,'Criar um relacionamento','Escolha o tipo em "Adicionar relacionamento" e passe o mouse sobre uma classe: aparecem 4 conectores (○) nas bordas. Arraste de um conector até outra classe para criar o relacionamento.'));
+  gHelp.appendChild(row(ICONS.conventional,'Editar uma classe ou relacionamento','Clique na classe, na linha do relacionamento no canvas, ou no item correspondente na lista à esquerda — o formulário de edição abre na aba Propriedades.'));
+  gHelp.appendChild(row(ICONS.trash,'Excluir','Selecione o item e use o botão "Excluir" na aba Propriedades, o ícone de lixeira na lista à esquerda, ou a tecla Delete/Backspace.'));
+  scroll.appendChild(gHelp);
+
+  const gClasses = E('div',{class:'legend-group'},[E('h3',{},['Classes'])]);
+  gClasses.appendChild(row(ICONS.conventional,'Convencional','Sem geometria — como no modelo entidade-relacionamento tradicional.'));
+  gClasses.appendChild(row(ICONS.geoObject,'Geo-objeto','Elemento geográfico discreto (ponto, linha, polígono, rede ou geometria composta).'));
+  gClasses.appendChild(row(ICONS.geoField,'Geo-campo','Variável distribuída continuamente no espaço (isolinhas, TIN, tesselação, amostragem, partição).'));
+  scroll.appendChild(gClasses);
+
+  const gRel = E('div',{class:'legend-group'},[E('h3',{},['Relacionamentos'])]);
+  Object.keys(REL_TYPES).forEach(k=> gRel.appendChild(row(ICONS[k], REL_TYPES[k].label, relDesc(k))) );
+  scroll.appendChild(gRel);
+
+  const gTopo = E('div',{class:'legend-group'},[E('h3',{},['Regras topológicas (relação espacial)'])]);
+  TOPO_RULES.forEach(t=>{
+    const wrap = S('svg',{viewBox:'-10 -8 20 16', width:'20', height:'16'});
+    wrap.appendChild(topoGlyph(t.id));
+    const holder = document.createElement('span');
+    holder.style.color = 'var(--ink-soft)';
+    holder.appendChild(wrap);
+    gTopo.appendChild(E('div',{class:'legend-row'},[holder, E('div',{},[E('div',{class:'lt'},[t.label])])]));
+  });
+  scroll.appendChild(gTopo);
+
+  const gNote = E('div',{class:'legend-group'},[E('h3',{},['Sobre esta notação'])]);
+  gNote.appendChild(E('div',{class:'ld', style:'line-height:1.6;'},['Notação inspirada no OMT-G (Borges, Davis & Laender), adaptada para este editor. Primitivas de geo-campo (isolinhas, TIN, tesselação, amostragem, partição) não têm equivalente vetorial direto em geodatabase/GeoPackage/PostGIS — são exportadas como aproximações vetoriais, sinalizadas em comentário nos arquivos gerados.']));
+  scroll.appendChild(gNote);
+
+  panel.appendChild(scroll);
+}
+
+/* ============================================================
+   Persistence: autosave + salvar/abrir .json
+   ============================================================ */
+const STORAGE_KEY = 'omtg-prancheta-model-v2';
+const scheduleAutosave = debounce(()=>{
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){}
+}, 600);
+function loadAutosave(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  return null;
+}
+function loadModel(m){
+  state = m;
+  if(!state.meta) state.meta = emptyModel().meta;
+  selection = {type:null, id:null};
+  connDrag = null;
+  document.getElementById('modelName').value = state.meta.name || '';
+  renderRelControls(); renderConnDragOverlay();
+  touch();
+  fitView();
+}
+
+/* ---------- small UI utilities: inline confirm + toast (no native dialogs) ---------- */
+function confirmAction(btn, action){
+  if(btn.dataset.armed==='1'){
+    btn.dataset.armed='0'; btn.classList.remove('danger'); btn.textContent = btn.dataset.label;
+    action();
+    return;
+  }
+  btn.dataset.label = btn.textContent;
+  btn.dataset.armed='1';
+  btn.textContent = 'Confirmar?';
+  btn.classList.add('danger');
+  setTimeout(()=>{ if(btn.dataset.armed==='1'){ btn.dataset.armed='0'; btn.classList.remove('danger'); btn.textContent = btn.dataset.label; } }, 2500);
+}
+function toast(msg, isError){
+  const t = E('div',{style:'position:fixed;top:58px;left:50%;transform:translateX(-50%);background:'+(isError?'var(--bad)':'var(--accent)')+';color:'+(isError?'#fff':'var(--accent-ink)')+';padding:8px 14px;border-radius:8px;font-size:12.5px;z-index:50;box-shadow:var(--shadow);'},[msg]);
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(), 3200);
+}
+
+/* ============================================================
+   Top bar wiring
+   ============================================================ */
+function initTopbar(){
+  document.getElementById('modelName').addEventListener('input', (e)=>{ state.meta.name = e.target.value; scheduleAutosave(); });
+
+  document.getElementById('btnSample').addEventListener('click', (e)=>{
+    const run = ()=>loadModel(sampleModel());
+    if(state.classes.length) confirmAction(e.currentTarget, run); else run();
+  });
+  document.getElementById('btnNew').addEventListener('click', (e)=>{
+    const run = ()=>loadModel(emptyModel());
+    if(state.classes.length) confirmAction(e.currentTarget, run); else run();
+  });
+  document.getElementById('btnSave').addEventListener('click', ()=>{
+    saveFile(sqlIdent(state.meta.name||'modelo')+'.json', JSON.stringify(state, null, 2));
+  });
+  document.getElementById('btnOpen').addEventListener('click', ()=> document.getElementById('fileOpen').click());
+  document.getElementById('fileOpen').addEventListener('change', (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      try{
+        const data = JSON.parse(reader.result);
+        if(!data.classes || !data.relationships) throw new Error('formato inválido');
+        loadModel(data);
+        toast('Modelo carregado.');
+      }catch(err){ toast('Não foi possível abrir o arquivo: '+err.message, true); }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  });
+
+  document.querySelectorAll('.tab').forEach(tab=>{
+    tab.addEventListener('click', ()=> switchRightTab(tab.dataset.tab));
+  });
+}
+/* Switches the right-rail tab, keeping the tab highlight and the visible
+   panel in sync with activeRightTab — selecting a class or relationship on
+   the canvas sets activeRightTab='prop' too (see selectClass/selectRel), and
+   without this shared function that switch never reached the DOM: the
+   Propriedades content updated invisibly behind whichever tab (Exportar,
+   Ajuda) happened to still be showing, so editing looked like it did
+   nothing. */
+function switchRightTab(tabId){
+  activeRightTab = tabId;
+  document.querySelectorAll('.tab').forEach(t=> t.classList.toggle('active', t.dataset.tab===tabId));
+  document.getElementById('panelProp').classList.toggle('active', tabId==='prop');
+  document.getElementById('panelExport').classList.toggle('active', tabId==='export');
+  document.getElementById('panelLegend').classList.toggle('active', tabId==='legend');
+}
+
+/* ============================================================
+   Boot
+   ============================================================ */
+function boot(){
+  initDefs();
+  initAddControls();
+  initTopbar();
+  initStageEvents();
+  const saved = loadAutosave();
+  state = saved || emptyModel();
+  if(!state.meta) state.meta = emptyModel().meta;
+  document.getElementById('modelName').value = state.meta.name || '';
+  renderRelControls();
+  renderLegendOnce();
+  touch();
+  requestAnimationFrame(fitView);
+}
+boot();
+
+</script>

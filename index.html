@@ -1,5 +1,5 @@
 <title>GeoGeoGeo</title>
-<meta name="description" content="Editor visual de modelos conceituais OMT-G com exportação para Geodatabase (ArcGIS), GeoPackage e PostGIS.">
+<meta name="description" content="Editor visual de modelos OMT-G com exportação para Geodatabase (ArcGIS ou GDAL puro, com relationship classes), GeoPackage e PostGIS.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -1999,6 +1999,8 @@ function esriFieldType(t){ return {text:'esriFieldTypeString', integer:'esriFiel
 function esriFieldLen(t){ return {text:255, integer:4, double:8, date:8, datetime:8, boolean:2, blob:0}[t] ?? 255; }
 function arcpyFieldType(t){ return {text:'TEXT', integer:'LONG', double:'DOUBLE', date:'DATE', datetime:'DATE', boolean:'SHORT', blob:'BLOB'}[t] || 'TEXT'; }
 function arcpyGeomType(gk){ return gk ? ({esriGeometryPoint:'POINT', esriGeometryMultipoint:'MULTIPOINT', esriGeometryPolyline:'POLYLINE', esriGeometryPolygon:'POLYGON'}[gk.esri] || null) : null; }
+function ogrFieldType(t){ return {text:'ogr.OFTString', integer:'ogr.OFTInteger', double:'ogr.OFTReal', date:'ogr.OFTDate', datetime:'ogr.OFTDateTime', boolean:'ogr.OFTInteger', blob:'ogr.OFTBinary'}[t] || 'ogr.OFTString'; }
+function ogrGeomType(gk){ return gk ? ({esriGeometryPoint:'ogr.wkbPoint', esriGeometryMultipoint:'ogr.wkbMultiPoint', esriGeometryPolyline:'ogr.wkbMultiLineString', esriGeometryPolygon:'ogr.wkbMultiPolygon'}[gk.esri] || null) : null; }
 function pyStr(s){ return String(s==null?'':s).replace(/\\/g,'\\\\').replace(/"/g,'\\"'); }
 function gpkgType(t){ return {text:'TEXT', integer:'INTEGER', double:'REAL', date:'DATE', datetime:'DATETIME', boolean:'BOOLEAN', blob:'BLOB'}[t] || 'TEXT'; }
 function pgType(t){ return {text:'text', integer:'integer', double:'double precision', date:'date', datetime:'timestamp', boolean:'boolean', blob:'bytea'}[t] || 'text'; }
@@ -2322,6 +2324,175 @@ function buildArcpyScript(){
   return L.join('\n');
 }
 
+/* ============================================================
+   EXPORT — Geodatabase via GDAL/OGR (OpenFileGDB driver)
+   Writes a real .gdb using only open-source tooling — no ArcGIS Pro
+   license needed. GDAL's OpenFileGDB driver has supported writing since
+   3.6, including relationship classes (also added in 3.6); as of GDAL
+   3.11 it's the driver Esri's own name delegates to for all writes. Field
+   names/types mirror computeExportFields() exactly, so this stays
+   consistent with the arcpy script and the SQL exports.
+   ============================================================ */
+function buildGdalScript(){
+  const srid = state.meta.srid || 4326;
+  const wsName = pascalIdent(state.meta.workspaceName || state.meta.name || 'ModeloOMTG');
+  const geoClasses = state.classes.filter(c=>c.kind==='geo');
+  const flatClasses = state.classes.filter(c=>c.kind!=='geo');
+  const fdsName = wsName + '_FD';
+  const L = [];
+
+  function classIsFC(c){ return !!ogrGeomType(geomKind(c)); }
+  function layerVar(c){ return 'lyr_'+pascalIdent(c.name); }
+  function fieldLines(c, lv){
+    computeExportFields(c).forEach(f=>{
+      const t = ogrFieldType(f.type);
+      const note = f.fkTable ? '  # FK -> '+f.fkTable+(f.fkNote?' ('+f.fkNote+')':'') : '';
+      L.push('fld = ogr.FieldDefn("'+f.name+'", '+t+')');
+      if(f.type==='text') L.push('fld.SetWidth(255)');
+      if(f.type==='boolean') L.push('fld.SetSubType(ogr.OFSTBoolean)');
+      L.push('fld.SetNullable('+(f.nullable===false?'False':'True')+')');
+      L.push(lv+'.CreateField(fld)'+note);
+    });
+  }
+  // origin = the "1"/referenced side (holds the primary key used as the
+  // relationship's join field), dest = the "many"/referencing side (holds
+  // the FK field computeExportFields() actually added on that table).
+  function relCall(origin, dest, outName, cardinalityConst, isComposite, fwdLabel, bwdLabel, originKeyField, fkField){
+    L.push('rel = gdal.Relationship("'+outName+'", "'+pascalIdent(origin.name)+'", "'+pascalIdent(dest.name)+'", gdal.'+cardinalityConst+')');
+    L.push('rel.SetType(gdal.'+(isComposite?'GRT_COMPOSITE':'GRT_ASSOCIATION')+')');
+    L.push('rel.SetForwardPathLabel("'+pyStr(fwdLabel)+'")');
+    L.push('rel.SetBackwardPathLabel("'+pyStr(bwdLabel)+'")');
+    L.push('rel.SetLeftTableFields(["'+originKeyField+'"])');
+    L.push('rel.SetRightTableFields(["'+(fkField||originKeyField)+'"])');
+    L.push('rel.SetRelatedTableType("features")');
+    L.push('add_relationship(ds, rel, "'+outName+'")');
+    L.push('');
+  }
+
+  L.push('# -*- coding: utf-8 -*-');
+  L.push('"""');
+  L.push('Script gerado por GeoGeoGeo — cria o esquema do modelo "'+pyStr(state.meta.name||'Modelo')+'"');
+  L.push('em uma File Geodatabase (.gdb) real usando GDAL/OGR (o driver OpenFileGDB),');
+  L.push('sem precisar do ArcGIS Pro nem de nenhuma licença Esri — só GDAL, que é');
+  L.push('gratuito e de código aberto.');
+  L.push('');
+  L.push('*** IMPORTANTE — leia antes de rodar ***');
+  L.push('Escrita de esquema (classes, tabelas, campos) no OpenFileGDB é suportada desde');
+  L.push('o GDAL 3.6 e é uma API estável — essa parte deste script tem alta confiança.');
+  L.push('A API de relationship classes (gdal.Relationship / Dataset.AddRelationship)');
+  L.push('também foi adicionada no GDAL 3.6, mas eu não consegui confirmar a assinatura');
+  L.push('exata (nomes/ordem dos parâmetros) contra a documentação ao vívo ao gerar este');
+  L.push('script — por segurança, a criação de cada relacionamento roda dentro de um');
+  L.push('try/except: se a chamada falhar por causa de uma diferença de versão, o');
+  L.push('script AVISA no terminal e continua (a geodatabase e todas as classes/tabelas');
+  L.push('são criadas normalmente de qualquer forma). Se algum relacionamento falhar,');
+  L.push('rode isto para conferir a assinatura certa da sua versão instalada e ajuste');
+  L.push('a função add_relationship() abaixo:');
+  L.push('    python3 -c "from osgeo import gdal; help(gdal.Relationship)"');
+  L.push('    python3 -c "from osgeo import gdal; help(gdal.Dataset.AddRelationship)"');
+  L.push('');
+  L.push('Requisitos (não precisa ArcGIS):');
+  L.push('  pip install gdal        # ou: conda install -c conda-forge gdal');
+  L.push('  — confira que a versão é >= 3.6 (idealmente >= 3.11):');
+  L.push('      python3 -c "from osgeo import gdal; print(gdal.__version__)"');
+  L.push('');
+  L.push('Como usar:');
+  L.push('  1. Ajuste GDB_FOLDER abaixo para a pasta onde a geodatabase deve ficar.');
+  L.push('  2. Rode: python3 este_script.py');
+  L.push('  3. Revise tipos de campo e o esquema de topologia sugerido nos comentários');
+  L.push('     antes de usar em produção — em especial as relações espaciais, que viram');
+  L.push('     apenas comentários de orientação (GDAL não modela topologia).');
+  L.push('"""');
+  L.push('import os');
+  L.push('from osgeo import gdal, ogr, osr');
+  L.push('');
+  L.push('gdal.UseExceptions()');
+  L.push('');
+  L.push('GDB_FOLDER = r"/caminho/para/a/pasta"   # <-- ajuste este caminho antes de rodar');
+  L.push('GDB_NAME = "'+wsName+'.gdb"');
+  L.push('SRID = '+srid+'   # código EPSG do sistema de referência espacial do modelo');
+  L.push('');
+  L.push('GDB_PATH = os.path.join(GDB_FOLDER, GDB_NAME)');
+  L.push('');
+  L.push('def add_relationship(ds, rel, name):');
+  L.push('    try:');
+  L.push('        ok = ds.AddRelationship(rel)');
+  L.push('        if not ok:');
+  L.push('            print("Aviso: AddRelationship recusou o relacionamento \'" + name + "\' "');
+  L.push('                  "(retornou False) — confira campos/tabelas envolvidos.")');
+  L.push('    except Exception as e:');
+  L.push('        print("Aviso: não foi possível criar o relacionamento \'" + name + "\': " + str(e))');
+  L.push('        print("       Confira a assinatura da API de relationships da sua versão do GDAL")');
+  L.push('        print("       (veja o comentário no topo deste arquivo) e ajuste add_relationship().")');
+  L.push('');
+  L.push('srs = osr.SpatialReference()');
+  L.push('srs.ImportFromEPSG(SRID)');
+  L.push('');
+  L.push('drv = ogr.GetDriverByName("OpenFileGDB")');
+  L.push('ds = drv.CreateDataSource(GDB_PATH)');
+  L.push('');
+
+  L.push('# ---- Classes e tabelas ----');
+  [...geoClasses, ...flatClasses].forEach(c=>{
+    const gk = geomKind(c);
+    const gt = ogrGeomType(gk);
+    const lv = layerVar(c);
+    const opts = [];
+    if(gt && c.kind==='geo') opts.push('"FEATURE_DATASET='+fdsName+'"');
+    const optsStr = opts.length ? ', options=['+opts.join(', ')+']' : '';
+    if(gt){
+      L.push('# '+c.name+' ('+c.primitive+(gk.approx?' — sem equivalente vetorial direto; aproximado como '+gt.replace('ogr.wkb',''):'')+')');
+      L.push(lv+' = ds.CreateLayer("'+pascalIdent(c.name)+'", srs=srs, geom_type='+gt+optsStr+')');
+    } else {
+      if(c.kind==='geo') L.push('# '+c.name+': primitiva "'+c.primitive+'" não tem equivalente direto de geometria no OGR — criada como tabela; adicione a geometria manualmente se necessário.');
+      else L.push('# '+c.name);
+      L.push(lv+' = ds.CreateLayer("'+pascalIdent(c.name)+'", geom_type=ogr.wkbNone)');
+    }
+    fieldLines(c, lv);
+    L.push('');
+  });
+
+  const spatialNotes = [];
+  L.push('# ---- Relacionamentos ----');
+  state.relationships.forEach(r=>{
+    const a = state.classes.find(x=>x.id===r.sourceId), b = state.classes.find(x=>x.id===r.targetId);
+    if(!a || !b) return;
+    if(r.type==='generalization'){
+      relCall(b, a, pascalIdent(a.name)+'_Generaliza_'+pascalIdent(b.name), 'GRC_ONE_TO_ONE', true, 'é especializada por', 'especializa', 'OBJECTID', sqlIdent(b.name)+'_id');
+    } else if(r.type==='aggregation'){
+      relCall(a, b, pascalIdent(a.name)+'_Agrega_'+pascalIdent(b.name), 'GRC_ONE_TO_MANY', true, 'agrega', 'é parte de', 'OBJECTID', sqlIdent(a.name)+'_id');
+    } else if(r.type==='network'){
+      relCall(a, b, pascalIdent(a.name)+'_ConectaOrigem_'+pascalIdent(b.name), 'GRC_ONE_TO_MANY', false, 'é origem de', 'parte de (nó origem)', 'OBJECTID', sqlIdent(a.name)+'_no_origem_id');
+      relCall(a, b, pascalIdent(a.name)+'_ConectaDestino_'+pascalIdent(b.name), 'GRC_ONE_TO_MANY', false, 'é destino de', 'parte de (nó destino)', 'OBJECTID', sqlIdent(a.name)+'_no_destino_id');
+    } else if(r.type==='association'){
+      const plan = associationPlan(r);
+      if(plan.mode==='junction'){
+        L.push('# associação N:N "'+(r.name||'')+'" ('+a.name+' <-> '+b.name+') — o GDAL/OGR não gerencia');
+        L.push('# uma tabela de junção automaticamente como o arcpy; crie manualmente uma tabela');
+        L.push('# de junção com os IDs das duas classes e dois relacionamentos ONE_TO_MANY.');
+      } else {
+        const fkClass = state.classes.find(x=>x.id===plan.fkOn), refClass = state.classes.find(x=>x.id===plan.refTo);
+        relCall(refClass, fkClass, pascalIdent(refClass.name)+'_'+pascalIdent(fkClass.name), 'GRC_ONE_TO_MANY', false, r.name||'relaciona-se com', r.name||'relaciona-se com', 'OBJECTID', sqlIdent(refClass.name)+'_id');
+      }
+    } else if(r.type==='spatial'){
+      spatialNotes.push(a.name+' '+TOPO_RULE_LABEL[r.topoRule]+' '+b.name);
+    }
+  });
+
+  if(spatialNotes.length){
+    L.push('# ---- Regras de topologia (relações espaciais do modelo conceitual) ----');
+    L.push('# O GDAL não modela topologia — recomenda-se validar estas regras separadamente');
+    L.push('# (ex.: com um dataset de Topologia no ArcGIS Pro, ou regras QGIS/PostGIS) usando');
+    L.push('# esta lista como guia:');
+    spatialNotes.forEach(s=>L.push('#   - '+s));
+    L.push('');
+  }
+
+  L.push('ds = None');
+  L.push('print("Geodatabase criada em: " + GDB_PATH)');
+  return L.join('\n');
+}
+
 function pkFieldName(c){
   const pk = c.attributes.find(a=>a.pk);
   return pk ? sqlIdent(pk.name) : 'id';
@@ -2548,6 +2719,7 @@ function refreshExportBody(){
   try{
     let text = '';
     if(activeExportTab==='arcpy') text = buildArcpyScript();
+    else if(activeExportTab==='gdal') text = buildGdalScript();
     else if(activeExportTab==='gpkg') text = buildGpkgSql();
     else text = buildPostgisSql({useTopology: !!state.meta.pgTopology});
     pre.textContent = text;
@@ -2559,12 +2731,12 @@ function renderExport(){
   const panel = document.getElementById('panelExport');
   panel.innerHTML = '';
   const tabsRow = E('div',{class:'exp-tabs'});
-  const tabs = [{id:'arcpy',label:'Geodatabase (ArcGIS)'},{id:'gpkg',label:'GeoPackage'},{id:'postgis',label:'PostGIS'}];
+  const tabs = [{id:'arcpy',label:'Geodatabase (ArcGIS)'},{id:'gdal',label:'Geodatabase (GDAL, sem ArcGIS)'},{id:'gpkg',label:'GeoPackage'},{id:'postgis',label:'PostGIS'}];
   tabs.forEach(t=>tabsRow.appendChild(E('div',{class:'exp-tab'+(activeExportTab===t.id?' active':''), onclick:()=>{ activeExportTab=t.id; renderExport(); }},[t.label])));
   panel.appendChild(tabsRow);
 
   const opts = E('div',{class:'exp-opts'});
-  if(activeExportTab==='arcpy'){
+  if(activeExportTab==='arcpy' || activeExportTab==='gdal'){
     opts.appendChild(miniField('SRID', state.meta.srid, 'number', v=>{ state.meta.srid=parseInt(v,10)||4326; refreshExportBody(); }));
     opts.appendChild(miniField('Nome do workspace', state.meta.workspaceName, 'text', v=>{ state.meta.workspaceName=v; refreshExportBody(); }));
   } else if(activeExportTab==='gpkg'){
@@ -2582,8 +2754,8 @@ function renderExport(){
   body.appendChild(pre);
   panel.appendChild(body);
 
-  const extByTab = {arcpy:'py', gpkg:'sql', postgis:'sql'};
-  const baseByTab = {arcpy:'_arcgis_schema', gpkg:'_gpkg', postgis:'_postgis'};
+  const extByTab = {arcpy:'py', gdal:'py', gpkg:'sql', postgis:'sql'};
+  const baseByTab = {arcpy:'_arcgis_schema', gdal:'_gdal_schema', gpkg:'_gpkg', postgis:'_postgis'};
   const wantExt = '.'+extByTab[activeExportTab];
   const dlName = safeDownloadName(sqlIdent(state.meta.name||'modelo')+baseByTab[activeExportTab], extByTab[activeExportTab]);
   const needsRename = dlName.endsWith('.txt');
@@ -2598,7 +2770,8 @@ function renderExport(){
         E('li',{},[E('b',{},['Baixar e renomear:']), ' baixe pelo botão abaixo, depois apague o ".txt" do final do nome (ficará ', E('b',{},[finalName]), '). Se não conseguir ver a extensão para apagar, ative "mostrar extensões de arquivo" nas opções de exibição de pastas do seu sistema.']),
         E('li',{},[E('b',{},['Copiar e colar:']), ' clique em "Copiar" abaixo, cole em um editor de texto simples (Bloco de Notas, VS Code etc.) e use "Salvar como", escolhendo o nome já com a extensão "'+wantExt+'".'])
       ]),
-      activeExportTab==='arcpy' ? E('div',{},['Depois de renomear para "'+finalName+'", abra pelo ArcGIS Pro (janela Python) ou rode com o Python do ArcGIS Pro — não precisa de nenhum programa especial além disso.']) : null
+      activeExportTab==='arcpy' ? E('div',{},['Depois de renomear para "'+finalName+'", abra pelo ArcGIS Pro (janela Python) ou rode com o Python do ArcGIS Pro — não precisa de nenhum programa especial além disso.']) : null,
+      activeExportTab==='gdal' ? E('div',{},['Depois de renomear para "'+finalName+'", rode com "python3 '+finalName+'" — precisa apenas de Python com GDAL instalado (', E('b',{},['pip install gdal']), ' ou ', E('b',{},['conda install -c conda-forge gdal']), '), sem ArcGIS Pro nem licença Esri.']) : null
     ]));
     panel.appendChild(det);
   }
@@ -2609,7 +2782,8 @@ function renderExport(){
   panel.appendChild(actions);
 
   const notes = {
-    arcpy: 'Script Python (arcpy) que cria a geodatabase diretamente, chamando a API oficial do ArcGIS (CreateFileGDB, CreateFeatureclass, AddField, CreateRelationshipClass) — este é o caminho recomendado para levar o modelo para o ArcGIS: não existe uma forma confiável de gerar o arquivo binário de uma geodatabase fora do próprio ArcGIS, então o script faz o ArcGIS montá-la do zero, exatamente como no modelo. Requer o Python do ArcGIS Pro (já vem instalado com ele). Revise o caminho da geodatabase e os tipos de campo antes de rodar.',
+    arcpy: 'Script Python (arcpy) que cria a geodatabase diretamente, chamando a API oficial do ArcGIS (CreateFileGDB, CreateFeatureclass, AddField, CreateRelationshipClass). Requer o Python do ArcGIS Pro (já vem instalado com ele) — se preferir não depender do ArcGIS Pro, veja a aba "Geodatabase (GDAL, sem ArcGIS)". Revise o caminho da geodatabase e os tipos de campo antes de rodar.',
+    gdal: 'Script Python usando GDAL/OGR (driver OpenFileGDB) — cria uma .gdb real sem precisar do ArcGIS Pro nem de licença Esri, só do GDAL (gratuito e de código aberto). O driver suporta escrever esquema e relationship classes desde a versão 3.6 do GDAL; a parte de relacionamentos roda dentro de um try/except caso a assinatura da API varie entre versões — veja o comentário no topo do script. Onde ArcGIS Pro já está disponível, a aba "Geodatabase (ArcGIS)" (arcpy) é a mais testada; esta é a alternativa para quem não tem ArcGIS Pro.',
     gpkg: 'Script SQL para aplicar sobre um GeoPackage vazio (crie um no QGIS e rode este script em um cliente SQLite). Sem mecanismo nativo de topologia: as regras espaciais ficam documentadas em comentário.',
     postgis: 'DDL para PostgreSQL/PostGIS. Ative a opção de topologia para gerar postgis.topology nas classes de rede, e revise os gatilhos de validação espacial derivados das relações espaciais do modelo.'
   };

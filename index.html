@@ -1,5 +1,5 @@
-<title>Prancheta OMT-G</title>
-<meta name="description" content="Editor visual de modelos conceituais OMT-G com exportação para Geodatabase XML, GeoPackage e PostGIS.">
+<title>GeoGeoGeo</title>
+<meta name="description" content="Editor visual de modelos conceituais OMT-G com exportação para Geodatabase (ArcGIS), GeoPackage e PostGIS.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -122,7 +122,7 @@
     display:flex;align-items:center;justify-content:center;font-size:14px;flex:none;
   }
   .brand .name{ font-weight:600; font-size:14.5px; letter-spacing:.1px; white-space:nowrap;}
-  .brand .name small{ display:block; font-weight:400; color:var(--muted); font-size:10.5px; letter-spacing:.06em; text-transform:uppercase;}
+  .brand .name small{ display:block; font-weight:400; color:var(--muted); font-size:11.5px; letter-spacing:.06em; text-transform:uppercase;}
   .model-name{ min-width:160px; max-width:320px; flex:1; font-weight:500; }
   .topbar .spacer{ flex:1; }
   .btnrow{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
@@ -139,16 +139,25 @@
   .btn.danger{ color:var(--bad); }
   .btn:disabled{ opacity:.45; cursor:not-allowed; }
   .btn svg{ width:14px; height:14px; flex:none; }
+  .dl-menu-wrap{ position:relative; }
+  .dl-menu{ position:absolute; top:calc(100% + 5px); right:0; background:var(--surface); border:1px solid var(--border); border-radius:8px; box-shadow:var(--shadow); padding:4px; display:flex; flex-direction:column; gap:2px; min-width:110px; z-index:20; }
+  .dl-menu button{ text-align:left; padding:7px 10px; border-radius:6px; font-size:12.5px; font-weight:500; color:var(--ink); background:transparent; border:none; }
+  .dl-menu button:hover{ background:var(--surface-2); }
 
+  #app{ --w-left:272px; --w-right:328px; }
   .layout{
     display:grid;
-    grid-template-columns:272px 1fr 328px;
+    grid-template-columns:var(--w-left) 6px 1fr 6px var(--w-right);
     min-height:0;
   }
   .layout > *{ min-width:0; }
   body{ overflow-x:hidden; }
+  .resizer{ flex:none; cursor:col-resize; position:relative; z-index:6; background:transparent; touch-action:none; }
+  .resizer::after{ content:''; position:absolute; top:0; bottom:0; left:2px; width:2px; background:var(--border); }
+  .resizer:hover::after, .resizer.dragging::after{ background:var(--accent); width:2px; }
   @media (max-width:920px){
     .layout{ grid-template-columns:1fr; grid-template-rows:auto auto 1fr; }
+    .resizer{ display:none; }
     .rail-left, .rail-right{ max-height:260px; }
     .topbar{ flex-wrap:wrap; row-gap:8px; }
     .model-name{ min-width:120px; }
@@ -165,12 +174,12 @@
   .rail-section.grow{ flex:1; overflow-y:auto; min-height:0; }
   .rail-scroll{ flex:1; overflow-y:auto; min-height:0; display:flex; flex-direction:column; }
   .rail-label{
-    font-size:10.5px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted);
+    font-size:11.5px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted);
     margin-bottom:9px; display:flex; align-items:center; justify-content:space-between; gap:8px;
   }
   .rail-label .count{
     font-family:"IBM Plex Mono"; font-weight:500; background:var(--surface-2); color:var(--ink-soft);
-    border-radius:999px; padding:1px 7px; font-size:10px; letter-spacing:0;
+    border-radius:999px; padding:1px 7px; font-size:11px; letter-spacing:0;
   }
 
   .addgrid{ display:grid; grid-template-columns:1fr 1fr; gap:7px; }
@@ -184,7 +193,7 @@
   .addbtn.drag-source-active{ opacity:.5; }
   .addbtn .ic{ width:17px; height:17px; color:var(--accent); }
   .addbtn.wide{ grid-column:1 / -1; flex-direction:row; align-items:center; }
-  .addhint{ font-size:10.5px; color:var(--muted); margin-top:6px; line-height:1.35; }
+  .addhint{ font-size:11.5px; color:var(--muted); margin-top:6px; line-height:1.35; }
   .stage-wrap.drop-active::after{
     content:''; position:absolute; inset:0; pointer-events:none; z-index:5;
     box-shadow:inset 0 0 0 2px var(--accent); background:rgba(12,100,120,.06);
@@ -193,26 +202,26 @@
   select.relselect{ width:100%; margin-bottom:7px; }
   .relarm{ width:100%; justify-content:center; }
   .relarm.active{ background:var(--accent); border-color:var(--accent); color:var(--accent-ink); }
-  .relhint{ font-size:11.5px; color:var(--muted); margin-top:7px; line-height:1.45; }
+  .relhint{ font-size:12.5px; color:var(--muted); margin-top:7px; line-height:1.45; }
 
   /* cardinality hint — full (properties panel) */
   .card-hint{ margin-top:10px; border:1px solid var(--border); border-radius:9px; background:var(--surface-2); overflow:hidden; }
   .card-hint-diagram{ display:flex; align-items:center; justify-content:center; gap:0; padding:16px 10px 6px; }
-  .ch-box{ font-size:11px; font-weight:700; color:var(--ink); background:var(--surface); border:1.3px solid var(--accent); border-radius:6px; padding:5px 9px; white-space:nowrap; max-width:110px; overflow:hidden; text-overflow:ellipsis; }
+  .ch-box{ font-size:12px; font-weight:700; color:var(--ink); background:var(--surface); border:1.3px solid var(--accent); border-radius:6px; padding:5px 9px; white-space:nowrap; max-width:110px; overflow:hidden; text-overflow:ellipsis; }
   .ch-line-wrap{ flex:1; display:flex; flex-direction:column; align-items:center; position:relative; min-width:60px; }
   .ch-line{ width:100%; height:1.6px; background:var(--ink-soft); position:relative; }
-  .ch-mult{ font-family:"IBM Plex Mono",monospace; font-size:12px; font-weight:700; color:var(--accent); background:var(--surface-2); padding:0 4px; position:absolute; top:-9px; }
+  .ch-mult{ font-family:"IBM Plex Mono",monospace; font-size:13px; font-weight:700; color:var(--accent); background:var(--surface-2); padding:0 4px; position:absolute; top:-9px; }
   .ch-mult.left{ left:6px; }
   .ch-mult.right{ right:6px; }
-  .card-hint-text{ padding:9px 12px 12px; font-size:12px; line-height:1.5; color:var(--ink-soft); border-top:1px dashed var(--border); }
+  .card-hint-text{ padding:9px 12px 12px; font-size:13px; line-height:1.5; color:var(--ink-soft); border-top:1px dashed var(--border); }
   .card-hint-text b{ color:var(--ink); font-weight:600; }
   .card-hint-text .ln{ display:flex; gap:6px; margin-top:4px; }
   .card-hint-text .ln:first-child{ margin-top:0; }
   .card-hint-text .dot{ width:5px; height:5px; border-radius:50%; background:var(--accent); flex:0 0 auto; margin-top:6px; }
 
   /* cardinality hint — compact (left "adicionar relacionamento" panel) */
-  .card-hint-mini{ margin-top:8px; border:1px dashed var(--border); border-radius:7px; padding:7px 9px; font-size:11px; line-height:1.45; color:var(--ink-soft); background:var(--surface-2); }
-  .card-hint-mini .chm-title{ font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.03em; color:var(--muted); margin-bottom:3px; }
+  .card-hint-mini{ margin-top:8px; border:1px dashed var(--border); border-radius:7px; padding:7px 9px; font-size:12px; line-height:1.45; color:var(--ink-soft); background:var(--surface-2); }
+  .card-hint-mini .chm-title{ font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.03em; color:var(--muted); margin-bottom:3px; }
   .card-hint-mini b{ color:var(--ink); font-weight:600; }
 
   .listitem{
@@ -224,7 +233,7 @@
   .listitem .ic{ width:18px; height:18px; flex:none; color:var(--accent); }
   .listitem .tx{ flex:1; min-width:0; }
   .listitem .tx .t1{ font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .listitem .tx .t2{ color:var(--muted); font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .listitem .tx .t2{ color:var(--muted); font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .listitem .del{ opacity:0; flex:none; }
   .listitem:hover .del{ opacity:1; }
   .del-x{ width:22px; height:22px; display:flex; align-items:center; justify-content:center; border-radius:5px; color:var(--muted); border:1px solid transparent; }
@@ -252,7 +261,7 @@
   }
   .stage-toolbar button:hover{ background:var(--canvas-toolbar-hover); }
   .stage-badge{
-    position:absolute; left:12px; bottom:12px; z-index:4; color:var(--canvas-ink); font-size:11px;
+    position:absolute; left:12px; bottom:12px; z-index:4; color:var(--canvas-ink); font-size:12px;
     font-family:"IBM Plex Mono"; opacity:.55; letter-spacing:.02em;
   }
   .relmode-banner{
@@ -261,7 +270,7 @@
     padding:7px 14px; border-radius:999px; box-shadow:var(--shadow); display:none; align-items:center; gap:8px;
   }
   .relmode-banner.show{ display:flex; }
-  .relmode-banner button{ background:rgba(0,0,0,.18); border:none; color:inherit; border-radius:999px; width:18px;height:18px; font-size:11px; display:flex; align-items:center; justify-content:center;}
+  .relmode-banner button{ background:rgba(0,0,0,.18); border:none; color:inherit; border-radius:999px; width:18px;height:18px; font-size:12px; display:flex; align-items:center; justify-content:center;}
 
   .node-card{ cursor:grab; filter:drop-shadow(0 1px 2px rgba(20,30,26,.10)) drop-shadow(0 3px 8px rgba(20,30,26,.07)); }
   .node-card.dragging{ cursor:grabbing; }
@@ -274,10 +283,10 @@
   .node-card.selected rect.card-bg{ stroke:var(--canvas-line); stroke-width:2; }
   .node-card .card-divider{ stroke:var(--canvas-card-border); stroke-width:1; }
   .node-card text{ fill:var(--canvas-card-ink); font-family:"IBM Plex Sans"; }
-  .node-card .cname{ font-weight:700; font-size:13px; fill:var(--canvas-card-name); }
+  .node-card .cname{ font-weight:700; font-size:14px; fill:var(--canvas-card-name); }
   .node-card .geo-chip{ fill:var(--canvas-chip-bg); stroke:var(--canvas-line); stroke-width:1.1; }
   .node-card .chip-glyph{ color:var(--canvas-line); }
-  .node-card .cattr{ font-family:"IBM Plex Mono"; font-size:10.5px; fill:var(--canvas-card-ink); }
+  .node-card .cattr{ font-family:"IBM Plex Mono"; font-size:11.5px; fill:var(--canvas-card-ink); }
   .node-card .cattr .attype{ fill:#7a887f; }
   .node-card .cpk{ font-weight:700; }
   .node-card .attr-key{ color:var(--accent); }
@@ -292,7 +301,7 @@
   .edge-path.network-arrow{ stroke:var(--edge-network); stroke-width:1.6; stroke-dasharray:none; }
   .edge-path.spatial{ stroke:var(--edge-spatial); stroke-width:1.5; stroke-dasharray:5,4; }
   .edge-path.selected{ stroke-width:2.75 !important; filter:drop-shadow(0 0 3px rgba(127,208,224,.6)); }
-  .edge-label{ font-family:"IBM Plex Mono"; font-size:9.5px; fill:var(--canvas-ink); }
+  .edge-label{ font-family:"IBM Plex Mono"; font-size:11px; fill:var(--canvas-ink); }
   .edge-label rect{ fill:var(--canvas-bg); }
   .edge-card-label{ fill:var(--canvas-ink); opacity:.85; }
 
@@ -305,43 +314,43 @@
   .panel.active{ display:flex; }
 
   .field{ margin-bottom:11px; }
-  .field label{ display:block; font-size:11px; font-weight:600; color:var(--muted); margin-bottom:4px; text-transform:uppercase; letter-spacing:.04em;}
+  .field label{ display:block; font-size:12px; font-weight:600; color:var(--muted); margin-bottom:4px; text-transform:uppercase; letter-spacing:.04em;}
   .field input, .field select, .field textarea{ width:100%; }
   .field-row{ display:flex; gap:8px; }
   .field-row .field{ flex:1; }
   .chk{ display:flex; align-items:center; gap:7px; font-size:12.5px; margin-bottom:8px; }
   .chk input{ width:auto; }
   .seg{ display:flex; border:1px solid var(--border); border-radius:7px; overflow:hidden; }
-  .seg button{ flex:1; padding:7px 4px; font-size:11.5px; background:var(--surface); border:none; border-right:1px solid var(--border); font-weight:500; }
+  .seg button{ flex:1; padding:7px 4px; font-size:12.5px; background:var(--surface); border:none; border-right:1px solid var(--border); font-weight:500; }
   .seg button:last-child{ border-right:none; }
   .seg button.active{ background:var(--accent); color:var(--accent-ink); }
 
   .attr-table{ width:100%; border-collapse:collapse; margin-top:4px; }
-  .attr-table th{ text-align:left; font-size:9.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; padding:0 4px 4px; font-weight:600;}
+  .attr-table th{ text-align:left; font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; padding:0 4px 4px; font-weight:600;}
   .attr-table td{ padding:3px 3px; vertical-align:middle; }
   .attr-table input[type=text]{ font-size:12px; padding:5px 6px; }
-  .attr-table select{ font-size:11.5px; padding:5px 4px; }
+  .attr-table select{ font-size:12.5px; padding:5px 4px; }
   .attr-table input[type=checkbox]{ width:15px; height:15px; }
   .attr-add{ width:100%; margin-top:8px; justify-content:center; }
   .inspector-empty{ padding:30px 18px; text-align:center; color:var(--muted); font-size:12.5px; line-height:1.6; }
   .inspector-empty .ic{ width:30px; height:30px; margin:0 auto 10px; opacity:.5; }
   .inspector-head{ display:flex; align-items:center; gap:8px; margin-bottom:4px; }
-  .inspector-head .badge{ font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; padding:2px 7px; border-radius:999px; background:var(--accent-soft); color:var(--accent); }
+  .inspector-head .badge{ font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; padding:2px 7px; border-radius:999px; background:var(--accent-soft); color:var(--accent); }
   .inspector-scroll{ padding:14px; overflow-y:auto; overflow-x:auto; flex:1; min-height:0; }
   .inspector-actions{ padding:10px 14px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; }
 
   .exp-tabs{ display:flex; flex-wrap:wrap; gap:6px; padding:10px 12px 0; }
-  .exp-tab{ font-size:11.5px; padding:6px 9px; border-radius:6px 6px 0 0; background:var(--surface-2); color:var(--muted); font-weight:600; }
+  .exp-tab{ font-size:12.5px; padding:6px 9px; border-radius:6px 6px 0 0; background:var(--surface-2); color:var(--muted); font-weight:600; }
   .exp-tab.active{ background:var(--surface-3); color:var(--ink); }
   .exp-opts{ padding:10px 12px; border-bottom:1px solid var(--border); background:var(--surface-3); display:flex; flex-wrap:wrap; gap:8px 14px; }
   .exp-opts .field{ margin:0; min-width:118px; }
   .exp-opts .field label{ margin-bottom:3px; }
   .exp-opts .chk{ margin:0; align-self:flex-end; padding-bottom:6px; }
   .exp-body{ flex:1; min-height:0; overflow:auto; background:#0c1416; }
-  .exp-body pre{ margin:0; padding:14px; font-size:11.5px; line-height:1.6; color:#dce8e4; white-space:pre; }
+  .exp-body pre{ margin:0; padding:14px; font-size:12.5px; line-height:1.6; color:#dce8e4; white-space:pre; }
   .exp-actions{ padding:9px 12px; border-top:1px solid var(--border); display:flex; gap:8px; justify-content:flex-end; }
-  .exp-note{ padding:9px 14px; font-size:11px; color:var(--muted); border-top:1px solid var(--border); line-height:1.55; }
-  .exp-warn{ flex:0 0 auto; margin:9px 12px 0; padding:7px 10px; border:1px solid var(--warn); border-radius:8px; background:color-mix(in srgb, var(--warn) 14%, var(--surface)); font-size:11.5px; line-height:1.5; color:var(--ink-soft); }
+  .exp-note{ padding:9px 14px; font-size:12px; color:var(--muted); border-top:1px solid var(--border); line-height:1.55; }
+  .exp-warn{ flex:0 0 auto; margin:9px 12px 0; padding:7px 10px; border:1px solid var(--warn); border-radius:8px; background:color-mix(in srgb, var(--warn) 14%, var(--surface)); font-size:12.5px; line-height:1.5; color:var(--ink-soft); }
   .exp-warn summary{ cursor:pointer; font-weight:700; color:var(--warn); }
   .exp-warn summary::marker{ color:var(--warn); }
   .exp-warn b{ color:var(--ink); }
@@ -353,11 +362,11 @@
 
   .legend-scroll{ padding:14px; overflow-y:auto; flex:1; }
   .legend-group{ margin-bottom:16px; }
-  .legend-group h3{ font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin-bottom:8px; }
+  .legend-group h3{ font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin-bottom:8px; }
   .legend-row{ display:flex; align-items:center; gap:10px; padding:5px 0; font-size:12px; }
   .legend-row svg{ flex:none; }
   .legend-row .lt{ font-weight:600; }
-  .legend-row .ld{ color:var(--muted); font-size:11px; }
+  .legend-row .ld{ color:var(--muted); font-size:12px; }
 
   [hidden]{ display:none !important; }
   .sr-only{ position:absolute; width:1px;height:1px; overflow:hidden; clip:rect(0,0,0,0); }
@@ -367,7 +376,7 @@
   <div class="topbar">
     <div class="brand">
       <div class="mark">🧭</div>
-      <div class="name">Prancheta OMT-G<small>Modelagem conceitual geográfica</small></div>
+      <div class="name">GeoGeoGeo<small>Modelagem geográfica</small></div>
     </div>
     <input id="modelName" class="model-name" type="text" value="Novo modelo" aria-label="Nome do modelo">
     <div class="spacer"></div>
@@ -377,6 +386,14 @@
       <button class="btn ghost" id="btnOpen" title="Abrir modelo (.json)">Abrir</button>
       <input type="file" id="fileOpen" accept="application/json" class="sr-only">
       <button class="btn" id="btnSave" title="Salvar modelo (.json)">Salvar .json</button>
+      <div class="dl-menu-wrap">
+        <button class="btn ghost" id="btnImage" title="Exportar imagem do diagrama">Imagem ▾</button>
+        <div class="dl-menu" id="imageMenu" hidden>
+          <button type="button" data-fmt="png">PNG</button>
+          <button type="button" data-fmt="jpeg">JPEG</button>
+          <button type="button" data-fmt="pdf">PDF</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -408,6 +425,8 @@
       </div>
     </aside>
 
+    <div class="resizer" id="resizerLeft" title="Arraste para redimensionar"></div>
+
     <div class="stage-wrap" id="stageWrap">
       <svg id="canvasSvg" xmlns="http://www.w3.org/2000/svg">
         <defs id="svgDefs"></defs>
@@ -424,6 +443,8 @@
         <button id="zoomIn" title="Aumentar zoom">+</button>
       </div>
     </div>
+
+    <div class="resizer" id="resizerRight" title="Arraste para redimensionar"></div>
 
     <aside class="rail rail-right">
       <div class="tabs">
@@ -1276,21 +1297,89 @@ function buildNetworkParallelPaths(points, hopsPerSegment, gap){
   }
   return {dA, dB};
 }
-function edgeLabelAnchors(points){
+/* Which way is "outside" a box from a point sitting exactly on its border —
+   used to push a near-box label away from the box instead of guessing a
+   sign from the segment's orientation alone (that guess is wrong half the
+   time: e.g. a port exiting a box's BOTTOM edge also runs along a
+   horizontal segment, same as a port exiting its TOP edge, but "away from
+   the box" points in opposite directions for the two). Defaults to
+   pushing right if the point isn't recognizably on any border (shouldn't
+   happen for a real port, but keeps this from ever throwing). */
+function outwardNormal(rect, pt){
+  if(!rect) return {x:1,y:0};
+  const eps = 0.75;
+  if(Math.abs(pt.y-rect.y)<eps) return {x:0,y:-1}; // top border
+  if(Math.abs(pt.y-(rect.y+rect.h))<eps) return {x:0,y:1}; // bottom border
+  if(Math.abs(pt.x-rect.x)<eps) return {x:-1,y:0}; // left border
+  return {x:1,y:0}; // right border (also the fallback)
+}
+function edgeLabelAnchors(points, rectA, rectB){
   const n = points.length;
   const midSeg = n>=4
     ? {x:(points[1].x+points[2].x)/2, y:(points[1].y+points[2].y)/2}
     : {x:(points[0].x+points[n-1].x)/2, y:(points[0].y+points[n-1].y)/2};
-  const perp = (p0,p1,t,off)=>{
-    const mx=p0.x+(p1.x-p0.x)*t, my=p0.y+(p1.y-p0.y)*t;
-    const horiz = Math.abs(p0.y-p1.y)<0.01;
-    return horiz ? {x:mx,y:my-off} : {x:mx+off,y:my};
+  // Place the "near" label a fixed distance from the box's port, not a fixed
+  // *proportion* of the segment — with a long first/last leg (very common in
+  // an orthogonal route) a proportional t=0.55 lands the label roughly at the
+  // segment's middle, which reads as floating in empty space far from the
+  // box it actually describes. A fixed pixel distance keeps it hugging the
+  // box regardless of how long that leg is; it's clamped to the segment's
+  // own midpoint so a very short leg (label would otherwise overshoot past
+  // the far end, landing inside/beyond the other box) still looks right.
+  // The perpendicular nudge (NEAR_OFF) is applied along that box's own
+  // outward normal, not a fixed axis sign, so it always lands clear of the
+  // box instead of sometimes drifting back over it.
+  const NEAR_DIST = 20, NEAR_OFF = 8;
+  const nearPoint = (port, toward, rect, dist, off)=>{
+    const segLen = Math.hypot(toward.x-port.x, toward.y-port.y) || 1;
+    const t = Math.min(dist/segLen, 0.5);
+    const mx = port.x+(toward.x-port.x)*t, my = port.y+(toward.y-port.y)*t;
+    const nrm = outwardNormal(rect, port);
+    return {x:mx+nrm.x*off, y:my+nrm.y*off};
   };
-  const nearA = perp(points[0], points[1], 0.55, 7);
-  const nearB = perp(points[n-1], points[n-2], 0.55, 7);
+  const nearA = nearPoint(points[0], points[1], rectA, NEAR_DIST, NEAR_OFF);
+  const nearB = nearPoint(points[n-1], points[n-2], rectB, NEAR_DIST, NEAR_OFF);
   return {mid: midSeg, nearA, nearB};
 }
-function buildEdgeDom(route, labelLayer){
+/* Nudges apart any edge/cardinality labels whose (padded) boxes overlap —
+   this catches the case port-spreading alone can't: two relationships that
+   approach the SAME class from two different sides (say top and left) can
+   still have their "near" labels land within a few px of each other right
+   at the corner. Operates on the metas collected while building every
+   edge's labels this render pass; mutates each label's <g> transform. */
+function resolveLabelOverlaps(metas){
+  if(!metas || metas.length<2) return;
+  const PAD = 2;
+  for(let pass=0; pass<6; pass++){
+    let moved = false;
+    for(let i=0;i<metas.length;i++){
+      for(let j=i+1;j<metas.length;j++){
+        const a = metas[i], b = metas[j];
+        const ax1=a.b.x+a.dx-PAD, ay1=a.b.y+a.dy-PAD, ax2=ax1+a.b.width+PAD*2, ay2=ay1+a.b.height+PAD*2;
+        const bx1=b.b.x+b.dx-PAD, by1=b.b.y+b.dy-PAD, bx2=bx1+b.b.width+PAD*2, by2=by1+b.b.height+PAD*2;
+        const ox = Math.min(ax2,bx2) - Math.max(ax1,bx1);
+        const oy = Math.min(ay2,by2) - Math.max(ay1,by1);
+        if(ox>0 && oy>0){
+          moved = true;
+          if(ox<oy){
+            const push = ox/2 + 0.5;
+            const dir = (ax1+ax2) <= (bx1+bx2) ? -1 : 1;
+            a.dx += dir*push; b.dx -= dir*push;
+          } else {
+            const push = oy/2 + 0.5;
+            const dir = (ay1+ay2) <= (by1+by2) ? -1 : 1;
+            a.dy += dir*push; b.dy -= dir*push;
+          }
+        }
+      }
+    }
+    if(!moved) break;
+  }
+  metas.forEach(m=>{
+    if(m.dx || m.dy) m.g.setAttribute('transform', 'translate('+m.dx.toFixed(1)+','+m.dy.toFixed(1)+')');
+  });
+}
+function buildEdgeDom(route, labelLayer, labelMetas, rects){
   const r = route.r;
   const g = S('g', {class:'edge '+r.type});
   const points = route.points;
@@ -1357,7 +1446,8 @@ function buildEdgeDom(route, labelLayer){
     onpointerdown:(e)=>{ e.stopPropagation(); },
     onclick:(e)=>{ e.stopPropagation(); selectRel(r.id); }});
   g.appendChild(hit);
-  const {mid, nearA, nearB} = edgeLabelAnchors(points);
+  const rectA = rects && rects[r.sourceId], rectB = rects && rects[r.targetId];
+  const {mid, nearA, nearB} = edgeLabelAnchors(points, rectA, rectB);
   const lbl = (x,y,text)=>{
     if(!labelLayer) return;
     // SVG text only hits on its actual painted glyphs, not its bounding box —
@@ -1373,8 +1463,10 @@ function buildEdgeDom(route, labelLayer){
     try{
       const b = t.getBBox();
       const pad = 4;
-      const hit = S('rect', {x:b.x-pad, y:b.y-pad, width:b.width+pad*2, height:b.height+pad*2, style:'fill:transparent;'});
+      const bx = {x:b.x-pad, y:b.y-pad, width:b.width+pad*2, height:b.height+pad*2};
+      const hit = S('rect', {x:bx.x, y:bx.y, width:bx.width, height:bx.height, style:'fill:transparent;'});
       wrap.insertBefore(hit, t);
+      if(labelMetas) labelMetas.push({g:wrap, b:bx, dx:0, dy:0});
     }catch(e){}
   };
   if(r.type==='association'){
@@ -1446,7 +1538,9 @@ function renderCanvas(){
   }
 
   // Phase 3: build DOM
-  routes.forEach(route=>{ if(route) edgeLayer.appendChild(buildEdgeDom(route, labelLayer)); });
+  const labelMetas = [];
+  routes.forEach(route=>{ if(route) edgeLayer.appendChild(buildEdgeDom(route, labelLayer, labelMetas, rects)); });
+  resolveLabelOverlaps(labelMetas);
   state.classes.forEach(c=> nodeLayer.appendChild(buildNode(c)) );
 }
 
@@ -2033,7 +2127,7 @@ function buildEsriXML(){
 
   const xml = "<?xml version='1.0' encoding='UTF-8'?>\n"
     + "<esri:Workspace xmlns:esri='http://www.esri.com/schemas/ArcGIS/10.8' xmlns:xs='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'>\n"
-    + "  <!-- Gerado pela Prancheta OMT-G a partir de um modelo conceitual. Documento-esquema (sem dados) para\n"
+    + "  <!-- Gerado por GeoGeoGeo a partir de um modelo conceitual. Documento-esquema (sem dados) para\n"
     + "       importar em ArcGIS Pro / ArcCatalog: Catalog > botão direito na geodatabase > Import > XML Workspace Document.\n"
     + "       Revise tipos de campo, comprimento de texto e o esquema de topologia sugerido antes do uso em produção. -->\n"
     + topoComment
@@ -2103,7 +2197,7 @@ function buildArcpyScript(){
 
   L.push('# -*- coding: utf-8 -*-');
   L.push('"""');
-  L.push('Script gerado pela Prancheta OMT-G — cria o esquema do modelo "'+pyStr(state.meta.name||'Modelo')+'"');
+  L.push('Script gerado por GeoGeoGeo — cria o esquema do modelo "'+pyStr(state.meta.name||'Modelo')+'"');
   L.push('em uma File Geodatabase usando arcpy (a API oficial e estável do ArcGIS), em vez de um');
   L.push('XML Workspace Document escrito à mão — mais confiável para importar sem erros.');
   L.push('');
@@ -2212,7 +2306,7 @@ function buildGpkgSql(){
   const authority = state.meta.srsAuthority || 'EPSG';
   const lines = [];
   lines.push('-- ============================================================');
-  lines.push('-- GeoPackage (OGC) — DDL gerado pela Prancheta OMT-G');
+  lines.push('-- GeoPackage (OGC) — DDL gerado por GeoGeoGeo');
   lines.push('-- Como usar: crie um GeoPackage vazio (ex.: QGIS > Novo > GeoPackage,');
   lines.push('-- ou "ogrinfo -so out.gpkg" após criação), abra o arquivo com um cliente');
   lines.push('-- SQLite (DB Browser for SQLite) e execute este script inteiro.');
@@ -2300,7 +2394,7 @@ function buildPostgisSql(opts){
   const useTopology = !!opts.useTopology;
   const lines = [];
   lines.push('-- ============================================================');
-  lines.push('-- PostGIS — DDL gerado pela Prancheta OMT-G');
+  lines.push('-- PostGIS — DDL gerado por GeoGeoGeo');
   lines.push('-- Requer as extensões postgis'+(useTopology?' e postgis_topology':'')+'.');
   lines.push('-- ============================================================\n');
   lines.push('CREATE EXTENSION IF NOT EXISTS postgis;');
@@ -2424,7 +2518,6 @@ function refreshExportBody(){
   try{
     let text = '';
     if(activeExportTab==='arcpy') text = buildArcpyScript();
-    else if(activeExportTab==='esri') text = buildEsriXML();
     else if(activeExportTab==='gpkg') text = buildGpkgSql();
     else text = buildPostgisSql({useTopology: !!state.meta.pgTopology});
     pre.textContent = text;
@@ -2436,12 +2529,12 @@ function renderExport(){
   const panel = document.getElementById('panelExport');
   panel.innerHTML = '';
   const tabsRow = E('div',{class:'exp-tabs'});
-  const tabs = [{id:'arcpy',label:'Script ArcGIS ★'},{id:'esri',label:'Geodatabase XML'},{id:'gpkg',label:'GeoPackage'},{id:'postgis',label:'PostGIS'}];
+  const tabs = [{id:'arcpy',label:'Geodatabase (ArcGIS)'},{id:'gpkg',label:'GeoPackage'},{id:'postgis',label:'PostGIS'}];
   tabs.forEach(t=>tabsRow.appendChild(E('div',{class:'exp-tab'+(activeExportTab===t.id?' active':''), onclick:()=>{ activeExportTab=t.id; renderExport(); }},[t.label])));
   panel.appendChild(tabsRow);
 
   const opts = E('div',{class:'exp-opts'});
-  if(activeExportTab==='arcpy' || activeExportTab==='esri'){
+  if(activeExportTab==='arcpy'){
     opts.appendChild(miniField('SRID', state.meta.srid, 'number', v=>{ state.meta.srid=parseInt(v,10)||4326; refreshExportBody(); }));
     opts.appendChild(miniField('Nome do workspace', state.meta.workspaceName, 'text', v=>{ state.meta.workspaceName=v; refreshExportBody(); }));
   } else if(activeExportTab==='gpkg'){
@@ -2459,8 +2552,8 @@ function renderExport(){
   body.appendChild(pre);
   panel.appendChild(body);
 
-  const extByTab = {arcpy:'py', esri:'xml', gpkg:'sql', postgis:'sql'};
-  const baseByTab = {arcpy:'_arcgis_schema', esri:'_geodatabase', gpkg:'_gpkg', postgis:'_postgis'};
+  const extByTab = {arcpy:'py', gpkg:'sql', postgis:'sql'};
+  const baseByTab = {arcpy:'_arcgis_schema', gpkg:'_gpkg', postgis:'_postgis'};
   const wantExt = '.'+extByTab[activeExportTab];
   const dlName = safeDownloadName(sqlIdent(state.meta.name||'modelo')+baseByTab[activeExportTab], extByTab[activeExportTab]);
   const needsRename = dlName.endsWith('.txt');
@@ -2468,14 +2561,13 @@ function renderExport(){
 
   if(needsRename){
     const det = E('details',{class:'exp-warn'});
-    det.appendChild(E('summary',{},['⚠ O arquivo baixa como "'+dlName+'" — clique para ver como renomear / usar'+(activeExportTab==='esri'?' no ArcGIS':'')]));
+    det.appendChild(E('summary',{},['⚠ O arquivo baixa como "'+dlName+'" — clique para ver como renomear / usar']));
     det.appendChild(E('div',{class:'exp-warn-body'},[
       E('div',{},['Esta ferramenta só baixa arquivos com algumas extensões, e "'+wantExt+'" não está entre elas — o conteúdo do arquivo está correto, só o nome sai com ".txt" no final.']),
       E('ol',{},[
         E('li',{},[E('b',{},['Baixar e renomear:']), ' baixe pelo botão abaixo, depois apague o ".txt" do final do nome (ficará ', E('b',{},[finalName]), '). Se não conseguir ver a extensão para apagar, ative "mostrar extensões de arquivo" nas opções de exibição de pastas do seu sistema.']),
         E('li',{},[E('b',{},['Copiar e colar:']), ' clique em "Copiar" abaixo, cole em um editor de texto simples (Bloco de Notas, VS Code etc.) e use "Salvar como", escolhendo o nome já com a extensão "'+wantExt+'".'])
       ]),
-      activeExportTab==='esri' ? E('div',{},['No ArcGIS Pro/ArcCatalog, o diálogo Import > XML Workspace Document às vezes filtra só ".xml" — se o arquivo renomeado não aparecer na lista, troque o filtro de tipo de arquivo para "Todos os arquivos". Esse formato é notoriamente rígido e mal documentado — se o ArcGIS recusar o arquivo com "Invalid XML Workspace Document", prefira a aba "Script ArcGIS ★", que evita esse problema por completo.']) : null,
       activeExportTab==='arcpy' ? E('div',{},['Depois de renomear para "'+finalName+'", abra pelo ArcGIS Pro (janela Python) ou rode com o Python do ArcGIS Pro — não precisa de nenhum programa especial além disso.']) : null
     ]));
     panel.appendChild(det);
@@ -2487,8 +2579,7 @@ function renderExport(){
   panel.appendChild(actions);
 
   const notes = {
-    arcpy: 'Script Python (arcpy) que recria o esquema chamando a API oficial do ArcGIS (CreateFeatureclass, AddField, CreateRelationshipClass) — mais confiável do que importar um XML Workspace Document escrito à mão, que o ArcGIS costuma rejeitar por ser um formato rígido e pouco documentado. Requer o Python do ArcGIS Pro (já vem instalado com ele). Revise o caminho da geodatabase e os tipos de campo antes de rodar.',
-    esri: 'Documento-esquema (sem dados) no formato XML Workspace Document do ArcGIS, com o esquema de topologia sugerido nos comentários. Importe em ArcGIS Pro/ArcCatalog: Import > XML Workspace Document. Este é um formato interno do ArcGIS notoriamente difícil de gerar manualmente com 100% de fidelidade — se o import falhar, prefira a aba "Script ArcGIS ★".',
+    arcpy: 'Script Python (arcpy) que cria a geodatabase diretamente, chamando a API oficial do ArcGIS (CreateFileGDB, CreateFeatureclass, AddField, CreateRelationshipClass) — este é o caminho recomendado para levar o modelo para o ArcGIS: não existe uma forma confiável de gerar o arquivo binário de uma geodatabase fora do próprio ArcGIS, então o script faz o ArcGIS montá-la do zero, exatamente como no modelo. Requer o Python do ArcGIS Pro (já vem instalado com ele). Revise o caminho da geodatabase e os tipos de campo antes de rodar.',
     gpkg: 'Script SQL para aplicar sobre um GeoPackage vazio (crie um no QGIS e rode este script em um cliente SQLite). Sem mecanismo nativo de topologia: as regras espaciais ficam documentadas em comentário.',
     postgis: 'DDL para PostgreSQL/PostGIS. Ative a opção de topologia para gerar postgis.topology nas classes de rede, e revise os gatilhos de validação espacial derivados das relações espaciais do modelo.'
   };
@@ -2554,6 +2645,7 @@ function renderLegendOnce(){
    Persistence: autosave + salvar/abrir .json
    ============================================================ */
 const STORAGE_KEY = 'omtg-prancheta-model-v2';
+const LAYOUT_KEY = 'omtg-prancheta-layout-v1';
 const scheduleAutosave = debounce(()=>{
   try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){}
 }, 600);
@@ -2597,6 +2689,233 @@ function toast(msg, isError){
 /* ============================================================
    Top bar wiring
    ============================================================ */
+/* ============================================================
+   Resizable side rails
+   ============================================================ */
+function initResizers(){
+  const app = document.getElementById('app');
+  const MIN_LEFT=200, MAX_LEFT=520, MIN_RIGHT=240, MAX_RIGHT=560;
+  let saved = null;
+  try{ saved = JSON.parse(localStorage.getItem(LAYOUT_KEY)||'null'); }catch(e){ saved = null; }
+  if(saved && saved.left) app.style.setProperty('--w-left', clamp(saved.left, MIN_LEFT, MAX_LEFT)+'px');
+  if(saved && saved.right) app.style.setProperty('--w-right', clamp(saved.right, MIN_RIGHT, MAX_RIGHT)+'px');
+  // Persisted synchronously (not debounced) on pointerup — a drag only fires
+  // this once per gesture, and the user may reload right after resizing.
+  const persistLayout = ()=>{
+    try{
+      const cs = getComputedStyle(app);
+      const left = parseInt(cs.getPropertyValue('--w-left'),10);
+      const right = parseInt(cs.getPropertyValue('--w-right'),10);
+      localStorage.setItem(LAYOUT_KEY, JSON.stringify({left, right}));
+    }catch(e){}
+  };
+  const wire = (id, varName, min, max, fromRight, fallback)=>{
+    const handle = document.getElementById(id);
+    if(!handle) return;
+    handle.addEventListener('pointerdown', (e)=>{
+      e.preventDefault();
+      const startX = e.clientX;
+      const cs = getComputedStyle(app);
+      const startW = parseInt(cs.getPropertyValue(varName),10) || fallback;
+      handle.classList.add('dragging');
+      try{ handle.setPointerCapture(e.pointerId); }catch(err){}
+      const onMove = (ev)=>{
+        const dx = ev.clientX - startX;
+        const next = clamp(fromRight ? startW - dx : startW + dx, min, max);
+        app.style.setProperty(varName, next+'px');
+      };
+      const onUp = ()=>{
+        handle.classList.remove('dragging');
+        try{ handle.releasePointerCapture(e.pointerId); }catch(err){}
+        handle.removeEventListener('pointermove', onMove);
+        handle.removeEventListener('pointerup', onUp);
+        persistLayout();
+      };
+      handle.addEventListener('pointermove', onMove);
+      handle.addEventListener('pointerup', onUp);
+    });
+  };
+  wire('resizerLeft', '--w-left', MIN_LEFT, MAX_LEFT, false, 272);
+  wire('resizerRight', '--w-right', MIN_RIGHT, MAX_RIGHT, true, 328);
+}
+
+/* ============================================================
+   Canvas image export (PNG / JPEG / PDF) — snapshots only the
+   diagram content (nodes + edges + labels), cropped to its own
+   bounding box, regardless of current pan/zoom/viewport size.
+   ============================================================ */
+function canvasContentBBox(){
+  if(!state.classes.length) return null;
+  const pad = 48;
+  let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+  state.classes.forEach(c=>{
+    const w = c.w||CARD_W, h = c.h||classHeight(c);
+    minX=Math.min(minX,c.x); minY=Math.min(minY,c.y);
+    maxX=Math.max(maxX,c.x+w); maxY=Math.max(maxY,c.y+h);
+  });
+  return {x:minX-pad, y:minY-pad, w:(maxX-minX)+pad*2, h:(maxY-minY)+pad*2};
+}
+function collectCssVarNames(cssText){
+  const names = new Set();
+  const re = /(--[a-zA-Z0-9-]+)\s*:/g;
+  let m;
+  while((m = re.exec(cssText))) names.add(m[1]);
+  return Array.from(names);
+}
+function resolvedVarsCss(cssText){
+  const names = collectCssVarNames(cssText);
+  const cs = getComputedStyle(document.documentElement);
+  let css = ':root{';
+  names.forEach(n=>{ const v = cs.getPropertyValue(n); if(v && v.trim()) css += n+':'+v.trim()+';'; });
+  css += '}';
+  return css;
+}
+function fullStylesheetText(){
+  let css = '';
+  document.querySelectorAll('style').forEach(s=>{ css += s.textContent + '\n'; });
+  return css;
+}
+/* Builds a standalone, self-styled copy of #canvasSvg cropped to the
+   model's bounding box. The clone is a detached document once serialized
+   (loaded through a Blob URL into an <img>), so it can't see the live
+   page's CSS cascade or its currently-active theme — we compensate by
+   copying the whole stylesheet in, then appending a final :root block with
+   every custom property resolved to its *current* literal value; being
+   last in source order, it wins over every themed/media-query variant the
+   copied stylesheet also carries, so the export always matches what's on
+   screen right now. */
+function buildCanvasSvgString(){
+  const bbox = canvasContentBBox();
+  if(!bbox) return null;
+  const src = document.getElementById('canvasSvg');
+  const clone = src.cloneNode(true);
+  clone.setAttribute('viewBox', bbox.x+' '+bbox.y+' '+bbox.w+' '+bbox.h);
+  clone.setAttribute('width', Math.round(bbox.w));
+  clone.setAttribute('height', Math.round(bbox.h));
+  clone.removeAttribute('style');
+  const cssText = fullStylesheetText();
+  const styleTag = document.createElementNS(SVGNS,'style');
+  styleTag.textContent = cssText + '\n' + resolvedVarsCss(cssText);
+  const defs = clone.querySelector('#svgDefs') || clone.querySelector('defs');
+  if(defs) defs.insertBefore(styleTag, defs.firstChild);
+  else clone.insertBefore(styleTag, clone.firstChild);
+  const bg = S('rect', {x:bbox.x, y:bbox.y, width:bbox.w, height:bbox.h, fill:'var(--canvas-bg)'});
+  const gridLayerEl = clone.querySelector('#gridLayer');
+  clone.insertBefore(bg, gridLayerEl || clone.firstChild);
+  return new XMLSerializer().serializeToString(clone);
+}
+function pickRasterScale(bbox){
+  const MAX_DIM = 4000;
+  let scale = 2;
+  if(bbox.w*scale > MAX_DIM || bbox.h*scale > MAX_DIM) scale = Math.max(1, Math.min(MAX_DIM/bbox.w, MAX_DIM/bbox.h));
+  return scale;
+}
+function rasterizeCanvas(bbox){
+  return new Promise((resolve, reject)=>{
+    const svgStr = buildCanvasSvgString();
+    if(!svgStr){ reject(new Error('sem conteúdo')); return; }
+    const blob = new Blob([svgStr], {type:'image/svg+xml;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = ()=>{
+      try{
+        const scale = pickRasterScale(bbox);
+        const w = Math.max(1, Math.round(bbox.w*scale)), h = Math.max(1, Math.round(bbox.h*scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas);
+      }catch(err){ reject(err); }
+      finally{ URL.revokeObjectURL(url); }
+    };
+    img.onerror = ()=>{ URL.revokeObjectURL(url); reject(new Error('falha ao rasterizar')); };
+    img.src = url;
+  });
+}
+let jsPdfLoad = null;
+function ensureJsPdf(){
+  if(window.jspdf && window.jspdf.jsPDF) return Promise.resolve();
+  if(jsPdfLoad) return jsPdfLoad;
+  jsPdfLoad = new Promise((resolve, reject)=>{
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    s.onload = ()=>resolve();
+    s.onerror = ()=>{ jsPdfLoad = null; reject(new Error('load-failed')); };
+    document.head.appendChild(s);
+  });
+  return jsPdfLoad;
+}
+async function exportCanvasImage(kind){
+  const bbox = canvasContentBBox();
+  if(!bbox){ toast('Adicione ao menos uma classe ao modelo antes de exportar uma imagem.', true); return; }
+  const base = safeDownloadName(sqlIdent(state.meta.name||'modelo')+'_diagrama', kind==='jpeg'?'jpg':kind);
+  try{
+    if(kind==='pdf'){
+      try{ await ensureJsPdf(); }catch(e){ toast('Não foi possível carregar o gerador de PDF (verifique a conexão).', true); return; }
+    }
+    const canvas = await rasterizeCanvas(bbox);
+    if(kind==='png'){
+      canvas.toBlob(b=>{ if(b) saveBinaryFile(base, b); else toast('Não foi possível gerar a imagem.', true); }, 'image/png');
+    } else if(kind==='jpeg'){
+      canvas.toBlob(b=>{ if(b) saveBinaryFile(base, b); else toast('Não foi possível gerar a imagem.', true); }, 'image/jpeg', 0.94);
+    } else {
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      const { jsPDF } = window.jspdf;
+      const wPt = bbox.w*0.75, hPt = bbox.h*0.75; // 96dpi px -> 72dpi pt
+      const doc = new jsPDF({ orientation: wPt>=hPt?'landscape':'portrait', unit:'pt', format:[wPt,hPt] });
+      doc.addImage(imgData, 'JPEG', 0, 0, wPt, hPt);
+      saveBinaryFile(base, doc.output('blob'));
+    }
+  }catch(err){
+    toast('Não foi possível exportar a imagem: '+(err && err.message ? err.message : err), true);
+  }
+}
+async function saveBinaryFile(filename, blob){
+  let ns = null;
+  try{ if(window.claude && window.claude.use) ns = await window.claude.use('downloads'); }catch(e){ ns = null; }
+  if(ns){
+    try{
+      await ns.save({filename, data:blob});
+      toast('Arquivo salvo: '+filename);
+      return;
+    }catch(err){
+      const code = err && err.code;
+      if(code==='declined') return;
+      if(code==='rejected_extension' || code==='extension_not_enabled'){
+        toast('Este formato não pode ser salvo diretamente aqui.', true);
+        return;
+      }
+    }
+  }
+  try{
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 2000);
+  }catch(e){
+    toast('Não foi possível baixar o arquivo.', true);
+  }
+}
+function initImageExportMenu(){
+  const btn = document.getElementById('btnImage');
+  const menu = document.getElementById('imageMenu');
+  if(!btn || !menu) return;
+  const close = ()=>{ menu.hidden = true; };
+  btn.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    menu.hidden = !menu.hidden;
+  });
+  menu.addEventListener('click', (e)=>{
+    const b = e.target.closest('button[data-fmt]');
+    if(!b) return;
+    close();
+    exportCanvasImage(b.dataset.fmt);
+  });
+  document.addEventListener('click', (e)=>{ if(!menu.hidden && !menu.contains(e.target) && e.target!==btn) close(); });
+  document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') close(); });
+}
+
 function initTopbar(){
   document.getElementById('modelName').addEventListener('input', (e)=>{ state.meta.name = e.target.value; scheduleAutosave(); });
 
@@ -2654,6 +2973,8 @@ function boot(){
   initDefs();
   initAddControls();
   initTopbar();
+  initResizers();
+  initImageExportMenu();
   initStageEvents();
   const saved = loadAutosave();
   state = saved || emptyModel();

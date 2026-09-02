@@ -122,7 +122,7 @@
     display:flex;align-items:center;justify-content:center;font-size:14px;flex:none;
   }
   .brand .name{ font-weight:600; font-size:14.5px; letter-spacing:.1px; white-space:nowrap;}
-  .brand .name small{ display:block; font-weight:400; color:var(--muted); font-size:11.5px; letter-spacing:.06em; text-transform:uppercase;}
+  .brand .name small{ display:block; font-weight:400; color:var(--muted); font-size:13px; letter-spacing:.06em; text-transform:uppercase;}
   .model-name{ min-width:160px; max-width:320px; flex:1; font-weight:500; }
   .topbar .spacer{ flex:1; }
   .btnrow{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
@@ -174,26 +174,26 @@
   .rail-section.grow{ flex:1; overflow-y:auto; min-height:0; }
   .rail-scroll{ flex:1; overflow-y:auto; min-height:0; display:flex; flex-direction:column; }
   .rail-label{
-    font-size:11.5px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted);
+    font-size:13px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted);
     margin-bottom:9px; display:flex; align-items:center; justify-content:space-between; gap:8px;
   }
   .rail-label .count{
     font-family:"IBM Plex Mono"; font-weight:500; background:var(--surface-2); color:var(--ink-soft);
-    border-radius:999px; padding:1px 7px; font-size:11px; letter-spacing:0;
+    border-radius:999px; padding:1px 7px; font-size:12.5px; letter-spacing:0;
   }
 
   .addgrid{ display:grid; grid-template-columns:1fr 1fr; gap:7px; }
   .addbtn{
     display:flex; flex-direction:column; align-items:flex-start; gap:5px; text-align:left;
     border:1px solid var(--border); background:var(--surface); border-radius:8px; padding:8px 9px;
-    font-size:12px; font-weight:500; cursor:grab;
+    font-size:13px; font-weight:500; cursor:grab;
   }
   .addbtn:hover{ background:var(--accent-soft); border-color:var(--accent); }
   .addbtn:active{ cursor:grabbing; }
   .addbtn.drag-source-active{ opacity:.5; }
   .addbtn .ic{ width:17px; height:17px; color:var(--accent); }
   .addbtn.wide{ grid-column:1 / -1; flex-direction:row; align-items:center; }
-  .addhint{ font-size:11.5px; color:var(--muted); margin-top:6px; line-height:1.35; }
+  .addhint{ font-size:13px; color:var(--muted); margin-top:6px; line-height:1.35; }
   .stage-wrap.drop-active::after{
     content:''; position:absolute; inset:0; pointer-events:none; z-index:5;
     box-shadow:inset 0 0 0 2px var(--accent); background:rgba(12,100,120,.06);
@@ -207,7 +207,7 @@
   /* cardinality hint — full (properties panel) */
   .card-hint{ margin-top:10px; border:1px solid var(--border); border-radius:9px; background:var(--surface-2); overflow:hidden; }
   .card-hint-diagram{ display:flex; align-items:center; justify-content:center; gap:0; padding:16px 10px 6px; }
-  .ch-box{ font-size:12px; font-weight:700; color:var(--ink); background:var(--surface); border:1.3px solid var(--accent); border-radius:6px; padding:5px 9px; white-space:nowrap; max-width:110px; overflow:hidden; text-overflow:ellipsis; }
+  .ch-box{ font-size:13px; font-weight:700; color:var(--ink); background:var(--surface); border:1.3px solid var(--accent); border-radius:6px; padding:5px 9px; white-space:nowrap; max-width:110px; overflow:hidden; text-overflow:ellipsis; }
   .ch-line-wrap{ flex:1; display:flex; flex-direction:column; align-items:center; position:relative; min-width:60px; }
   .ch-line{ width:100%; height:1.6px; background:var(--ink-soft); position:relative; }
   .ch-mult{ font-family:"IBM Plex Mono",monospace; font-size:13px; font-weight:700; color:var(--accent); background:var(--surface-2); padding:0 4px; position:absolute; top:-9px; }
@@ -220,8 +220,8 @@
   .card-hint-text .dot{ width:5px; height:5px; border-radius:50%; background:var(--accent); flex:0 0 auto; margin-top:6px; }
 
   /* cardinality hint — compact (left "adicionar relacionamento" panel) */
-  .card-hint-mini{ margin-top:8px; border:1px dashed var(--border); border-radius:7px; padding:7px 9px; font-size:12px; line-height:1.45; color:var(--ink-soft); background:var(--surface-2); }
-  .card-hint-mini .chm-title{ font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.03em; color:var(--muted); margin-bottom:3px; }
+  .card-hint-mini{ margin-top:8px; border:1px dashed var(--border); border-radius:7px; padding:7px 9px; font-size:13px; line-height:1.45; color:var(--ink-soft); background:var(--surface-2); }
+  .card-hint-mini .chm-title{ font-size:12.5px; font-weight:700; text-transform:uppercase; letter-spacing:.03em; color:var(--muted); margin-bottom:3px; }
   .card-hint-mini b{ color:var(--ink); font-weight:600; }
 
   .listitem{
@@ -233,21 +233,21 @@
   .listitem .ic{ width:18px; height:18px; flex:none; color:var(--accent); }
   .listitem .tx{ flex:1; min-width:0; }
   .listitem .tx .t1{ font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .listitem .tx .t2{ color:var(--muted); font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .listitem .tx .t2{ color:var(--muted); font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .listitem .del{ opacity:0; flex:none; }
   .listitem:hover .del{ opacity:1; }
   .del-x{ width:22px; height:22px; display:flex; align-items:center; justify-content:center; border-radius:5px; color:var(--muted); border:1px solid transparent; }
   .del-x:hover{ background:var(--bad-soft); color:var(--bad); }
-  .empty-note{ font-size:12px; color:var(--muted); padding:6px 2px; line-height:1.5; }
+  .empty-note{ font-size:13px; color:var(--muted); padding:6px 2px; line-height:1.5; }
 
-  .vitem{ display:flex; gap:8px; padding:7px 8px; border-radius:7px; font-size:12px; cursor:pointer; align-items:flex-start;}
+  .vitem{ display:flex; gap:8px; padding:7px 8px; border-radius:7px; font-size:13px; cursor:pointer; align-items:flex-start;}
   .vitem:hover{ background:var(--surface-2); }
   .vitem .dot{ width:7px;height:7px;border-radius:50%; margin-top:5px; flex:none; }
   .vitem.error .dot{ background:var(--bad); }
   .vitem.warning .dot{ background:var(--warn); }
   .vitem .msg{ line-height:1.4; }
   .vitem .msg b{ font-weight:600; }
-  .vgood{ display:flex; align-items:center; gap:7px; font-size:12px; color:var(--good); padding:4px 2px; }
+  .vgood{ display:flex; align-items:center; gap:7px; font-size:13px; color:var(--good); padding:4px 2px; }
 
   /* ============ Canvas / stage ============ */
   .stage-wrap{ position:relative; min-width:0; min-height:0; background:var(--canvas-bg); overflow:hidden; user-select:none; -webkit-user-select:none; }
@@ -261,7 +261,7 @@
   }
   .stage-toolbar button:hover{ background:var(--canvas-toolbar-hover); }
   .stage-badge{
-    position:absolute; left:12px; bottom:12px; z-index:4; color:var(--canvas-ink); font-size:12px;
+    position:absolute; left:12px; bottom:12px; z-index:4; color:var(--canvas-ink); font-size:13px;
     font-family:"IBM Plex Mono"; opacity:.55; letter-spacing:.02em;
   }
   .relmode-banner{
@@ -270,7 +270,7 @@
     padding:7px 14px; border-radius:999px; box-shadow:var(--shadow); display:none; align-items:center; gap:8px;
   }
   .relmode-banner.show{ display:flex; }
-  .relmode-banner button{ background:rgba(0,0,0,.18); border:none; color:inherit; border-radius:999px; width:18px;height:18px; font-size:12px; display:flex; align-items:center; justify-content:center;}
+  .relmode-banner button{ background:rgba(0,0,0,.18); border:none; color:inherit; border-radius:999px; width:18px;height:18px; font-size:13px; display:flex; align-items:center; justify-content:center;}
 
   .node-card{ cursor:grab; filter:drop-shadow(0 1px 2px rgba(20,30,26,.10)) drop-shadow(0 3px 8px rgba(20,30,26,.07)); }
   .node-card.dragging{ cursor:grabbing; }
@@ -283,10 +283,10 @@
   .node-card.selected rect.card-bg{ stroke:var(--canvas-line); stroke-width:2; }
   .node-card .card-divider{ stroke:var(--canvas-card-border); stroke-width:1; }
   .node-card text{ fill:var(--canvas-card-ink); font-family:"IBM Plex Sans"; }
-  .node-card .cname{ font-weight:700; font-size:14px; fill:var(--canvas-card-name); }
+  .node-card .cname{ font-weight:700; font-size:15px; fill:var(--canvas-card-name); }
   .node-card .geo-chip{ fill:var(--canvas-chip-bg); stroke:var(--canvas-line); stroke-width:1.1; }
   .node-card .chip-glyph{ color:var(--canvas-line); }
-  .node-card .cattr{ font-family:"IBM Plex Mono"; font-size:11.5px; fill:var(--canvas-card-ink); }
+  .node-card .cattr{ font-family:"IBM Plex Mono"; font-size:13px; fill:var(--canvas-card-ink); }
   .node-card .cattr .attype{ fill:#7a887f; }
   .node-card .cpk{ font-weight:700; }
   .node-card .attr-key{ color:var(--accent); }
@@ -301,20 +301,20 @@
   .edge-path.network-arrow{ stroke:var(--edge-network); stroke-width:1.6; stroke-dasharray:none; }
   .edge-path.spatial{ stroke:var(--edge-spatial); stroke-width:1.5; stroke-dasharray:5,4; }
   .edge-path.selected{ stroke-width:2.75 !important; filter:drop-shadow(0 0 3px rgba(127,208,224,.6)); }
-  .edge-label{ font-family:"IBM Plex Mono"; font-size:11px; fill:var(--canvas-ink); }
+  .edge-label{ font-family:"IBM Plex Mono"; font-size:12.5px; fill:var(--canvas-ink); }
   .edge-label rect{ fill:var(--canvas-bg); }
   .edge-card-label{ fill:var(--canvas-ink); opacity:.85; }
 
   /* ============ Inspector / right rail ============ */
   .tabs{ display:flex; border-bottom:1px solid var(--border); }
-  .tab{ flex:1; padding:10px 6px; text-align:center; font-size:12px; font-weight:600; color:var(--muted); border-bottom:2px solid transparent; }
+  .tab{ flex:1; padding:10px 6px; text-align:center; font-size:13px; font-weight:600; color:var(--muted); border-bottom:2px solid transparent; }
   .tab.active{ color:var(--accent); border-color:var(--accent); }
   .tab:hover{ background:var(--surface-2); }
   .panel{ display:none; flex:1; min-height:0; flex-direction:column; }
   .panel.active{ display:flex; }
 
   .field{ margin-bottom:11px; }
-  .field label{ display:block; font-size:12px; font-weight:600; color:var(--muted); margin-bottom:4px; text-transform:uppercase; letter-spacing:.04em;}
+  .field label{ display:block; font-size:13px; font-weight:600; color:var(--muted); margin-bottom:4px; text-transform:uppercase; letter-spacing:.04em;}
   .field input, .field select, .field textarea{ width:100%; }
   .field-row{ display:flex; gap:8px; }
   .field-row .field{ flex:1; }
@@ -326,16 +326,16 @@
   .seg button.active{ background:var(--accent); color:var(--accent-ink); }
 
   .attr-table{ width:100%; border-collapse:collapse; margin-top:4px; }
-  .attr-table th{ text-align:left; font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; padding:0 4px 4px; font-weight:600;}
+  .attr-table th{ text-align:left; font-size:12.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; padding:0 4px 4px; font-weight:600;}
   .attr-table td{ padding:3px 3px; vertical-align:middle; }
-  .attr-table input[type=text]{ font-size:12px; padding:5px 6px; }
+  .attr-table input[type=text]{ font-size:13px; padding:5px 6px; }
   .attr-table select{ font-size:12.5px; padding:5px 4px; }
   .attr-table input[type=checkbox]{ width:15px; height:15px; }
   .attr-add{ width:100%; margin-top:8px; justify-content:center; }
   .inspector-empty{ padding:30px 18px; text-align:center; color:var(--muted); font-size:12.5px; line-height:1.6; }
   .inspector-empty .ic{ width:30px; height:30px; margin:0 auto 10px; opacity:.5; }
   .inspector-head{ display:flex; align-items:center; gap:8px; margin-bottom:4px; }
-  .inspector-head .badge{ font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; padding:2px 7px; border-radius:999px; background:var(--accent-soft); color:var(--accent); }
+  .inspector-head .badge{ font-size:12.5px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; padding:2px 7px; border-radius:999px; background:var(--accent-soft); color:var(--accent); }
   .inspector-scroll{ padding:14px; overflow-y:auto; overflow-x:auto; flex:1; min-height:0; }
   .inspector-actions{ padding:10px 14px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; }
 
@@ -349,7 +349,7 @@
   .exp-body{ flex:1; min-height:0; overflow:auto; background:#0c1416; }
   .exp-body pre{ margin:0; padding:14px; font-size:12.5px; line-height:1.6; color:#dce8e4; white-space:pre; }
   .exp-actions{ padding:9px 12px; border-top:1px solid var(--border); display:flex; gap:8px; justify-content:flex-end; }
-  .exp-note{ padding:9px 14px; font-size:12px; color:var(--muted); border-top:1px solid var(--border); line-height:1.55; }
+  .exp-note{ padding:9px 14px; font-size:13px; color:var(--muted); border-top:1px solid var(--border); line-height:1.55; }
   .exp-warn{ flex:0 0 auto; margin:9px 12px 0; padding:7px 10px; border:1px solid var(--warn); border-radius:8px; background:color-mix(in srgb, var(--warn) 14%, var(--surface)); font-size:12.5px; line-height:1.5; color:var(--ink-soft); }
   .exp-warn summary{ cursor:pointer; font-weight:700; color:var(--warn); }
   .exp-warn summary::marker{ color:var(--warn); }
@@ -362,11 +362,11 @@
 
   .legend-scroll{ padding:14px; overflow-y:auto; flex:1; }
   .legend-group{ margin-bottom:16px; }
-  .legend-group h3{ font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin-bottom:8px; }
-  .legend-row{ display:flex; align-items:center; gap:10px; padding:5px 0; font-size:12px; }
+  .legend-group h3{ font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin-bottom:8px; }
+  .legend-row{ display:flex; align-items:center; gap:10px; padding:5px 0; font-size:13px; }
   .legend-row svg{ flex:none; }
   .legend-row .lt{ font-weight:600; }
-  .legend-row .ld{ color:var(--muted); font-size:12px; }
+  .legend-row .ld{ color:var(--muted); font-size:13px; }
 
   [hidden]{ display:none !important; }
   .sr-only{ position:absolute; width:1px;height:1px; overflow:hidden; clip:rect(0,0,0,0); }
@@ -1204,13 +1204,27 @@ function assignPorts(relationships, rects){
     const {aSide,bSide} = sideInfo[idx];
     const aPt = pointOnSide(aRect, aSide, portOffset[idx+'|s']||0);
     const bPt = pointOnSide(bRect, bSide, portOffset[idx+'|t']||0);
-    // every OTHER class card is an obstacle this edge's route must go around —
-    // this is what keeps a relationship's line from cutting through a class
-    // card that isn't even part of it.
+    // every OTHER class card in the way is an obstacle this edge's route must
+    // go around — this is what keeps a relationship's line from cutting
+    // through a class card that isn't even part of it. But routeOrthogonal
+    // builds its pathfinding grid from every obstacle's corner coordinates,
+    // so an obstacle far outside the region between this edge's two ports
+    // still perturbs that grid (new grid lines can nudge which equally-cheap
+    // path the router picks) without ever actually blocking anything —
+    // which reads as "dragging a box changes a line it isn't even near".
+    // A card that's nowhere near a straight-ish run between the ports can
+    // never legitimately be in this edge's way, so only cards inside that
+    // region (plus a little slack for the route to jog around one at its
+    // edge) are considered at all.
+    const REGION_SLACK = 60;
+    const loX = Math.min(aPt.x,bPt.x)-REGION_SLACK, hiX = Math.max(aPt.x,bPt.x)+REGION_SLACK;
+    const loY = Math.min(aPt.y,bPt.y)-REGION_SLACK, hiY = Math.max(aPt.y,bPt.y)+REGION_SLACK;
     const obstacles = [];
     rectEntries.forEach(([cid,rect])=>{
       if(cid===r.sourceId || cid===r.targetId) return;
-      obstacles.push({x1:rect.x-OBSTACLE_MARGIN, y1:rect.y-OBSTACLE_MARGIN, x2:rect.x+rect.w+OBSTACLE_MARGIN, y2:rect.y+rect.h+OBSTACLE_MARGIN});
+      const x1=rect.x-OBSTACLE_MARGIN, y1=rect.y-OBSTACLE_MARGIN, x2=rect.x+rect.w+OBSTACLE_MARGIN, y2=rect.y+rect.h+OBSTACLE_MARGIN;
+      if(x2<loX || x1>hiX || y2<loY || y1>hiY) return;
+      obstacles.push({x1,y1,x2,y2});
     });
     return routeEdge(aPt, aSide, bPt, bSide, obstacles);
   });
@@ -1326,20 +1340,22 @@ function edgeLabelAnchors(points, rectA, rectB){
   // box regardless of how long that leg is; it's clamped to the segment's
   // own midpoint so a very short leg (label would otherwise overshoot past
   // the far end, landing inside/beyond the other box) still looks right.
-  // The perpendicular nudge (NEAR_OFF) is applied along that box's own
-  // outward normal, not a fixed axis sign, so it always lands clear of the
-  // box instead of sometimes drifting back over it.
-  const NEAR_DIST = 20, NEAR_OFF = 8;
-  const nearPoint = (port, toward, rect, dist, off)=>{
+  // This point sits ON the line itself — the caller (buildEdgeDom's lbl())
+  // measures the actual label text and pushes it off the line along normA/
+  // normB by exactly half its own size, so the clearance always matches the
+  // glyphs instead of a guessed constant (too little and text-anchor:middle
+  // text straddles the line; too much and it drifts needlessly far).
+  const NEAR_DIST = 20;
+  const alongPoint = (port, toward, dist)=>{
     const segLen = Math.hypot(toward.x-port.x, toward.y-port.y) || 1;
     const t = Math.min(dist/segLen, 0.5);
-    const mx = port.x+(toward.x-port.x)*t, my = port.y+(toward.y-port.y)*t;
-    const nrm = outwardNormal(rect, port);
-    return {x:mx+nrm.x*off, y:my+nrm.y*off};
+    return {x: port.x+(toward.x-port.x)*t, y: port.y+(toward.y-port.y)*t};
   };
-  const nearA = nearPoint(points[0], points[1], rectA, NEAR_DIST, NEAR_OFF);
-  const nearB = nearPoint(points[n-1], points[n-2], rectB, NEAR_DIST, NEAR_OFF);
-  return {mid: midSeg, nearA, nearB};
+  const nearA = alongPoint(points[0], points[1], NEAR_DIST);
+  const nearB = alongPoint(points[n-1], points[n-2], NEAR_DIST);
+  const normA = outwardNormal(rectA, points[0]);
+  const normB = outwardNormal(rectB, points[n-1]);
+  return {mid: midSeg, nearA, nearB, normA, normB};
 }
 /* Nudges apart any edge/cardinality labels whose (padded) boxes overlap —
    this catches the case port-spreading alone can't: two relationships that
@@ -1447,8 +1463,9 @@ function buildEdgeDom(route, labelLayer, labelMetas, rects){
     onclick:(e)=>{ e.stopPropagation(); selectRel(r.id); }});
   g.appendChild(hit);
   const rectA = rects && rects[r.sourceId], rectB = rects && rects[r.targetId];
-  const {mid, nearA, nearB} = edgeLabelAnchors(points, rectA, rectB);
-  const lbl = (x,y,text)=>{
+  const {mid, nearA, nearB, normA, normB} = edgeLabelAnchors(points, rectA, rectB);
+  const CLEAR_GAP = 3;
+  const lbl = (x,y,text,clearDir)=>{
     if(!labelLayer) return;
     // SVG text only hits on its actual painted glyphs, not its bounding box —
     // clicking just beside a short label like "1" would silently do nothing.
@@ -1461,7 +1478,20 @@ function buildEdgeDom(route, labelLayer, labelMetas, rects){
     wrap.appendChild(t);
     labelLayer.appendChild(wrap);
     try{
-      const b = t.getBBox();
+      let b = t.getBBox();
+      if(clearDir && (clearDir.x || clearDir.y)){
+        // Push the label fully clear of the line along the box's outward
+        // normal, by exactly half the *measured* text box (plus a small
+        // gap) — not a guessed constant. text-anchor:middle text centers on
+        // its x/y, so a fixed small offset isn't enough to clear a wider
+        // label like "0..*" off a vertical line; it ends up straddling the
+        // line instead of sitting cleanly beside it.
+        const ox = clearDir.x ? clearDir.x*(b.width/2+CLEAR_GAP) : 0;
+        const oy = clearDir.y ? clearDir.y*(b.height/2+CLEAR_GAP) : 0;
+        t.setAttribute('x', x+ox);
+        t.setAttribute('y', y+oy);
+        b = t.getBBox();
+      }
       const pad = 4;
       const bx = {x:b.x-pad, y:b.y-pad, width:b.width+pad*2, height:b.height+pad*2};
       const hit = S('rect', {x:bx.x, y:bx.y, width:bx.width, height:bx.height, style:'fill:transparent;'});
@@ -1470,12 +1500,12 @@ function buildEdgeDom(route, labelLayer, labelMetas, rects){
     }catch(e){}
   };
   if(r.type==='association'){
-    lbl(nearA.x, nearA.y, r.cardSource||'1');
-    lbl(nearB.x, nearB.y, r.cardTarget||'0..*');
+    lbl(nearA.x, nearA.y, r.cardSource||'1', normA);
+    lbl(nearB.x, nearB.y, r.cardTarget||'0..*', normB);
     if(r.name) lbl(mid.x, mid.y-8, r.name);
   } else if(r.type==='aggregation'){
-    lbl(nearA.x, nearA.y, r.cardSource||'1');
-    lbl(nearB.x, nearB.y, r.cardTarget||'0..*');
+    lbl(nearA.x, nearA.y, r.cardSource||'1', normA);
+    lbl(nearB.x, nearB.y, r.cardTarget||'0..*', normB);
   } else if(r.type==='network'){
     lbl(mid.x, mid.y-9, 'rede'+(r.directed?' →':''));
   } else if(r.type==='spatial'){

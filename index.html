@@ -1132,6 +1132,12 @@ function routeOrthogonal(a, aSide, b, bSide, obstacles){
   }
   return out;
 }
+function elbowHitsObstacles(points, obstacles){
+  for(let i=0;i<points.length-1;i++){
+    if(rectHitsObstacles(points[i].x,points[i].y,points[i+1].x,points[i+1].y, obstacles)) return true;
+  }
+  return false;
+}
 /* Route one edge's points, preferring a path that steers clear of every
    OTHER class card; falls back to the plain midpoint elbow (which can cut
    through an unrelated card on a diagonal layout) if no clean route is
@@ -1140,9 +1146,20 @@ function routeEdge(a, aSide, b, bSide, obstacles){
   const horiz = (aSide==='left' || aSide==='right');
   const aligned = horiz ? Math.abs(a.y-b.y)<0.5 : Math.abs(a.x-b.x)<0.5;
   if(aligned && !rectHitsObstacles(a.x,a.y,b.x,b.y,obstacles)) return [a,b];
+  // Try the plain, obstacle-blind elbow first. If it doesn't actually cut
+  // through anything, use it as-is rather than reaching for the BFS grid
+  // router — that router snaps its bend to a coordinate grid built from
+  // EVERY nearby obstacle's corners (even ones the path never touches), so
+  // a box that sits somewhere in the region between the two ports but isn't
+  // actually in the way can still shift exactly where the line bends,
+  // reading as "that box is pushing the line" when it isn't blocking
+  // anything at all. Only reach for the grid router once there's a real
+  // collision to route around.
+  const elbow = buildElbowPoints(a, aSide, b, bSide);
+  if(!elbowHitsObstacles(elbow, obstacles)) return elbow;
   const routed = routeOrthogonal(a, aSide, b, bSide, obstacles);
   if(routed && routed.length>=2) return routed;
-  return buildElbowPoints(a, aSide, b, bSide);
+  return elbow;
 }
 function selfLoopPoints(aRect){
   // self-relationship fallback: small loop off the right side
@@ -2065,6 +2082,20 @@ function topologyRuleFor(predicate, catA, catB){
   }
   return null;
 }
+/* Single-class geometric-integrity rules — the ones that don't come from any
+   drawn relationship at all, just from a class having area or line geometry.
+   Only "must not overlap (with itself)" is applied to every area class here;
+   "must not have gaps" is deliberately NOT auto-applied even though it's a
+   real, verified rule, because whether a layer is supposed to fully
+   partition its extent is a modeling judgment the conceptual model doesn't
+   encode (a municipality's neighborhoods should fully tile it; its
+   registered lots should not — vacant, unregistered land is normal) — so
+   it's left as guidance in a comment instead of guessed automatically. */
+function generalTopologyRules(cat){
+  if(cat==='area') return [{rule:'Must Not Overlap (Area)'}];
+  if(cat==='line') return [{rule:'Must Not Self-Intersect (Line)'}, {rule:'Must Not Self-Overlap (Line)'}];
+  return [];
+}
 function pyStr(s){ return String(s==null?'':s).replace(/\\/g,'\\\\').replace(/"/g,'\\"'); }
 function gpkgType(t){ return {text:'TEXT', integer:'INTEGER', double:'REAL', date:'DATE', datetime:'DATETIME', boolean:'BOOLEAN', blob:'BLOB'}[t] || 'TEXT'; }
 function pgType(t){ return {text:'text', integer:'integer', double:'double precision', date:'date', datetime:'timestamp', boolean:'boolean', blob:'bytea'}[t] || 'text'; }
@@ -2303,12 +2334,14 @@ function buildArcpyScript(){
   L.push('     ArcGIS: python este_script.py).');
   L.push('  2. Ajuste GDB_FOLDER abaixo para a pasta onde a geodatabase deve ficar.');
   L.push('  3. Execute. O script cria a geodatabase (se ainda não existir), o feature dataset,');
-  L.push('     as classes/tabelas com seus campos, as classes de relacionamento e — quando alguma');
-  L.push('     relação espacial do modelo tiver um equivalente real no ArcGIS — um dataset de');
-  L.push('     Topologia com as regras já criadas (ver comentários "Topologia" mais abaixo).');
+  L.push('     as classes/tabelas com seus campos, as classes de relacionamento e — quando há');
+  L.push('     relações "dentro" ou agregações espaciais no modelo — um dataset de Topologia com');
+  L.push('     as regras de cobertura correspondentes (ver comentários "Topologia" abaixo).');
   L.push('  4. Revise tipos de campo antes de usar em produção. Nem todo predicado espacial do');
   L.push('     OMT-G tem regra de topologia equivalente no ArcGIS — os que não têm ficam como');
-  L.push('     comentário explicando o motivo, não como regra criada.');
+  L.push('     comentário explicando o motivo, não como regra criada. Regras gerais de qualidade');
+  L.push('     geométrica (sem sobreposição/auto-interseção) ficam comentadas, por classe — decida');
+  L.push('     você quais fazem sentido e descomente, já que nem toda classe deve proibir isso.');
   L.push('"""');
   L.push('import arcpy');
   L.push('import os');
@@ -2350,7 +2383,15 @@ function buildArcpyScript(){
     L.push('');
   });
 
-  const spatialRels = [];
+  // Coverage candidates for the Topology dataset: an explicit "dentro"
+  // spatial relationship, OR an aggregation between two classes that both
+  // have geometry — a whole/part pair where both sides are mapped features
+  // (e.g. a neighborhood aggregating blocks) behaves, geometrically, exactly
+  // like "part dentro do todo", even though it's drawn as aggregation, not
+  // as the OMT-G spatial-relationship notation. Aggregation's own forward
+  // label is "agrega" (source aggregates target — source is the whole), so
+  // the part being covered is the TARGET and the whole is the SOURCE.
+  const coverageCandidates = [];
   L.push('# ---- Classes de relacionamento ----');
   state.relationships.forEach(r=>{
     const a = state.classes.find(x=>x.id===r.sourceId), b = state.classes.find(x=>x.id===r.targetId);
@@ -2359,6 +2400,9 @@ function buildArcpyScript(){
       relCall(b, a, pascalIdent(a.name)+'_Generaliza_'+pascalIdent(b.name), 'ONE_TO_ONE', true, 'é especializada por', 'especializa', sqlIdent(b.name)+'_id');
     } else if(r.type==='aggregation'){
       relCall(a, b, pascalIdent(a.name)+'_Agrega_'+pascalIdent(b.name), 'ONE_TO_MANY', true, 'agrega', 'é parte de', sqlIdent(a.name)+'_id');
+      if(geomKind(a) && geomKind(b)){
+        coverageCandidates.push({origin:b, dest:a, predicate:'dentro', label:b.name+' contido em '+a.name+' (agregação espacial)'});
+      }
     } else if(r.type==='network'){
       relCall(a, b, pascalIdent(a.name)+'_ConectaOrigem_'+pascalIdent(b.name), 'ONE_TO_MANY', false, 'é origem de', 'parte de (nó origem)', sqlIdent(a.name)+'_no_origem_id');
       relCall(a, b, pascalIdent(a.name)+'_ConectaDestino_'+pascalIdent(b.name), 'ONE_TO_MANY', false, 'é destino de', 'parte de (nó destino)', sqlIdent(a.name)+'_no_destino_id');
@@ -2373,58 +2417,85 @@ function buildArcpyScript(){
         relCall(refClass, fkClass, pascalIdent(refClass.name)+'_'+pascalIdent(fkClass.name), 'ONE_TO_MANY', false, r.name||'relaciona-se com', r.name||'relaciona-se com', sqlIdent(refClass.name)+'_id');
       }
     } else if(r.type==='spatial'){
-      spatialRels.push({r, a, b});
+      if(geomKind(a) && geomKind(b)){
+        coverageCandidates.push({origin:a, dest:b, predicate:r.topoRule, label:a.name+' '+TOPO_RULE_LABEL[r.topoRule]+' '+b.name});
+      } else {
+        coverageCandidates.push({origin:a, dest:b, predicate:r.topoRule, label:a.name+' '+TOPO_RULE_LABEL[r.topoRule]+' '+b.name, noGeom:true});
+      }
     }
   });
 
-  if(spatialRels.length){
-    L.push('# ---- Topologia (relações espaciais do modelo conceitual) ----');
+  const areaLineGeo = geoClasses.filter(c=>{ const cat = geomCategory(c); return cat==='area'||cat==='line'; });
+  if(areaLineGeo.length || coverageCandidates.length){
+    L.push('# ---- Topologia ----');
     L.push('# Um dataset de Topologia do ArcGIS guarda regras de INTEGRIDADE entre classes');
     L.push('# inteiras (ex.: "feições de A não podem sobrepor feições de B"), não afirmações');
-    L.push('# sobre um par específico de feições. O vocabulário de regras do ArcGIS também é quase');
-    L.push('# todo negativo/de cobertura ("não pode sobrepor", "deve estar coberto por/dentro de");');
-    L.push('# não existe regra para "deve tocar", "deve sobrepor" ou "deve cruzar". Por isso, dos 7');
-    L.push('# predicados espaciais do OMT-G, só "dentro" e "disjunto" viram regra de topologia real');
-    L.push('# abaixo — os demais (toca, sobrepõe, cruza, em frente, próximo) ficam como comentário,');
-    L.push('# não porque faltou implementar, mas porque o ArcGIS não tem uma regra equivalente.');
-    const geoSpatial = spatialRels.filter(({a,b})=> geomKind(a) && geomKind(b));
-    if(geoSpatial.length){
-      const topoName = wsName+'_Topology';
-      L.push('TOPOLOGY_NAME = "'+topoName+'"');
-      L.push('TOPOLOGY_PATH = os.path.join(FDS_PATH, TOPOLOGY_NAME)');
-      L.push('arcpy.management.CreateTopology(FDS_PATH, TOPOLOGY_NAME)');
-      const addedFC = new Set();
-      geoSpatial.forEach(({a,b})=>{
-        [a,b].forEach(c=>{
-          const v = pascalIdent(c.name);
-          if(!addedFC.has(v)){
-            addedFC.add(v);
-            L.push('arcpy.management.AddFeatureClassToTopology(TOPOLOGY_PATH, os.path.join(FDS_PATH, "'+v+'"), 1, 1)');
-          }
+    L.push('# sobre um par específico de feições. As regras abaixo vêm de dois lugares');
+    L.push('# diferentes: regras de cobertura, criadas de verdade porque vêm de uma relação');
+    L.push('# "dentro" ou de uma agregação espacial que você desenhou no modelo (a parte deve');
+    L.push('# estar coberta pelo todo); e regras gerais de qualidade geométrica (sem sobrepor/');
+    L.push('# auto-interceptar), que ficam só como SUGESTÃO comentada — se uma classe de área');
+    L.push('# pode legitimamente ter feições sobrepostas (zoneamentos, camadas de classificação');
+    L.push('# distintas sobre a mesma área etc.), aplicar isso de forma automática estaria errado;');
+    L.push('# só quem conhece a regra de negócio da classe sabe se cabe. Descomente por classe.');
+    L.push('# O vocabulário do ArcGIS é quase todo negativo/de cobertura ("não pode sobrepor",');
+    L.push('# "deve estar coberto por/dentro de"); não existe regra para "deve tocar", "deve');
+    L.push('# sobrepor" ou "deve cruzar" — esses predicados ficam só como comentário, não porque');
+    L.push('# faltou implementar, mas porque o ArcGIS não tem regra equivalente.');
+    const topoName = wsName+'_Topology';
+    L.push('TOPOLOGY_NAME = "'+topoName+'"');
+    L.push('TOPOLOGY_PATH = os.path.join(FDS_PATH, TOPOLOGY_NAME)');
+    L.push('arcpy.management.CreateTopology(FDS_PATH, TOPOLOGY_NAME)');
+    const addedFC = new Set();
+    const addFC = c=>{
+      const v = pascalIdent(c.name);
+      if(!addedFC.has(v)){ addedFC.add(v); L.push('arcpy.management.AddFeatureClassToTopology(TOPOLOGY_PATH, os.path.join(FDS_PATH, "'+v+'"), 1, 1)'); }
+    };
+    // Only classes with an actual, model-derived coverage rule are added to
+    // the topology automatically — that reflects a containment relationship
+    // you drew. A class gets added for a general rule only when its
+    // suggestion below is uncommented.
+    coverageCandidates.forEach(({origin,dest,noGeom})=>{ if(!noGeom){ addFC(origin); addFC(dest); } });
+    L.push('');
+    if(areaLineGeo.length){
+      L.push('# Sugestões de qualidade geométrica (comentadas — decida por classe e descomente):');
+      areaLineGeo.forEach(c=>{
+        const v = pascalIdent(c.name);
+        generalTopologyRules(geomCategory(c)).forEach(({rule})=>{
+          L.push('# arcpy.management.AddFeatureClassToTopology(TOPOLOGY_PATH, os.path.join(FDS_PATH, "'+v+'"), 1, 1)  # se ainda não adicionada acima');
+          L.push('# arcpy.management.AddRuleToTopology(TOPOLOGY_PATH, "'+rule+'", os.path.join(FDS_PATH, "'+v+'"), "", "", "")');
         });
       });
+      L.push('# "Must Not Have Gaps (Area)" também é só sugestão — faz sentido para uma classe');
+      L.push('# que deve cobrir totalmente sua extensão sem buracos (ex.: bairros dentro do');
+      L.push('# limite do município), não para uma que pode ter vazios legítimos (ex.: lotes,');
+      L.push('# já que nem todo terreno é um lote registrado):');
+      L.push('# arcpy.management.AddRuleToTopology(TOPOLOGY_PATH,');
+      L.push('#   "Must Not Have Gaps (Area)", os.path.join(FDS_PATH, "<Classe>"), "", "", "")');
       L.push('');
-      geoSpatial.forEach(({r,a,b})=>{
-        const catA = geomCategory(a), catB = geomCategory(b);
-        const label = a.name+' '+TOPO_RULE_LABEL[r.topoRule]+' '+b.name;
-        const mapped = topologyRuleFor(r.topoRule, catA, catB);
+    }
+    if(coverageCandidates.length){
+      L.push('# Regras de cobertura (relações "dentro" e agregações espaciais):');
+      coverageCandidates.forEach(({origin,dest,predicate,label,noGeom})=>{
+        if(noGeom){
+          L.push('# '+label+' — uma das classes não tem geometria; sem regra de topologia.');
+          L.push('');
+          return;
+        }
+        const catA = geomCategory(origin), catB = geomCategory(dest);
+        const mapped = topologyRuleFor(predicate, catA, catB);
         if(mapped){
           L.push('# '+label+(mapped.caveat ? '  ('+mapped.caveat+')' : ''));
-          L.push('arcpy.management.AddRuleToTopology(TOPOLOGY_PATH, "'+mapped.rule+'", os.path.join(FDS_PATH, "'+pascalIdent(a.name)+'"), "", os.path.join(FDS_PATH, "'+pascalIdent(b.name)+'"), "")');
+          L.push('arcpy.management.AddRuleToTopology(TOPOLOGY_PATH, "'+mapped.rule+'", os.path.join(FDS_PATH, "'+pascalIdent(origin.name)+'"), "", os.path.join(FDS_PATH, "'+pascalIdent(dest.name)+'"), "")');
         } else {
-          L.push('# '+label+' — predicado "'+TOPO_RULE_SHORT[r.topoRule]+'" sem regra de topologia');
-          L.push('#   equivalente no ArcGIS (ver nota acima); documente/valide separadamente.');
+          L.push('# '+label+' — predicado "'+(TOPO_RULE_SHORT[predicate]||predicate)+'" sem regra de');
+          L.push('#   topologia equivalente no ArcGIS (ver nota acima); documente/valide separadamente.');
         }
         L.push('');
       });
-      L.push('arcpy.management.ValidateTopology(TOPOLOGY_PATH, "Full_Extent")');
-      L.push('');
-    } else {
-      L.push('# Nenhuma relação espacial do modelo liga duas classes com geometria definida —');
-      L.push('# nada a criar como Topologia:');
-      spatialRels.forEach(({r,a,b})=> L.push('#   - '+a.name+' '+TOPO_RULE_LABEL[r.topoRule]+' '+b.name));
-      L.push('');
     }
+    L.push('arcpy.management.ValidateTopology(TOPOLOGY_PATH, "Full_Extent")');
+    L.push('');
   }
 
   L.push('print("Esquema criado em: " + GDB_PATH)');
@@ -2826,6 +2897,7 @@ function refreshExportBody(){
   try{
     let text = '';
     if(activeExportTab==='arcpy') text = buildArcpyScript();
+    else if(activeExportTab==='xml') text = buildEsriXML();
     else if(activeExportTab==='gdal') text = buildGdalScript();
     else if(activeExportTab==='gpkg') text = buildGpkgSql();
     else text = buildPostgisSql({useTopology: !!state.meta.pgTopology});
@@ -2838,12 +2910,12 @@ function renderExport(){
   const panel = document.getElementById('panelExport');
   panel.innerHTML = '';
   const tabsRow = E('div',{class:'exp-tabs'});
-  const tabs = [{id:'arcpy',label:'Geodatabase (ArcGIS)'},{id:'gdal',label:'Geodatabase (GDAL, sem ArcGIS)'},{id:'gpkg',label:'GeoPackage'},{id:'postgis',label:'PostGIS'}];
+  const tabs = [{id:'arcpy',label:'Geodatabase (ArcGIS)'},{id:'xml',label:'XML Workspace Document'},{id:'gdal',label:'Geodatabase (GDAL, sem ArcGIS)'},{id:'gpkg',label:'GeoPackage'},{id:'postgis',label:'PostGIS'}];
   tabs.forEach(t=>tabsRow.appendChild(E('div',{class:'exp-tab'+(activeExportTab===t.id?' active':''), onclick:()=>{ activeExportTab=t.id; renderExport(); }},[t.label])));
   panel.appendChild(tabsRow);
 
   const opts = E('div',{class:'exp-opts'});
-  if(activeExportTab==='arcpy' || activeExportTab==='gdal'){
+  if(activeExportTab==='arcpy' || activeExportTab==='xml' || activeExportTab==='gdal'){
     opts.appendChild(miniField('SRID', state.meta.srid, 'number', v=>{ state.meta.srid=parseInt(v,10)||4326; refreshExportBody(); }));
     opts.appendChild(miniField('Nome do workspace', state.meta.workspaceName, 'text', v=>{ state.meta.workspaceName=v; refreshExportBody(); }));
   } else if(activeExportTab==='gpkg'){
@@ -2861,8 +2933,8 @@ function renderExport(){
   body.appendChild(pre);
   panel.appendChild(body);
 
-  const extByTab = {arcpy:'py', gdal:'py', gpkg:'sql', postgis:'sql'};
-  const baseByTab = {arcpy:'_arcgis_schema', gdal:'_gdal_schema', gpkg:'_gpkg', postgis:'_postgis'};
+  const extByTab = {arcpy:'py', xml:'xml', gdal:'py', gpkg:'sql', postgis:'sql'};
+  const baseByTab = {arcpy:'_arcgis_schema', xml:'_workspace', gdal:'_gdal_schema', gpkg:'_gpkg', postgis:'_postgis'};
   const wantExt = '.'+extByTab[activeExportTab];
   const dlName = safeDownloadName(sqlIdent(state.meta.name||'modelo')+baseByTab[activeExportTab], extByTab[activeExportTab]);
   const needsRename = dlName.endsWith('.txt');
@@ -2878,6 +2950,7 @@ function renderExport(){
         E('li',{},[E('b',{},['Copiar e colar:']), ' clique em "Copiar" abaixo, cole em um editor de texto simples (Bloco de Notas, VS Code etc.) e use "Salvar como", escolhendo o nome já com a extensão "'+wantExt+'".'])
       ]),
       activeExportTab==='arcpy' ? E('div',{},['Depois de renomear para "'+finalName+'", abra pelo ArcGIS Pro (janela Python) ou rode com o Python do ArcGIS Pro — não precisa de nenhum programa especial além disso.']) : null,
+      activeExportTab==='xml' ? E('div',{},['Depois de renomear para "'+finalName+'", no ArcGIS Pro: no painel Catalog, clique com o botão direito numa geodatabase (crie uma File Geodatabase vazia antes, se ainda não tiver uma) → Import → XML Workspace Document, e selecione este arquivo. Nenhum script é executado — é só um arquivo lido pela ferramenta padrão do ArcGIS Pro.']) : null,
       activeExportTab==='gdal' ? E('div',{},['Depois de renomear para "'+finalName+'", rode com "python3 '+finalName+'" — precisa apenas de Python com GDAL instalado (', E('b',{},['pip install gdal']), ' ou ', E('b',{},['conda install -c conda-forge gdal']), '), sem ArcGIS Pro nem licença Esri.']) : null
     ]));
     panel.appendChild(det);
@@ -2889,7 +2962,8 @@ function renderExport(){
   panel.appendChild(actions);
 
   const notes = {
-    arcpy: 'Script Python (arcpy) que cria a geodatabase diretamente, chamando a API oficial do ArcGIS (CreateFileGDB, CreateFeatureclass, AddField, CreateRelationshipClass — associações viram relationship classes de verdade). Quando o modelo tem relações espaciais entre classes com geometria, o script também cria um dataset de Topologia com as regras reais correspondentes (CreateTopology/AddRuleToTopology) — só para os predicados que têm equivalente no ArcGIS ("dentro" e "disjunto"); os demais ficam documentados em comentário, já que o ArcGIS não tem regra para "toca", "sobrepõe", "cruza" etc. Requer o Python do ArcGIS Pro (já vem instalado com ele) — se preferir não depender do ArcGIS Pro, veja a aba "Geodatabase (GDAL, sem ArcGIS)" (sem suporte a topologia). Revise o caminho da geodatabase e os tipos de campo antes de rodar.',
+    arcpy: 'Script Python (arcpy) que cria a geodatabase diretamente, chamando a API oficial do ArcGIS (CreateFileGDB, CreateFeatureclass, AddField, CreateRelationshipClass — associações viram relationship classes de verdade). As relações "dentro" e as agregações espaciais do modelo viram regras de cobertura reais num dataset de Topologia (CreateTopology/AddRuleToTopology); regras gerais de qualidade geométrica (sem sobreposição/auto-interseção) entram só como sugestão comentada por classe, já que nem toda classe de área deve necessariamente proibir sobreposição — isso é decisão de quem conhece a regra de negócio. Os demais predicados (toca, sobrepõe, cruza, em frente, próximo) ficam documentados em comentário, já que o ArcGIS não tem regra equivalente para eles. Requer o Python do ArcGIS Pro (já vem instalado com ele) — se preferir não depender do ArcGIS Pro, veja a aba "Geodatabase (GDAL, sem ArcGIS)" (sem suporte a topologia). Revise o caminho da geodatabase e os tipos de campo antes de rodar.',
+    xml: 'XML Workspace Document (mesmo formato que o ArcGIS Diagrammer gera): puro arquivo, sem código para você rodar — importe no ArcGIS Pro via Catalog → Import → XML Workspace Document sobre uma File Geodatabase vazia. Traz o esquema completo (feature dataset, classes, campos, tipos, domínio geométrico) e as relationship classes derivadas de generalização, agregação, rede e associação, com cardinalidade e papéis. Topologia (regras espaciais como "dentro"/"disjunto"/agregação espacial) ainda NÃO entra neste XML: a representação real de regras de topologia no formato usa um código numérico interno do ArcObjects (esriTopologyRuleType) que não está documentado publicamente, e por isso — para não arriscar gerar um valor incorreto — essas regras continuam disponíveis apenas na aba "Geodatabase (ArcGIS)" (script arcpy). Se você precisa de topologia, use a aba "Geodatabase (ArcGIS)" sozinha (ela cria o esquema inteiro e a topologia num único script) em vez de combinar as duas — o script arcpy ainda não verifica se uma classe já existe antes de criá-la, então rodá-lo depois de importar este XML na mesma geodatabase falharia nas classes duplicadas.',
     gdal: 'Script Python usando GDAL/OGR (driver OpenFileGDB) — cria uma .gdb real sem precisar do ArcGIS Pro nem de licença Esri, só do GDAL (gratuito e de código aberto). O driver suporta escrever esquema e relationship classes desde a versão 3.6 do GDAL; a parte de relacionamentos roda dentro de um try/except caso a assinatura da API varie entre versões — veja o comentário no topo do script. Onde ArcGIS Pro já está disponível, a aba "Geodatabase (ArcGIS)" (arcpy) é a mais testada; esta é a alternativa para quem não tem ArcGIS Pro.',
     gpkg: 'Script SQL para aplicar sobre um GeoPackage vazio (crie um no QGIS e rode este script em um cliente SQLite). Sem mecanismo nativo de topologia: as regras espaciais ficam documentadas em comentário.',
     postgis: 'DDL para PostgreSQL/PostGIS. Ative a opção de topologia para gerar postgis.topology nas classes de rede, e revise os gatilhos de validação espacial derivados das relações espaciais do modelo.'

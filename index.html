@@ -1329,9 +1329,35 @@ function outwardNormal(rect, pt){
 }
 function edgeLabelAnchors(points, rectA, rectB){
   const n = points.length;
-  const midSeg = n>=4
-    ? {x:(points[1].x+points[2].x)/2, y:(points[1].y+points[2].y)/2}
-    : {x:(points[0].x+points[n-1].x)/2, y:(points[0].y+points[n-1].y)/2};
+  // Walk the actual path (however many turns it has) to the point at 50% of
+  // its total length, and remember which segment that landed on. A route is
+  // NOT always 2 or 4 points — the BFS router commonly returns exactly 3 for
+  // a single bend (one straight run, one turn, another straight run) — and
+  // averaging start+end coordinates directly, as this used to, produces a
+  // point that isn't on the path at all for any bent route that isn't
+  // exactly 4 points: for a 3-point L it lands off in the empty corner the
+  // path turns around, and the "clear direction" derived from start->end is
+  // diagonal instead of matching either real segment, so the label ends up
+  // sitting on (or straddling) the line instead of beside it.
+  const segLens = [];
+  let total = 0;
+  for(let i=0;i<n-1;i++){
+    const len = Math.hypot(points[i+1].x-points[i].x, points[i+1].y-points[i].y);
+    segLens.push(len);
+    total += len;
+  }
+  let target = total/2, midIdx = 0, into = 0;
+  for(let i=0;i<segLens.length;i++){
+    into = target;
+    if(target <= segLens[i] || i===segLens.length-1){ midIdx = i; break; }
+    target -= segLens[i];
+  }
+  const midP1 = points[midIdx], midP2 = points[midIdx+1];
+  const midSegLen = segLens[midIdx] || 1;
+  const midT = midSegLen ? Math.min(Math.max(into/midSegLen, 0), 1) : 0;
+  const midSeg = {x: midP1.x+(midP2.x-midP1.x)*midT, y: midP1.y+(midP2.y-midP1.y)*midT};
+  const midSegDx = midP2.x-midP1.x, midSegDy = midP2.y-midP1.y;
+  const normMid = Math.abs(midSegDx) >= Math.abs(midSegDy) ? {x:0,y:-1} : {x:1,y:0};
   // Place the "near" label a fixed distance from the box's port, not a fixed
   // *proportion* of the segment — with a long first/last leg (very common in
   // an orthogonal route) a proportional t=0.55 lands the label roughly at the
@@ -1355,7 +1381,7 @@ function edgeLabelAnchors(points, rectA, rectB){
   const nearB = alongPoint(points[n-1], points[n-2], NEAR_DIST);
   const normA = outwardNormal(rectA, points[0]);
   const normB = outwardNormal(rectB, points[n-1]);
-  return {mid: midSeg, nearA, nearB, normA, normB};
+  return {mid: midSeg, nearA, nearB, normA, normB, normMid};
 }
 /* Nudges apart any edge/cardinality labels whose (padded) boxes overlap —
    this catches the case port-spreading alone can't: two relationships that
@@ -1463,7 +1489,7 @@ function buildEdgeDom(route, labelLayer, labelMetas, rects){
     onclick:(e)=>{ e.stopPropagation(); selectRel(r.id); }});
   g.appendChild(hit);
   const rectA = rects && rects[r.sourceId], rectB = rects && rects[r.targetId];
-  const {mid, nearA, nearB, normA, normB} = edgeLabelAnchors(points, rectA, rectB);
+  const {mid, nearA, nearB, normA, normB, normMid} = edgeLabelAnchors(points, rectA, rectB);
   const CLEAR_GAP = 3;
   const lbl = (x,y,text,clearDir)=>{
     if(!labelLayer) return;
@@ -1502,15 +1528,15 @@ function buildEdgeDom(route, labelLayer, labelMetas, rects){
   if(r.type==='association'){
     lbl(nearA.x, nearA.y, r.cardSource||'1', normA);
     lbl(nearB.x, nearB.y, r.cardTarget||'0..*', normB);
-    if(r.name) lbl(mid.x, mid.y-8, r.name);
+    if(r.name) lbl(mid.x, mid.y, r.name, normMid);
   } else if(r.type==='aggregation'){
     lbl(nearA.x, nearA.y, r.cardSource||'1', normA);
     lbl(nearB.x, nearB.y, r.cardTarget||'0..*', normB);
   } else if(r.type==='network'){
-    lbl(mid.x, mid.y-9, 'rede'+(r.directed?' →':''));
+    lbl(mid.x, mid.y, 'rede'+(r.directed?' →':''), normMid);
   } else if(r.type==='spatial'){
     // OMT-G: dashed line + the predicate's name as a «stereotype» on the line.
-    lbl(mid.x, mid.y-8, '«'+(TOPO_RULE_SHORT[r.topoRule]||r.topoRule)+'»');
+    lbl(mid.x, mid.y, '«'+(TOPO_RULE_SHORT[r.topoRule]||r.topoRule)+'»', normMid);
   }
   // generalization has no floating label anymore — the triangle itself
   // (fill + apex dot) encodes total/partial and disjoint/overlapping.
@@ -2001,6 +2027,44 @@ function arcpyFieldType(t){ return {text:'TEXT', integer:'LONG', double:'DOUBLE'
 function arcpyGeomType(gk){ return gk ? ({esriGeometryPoint:'POINT', esriGeometryMultipoint:'MULTIPOINT', esriGeometryPolyline:'POLYLINE', esriGeometryPolygon:'POLYGON'}[gk.esri] || null) : null; }
 function ogrFieldType(t){ return {text:'ogr.OFTString', integer:'ogr.OFTInteger', double:'ogr.OFTReal', date:'ogr.OFTDate', datetime:'ogr.OFTDateTime', boolean:'ogr.OFTInteger', blob:'ogr.OFTBinary'}[t] || 'ogr.OFTString'; }
 function ogrGeomType(gk){ return gk ? ({esriGeometryPoint:'ogr.wkbPoint', esriGeometryMultipoint:'ogr.wkbMultiPoint', esriGeometryPolyline:'ogr.wkbMultiLineString', esriGeometryPolygon:'ogr.wkbMultiPolygon'}[gk.esri] || null) : null; }
+/* area/line/point bucket used to pick an ArcGIS topology rule — collapses
+   esriGeometryMultipoint into 'point' and drops esriGeometryBag (a
+   heterogeneous "collection" primitive) to null, since no topology rule
+   in ArcGIS's list applies to a mixed-geometry class. */
+function geomCategory(c){
+  const gk = geomKind(c);
+  if(!gk) return null;
+  if(gk.esri==='esriGeometryPolygon') return 'area';
+  if(gk.esri==='esriGeometryPolyline') return 'line';
+  if(gk.esri==='esriGeometryPoint' || gk.esri==='esriGeometryMultipoint') return 'point';
+  return null;
+}
+/* Maps an OMT-G topological predicate + the (origin, dest) geometry
+   categories to a real, documented ArcGIS "Add Rule To Topology" rule
+   string — verified against ArcGIS Pro's own tool reference (Add Rule To
+   Topology) rather than guessed. Only 'dentro' and 'disjunto' get an
+   entry: ArcGIS's topology rule vocabulary is built almost entirely around
+   FORBIDDING bad configurations ("must not overlap", "must not intersect")
+   or asserting COVERAGE ("must be covered by/inside"), not around asserting
+   that two classes touch, cross, or overlap — so 'toca', 'sobrepoe',
+   'cruza', 'em_frente' and 'proximo' have no equivalent rule to call in any
+   geometry combination, and correctly return null here rather than a
+   fabricated one. Even the two that DO map are approximations of the OMT-G
+   predicate, not exact equivalents — see each entry's `caveat`. */
+function topologyRuleFor(predicate, catA, catB){
+  if(predicate==='dentro'){
+    if(catA==='area'&&catB==='area') return {rule:'Must Be Covered By (Area-Area)'};
+    if(catA==='line'&&catB==='area') return {rule:'Must Be Inside (Line-Area)'};
+    if(catA==='point'&&catB==='area') return {rule:'Must Be Properly Inside (Point-Area)'};
+    return null;
+  }
+  if(predicate==='disjunto'){
+    if(catA==='area'&&catB==='area') return {rule:'Must Not Overlap With (Area-Area)', caveat:'permite fronteiras se tocando — não é disjunção estrita'};
+    if(catA==='line'&&catB==='line') return {rule:'Must Not Intersect With (Line-Line)'};
+    return null;
+  }
+  return null;
+}
 function pyStr(s){ return String(s==null?'':s).replace(/\\/g,'\\\\').replace(/"/g,'\\"'); }
 function gpkgType(t){ return {text:'TEXT', integer:'INTEGER', double:'REAL', date:'DATE', datetime:'DATETIME', boolean:'BOOLEAN', blob:'BLOB'}[t] || 'TEXT'; }
 function pgType(t){ return {text:'text', integer:'integer', double:'double precision', date:'date', datetime:'timestamp', boolean:'boolean', blob:'bytea'}[t] || 'text'; }
@@ -2239,10 +2303,12 @@ function buildArcpyScript(){
   L.push('     ArcGIS: python este_script.py).');
   L.push('  2. Ajuste GDB_FOLDER abaixo para a pasta onde a geodatabase deve ficar.');
   L.push('  3. Execute. O script cria a geodatabase (se ainda não existir), o feature dataset,');
-  L.push('     as classes/tabelas com seus campos, e as classes de relacionamento.');
-  L.push('  4. Revise tipos de campo e o esquema de topologia sugerido nos comentários antes');
-  L.push('     de usar em produção — em especial as relações espaciais, que viram comentários');
-  L.push('     de orientação para criar um dataset de Topologia manualmente.');
+  L.push('     as classes/tabelas com seus campos, as classes de relacionamento e — quando alguma');
+  L.push('     relação espacial do modelo tiver um equivalente real no ArcGIS — um dataset de');
+  L.push('     Topologia com as regras já criadas (ver comentários "Topologia" mais abaixo).');
+  L.push('  4. Revise tipos de campo antes de usar em produção. Nem todo predicado espacial do');
+  L.push('     OMT-G tem regra de topologia equivalente no ArcGIS — os que não têm ficam como');
+  L.push('     comentário explicando o motivo, não como regra criada.');
   L.push('"""');
   L.push('import arcpy');
   L.push('import os');
@@ -2284,7 +2350,7 @@ function buildArcpyScript(){
     L.push('');
   });
 
-  const spatialNotes = [];
+  const spatialRels = [];
   L.push('# ---- Classes de relacionamento ----');
   state.relationships.forEach(r=>{
     const a = state.classes.find(x=>x.id===r.sourceId), b = state.classes.find(x=>x.id===r.targetId);
@@ -2307,17 +2373,58 @@ function buildArcpyScript(){
         relCall(refClass, fkClass, pascalIdent(refClass.name)+'_'+pascalIdent(fkClass.name), 'ONE_TO_MANY', false, r.name||'relaciona-se com', r.name||'relaciona-se com', sqlIdent(refClass.name)+'_id');
       }
     } else if(r.type==='spatial'){
-      spatialNotes.push(a.name+' '+TOPO_RULE_LABEL[r.topoRule]+' '+b.name);
+      spatialRels.push({r, a, b});
     }
   });
 
-  if(spatialNotes.length){
-    L.push('# ---- Regras de topologia (relações espaciais do modelo conceitual) ----');
-    L.push('# O arcpy não cria automaticamente as regras de topologia — recomenda-se criar um');
-    L.push('# dataset de Topologia dentro do Feature Dataset (arcpy.management.CreateTopology +');
-    L.push('# AddFeatureClassToTopology + AddRuleToTopology) usando estas regras como guia:');
-    spatialNotes.forEach(s=>L.push('#   - '+s));
-    L.push('');
+  if(spatialRels.length){
+    L.push('# ---- Topologia (relações espaciais do modelo conceitual) ----');
+    L.push('# Um dataset de Topologia do ArcGIS guarda regras de INTEGRIDADE entre classes');
+    L.push('# inteiras (ex.: "feições de A não podem sobrepor feições de B"), não afirmações');
+    L.push('# sobre um par específico de feições. O vocabulário de regras do ArcGIS também é quase');
+    L.push('# todo negativo/de cobertura ("não pode sobrepor", "deve estar coberto por/dentro de");');
+    L.push('# não existe regra para "deve tocar", "deve sobrepor" ou "deve cruzar". Por isso, dos 7');
+    L.push('# predicados espaciais do OMT-G, só "dentro" e "disjunto" viram regra de topologia real');
+    L.push('# abaixo — os demais (toca, sobrepõe, cruza, em frente, próximo) ficam como comentário,');
+    L.push('# não porque faltou implementar, mas porque o ArcGIS não tem uma regra equivalente.');
+    const geoSpatial = spatialRels.filter(({a,b})=> geomKind(a) && geomKind(b));
+    if(geoSpatial.length){
+      const topoName = wsName+'_Topology';
+      L.push('TOPOLOGY_NAME = "'+topoName+'"');
+      L.push('TOPOLOGY_PATH = os.path.join(FDS_PATH, TOPOLOGY_NAME)');
+      L.push('arcpy.management.CreateTopology(FDS_PATH, TOPOLOGY_NAME)');
+      const addedFC = new Set();
+      geoSpatial.forEach(({a,b})=>{
+        [a,b].forEach(c=>{
+          const v = pascalIdent(c.name);
+          if(!addedFC.has(v)){
+            addedFC.add(v);
+            L.push('arcpy.management.AddFeatureClassToTopology(TOPOLOGY_PATH, os.path.join(FDS_PATH, "'+v+'"), 1, 1)');
+          }
+        });
+      });
+      L.push('');
+      geoSpatial.forEach(({r,a,b})=>{
+        const catA = geomCategory(a), catB = geomCategory(b);
+        const label = a.name+' '+TOPO_RULE_LABEL[r.topoRule]+' '+b.name;
+        const mapped = topologyRuleFor(r.topoRule, catA, catB);
+        if(mapped){
+          L.push('# '+label+(mapped.caveat ? '  ('+mapped.caveat+')' : ''));
+          L.push('arcpy.management.AddRuleToTopology(TOPOLOGY_PATH, "'+mapped.rule+'", os.path.join(FDS_PATH, "'+pascalIdent(a.name)+'"), "", os.path.join(FDS_PATH, "'+pascalIdent(b.name)+'"), "")');
+        } else {
+          L.push('# '+label+' — predicado "'+TOPO_RULE_SHORT[r.topoRule]+'" sem regra de topologia');
+          L.push('#   equivalente no ArcGIS (ver nota acima); documente/valide separadamente.');
+        }
+        L.push('');
+      });
+      L.push('arcpy.management.ValidateTopology(TOPOLOGY_PATH, "Full_Extent")');
+      L.push('');
+    } else {
+      L.push('# Nenhuma relação espacial do modelo liga duas classes com geometria definida —');
+      L.push('# nada a criar como Topologia:');
+      spatialRels.forEach(({r,a,b})=> L.push('#   - '+a.name+' '+TOPO_RULE_LABEL[r.topoRule]+' '+b.name));
+      L.push('');
+    }
   }
 
   L.push('print("Esquema criado em: " + GDB_PATH)');
@@ -2782,7 +2889,7 @@ function renderExport(){
   panel.appendChild(actions);
 
   const notes = {
-    arcpy: 'Script Python (arcpy) que cria a geodatabase diretamente, chamando a API oficial do ArcGIS (CreateFileGDB, CreateFeatureclass, AddField, CreateRelationshipClass). Requer o Python do ArcGIS Pro (já vem instalado com ele) — se preferir não depender do ArcGIS Pro, veja a aba "Geodatabase (GDAL, sem ArcGIS)". Revise o caminho da geodatabase e os tipos de campo antes de rodar.',
+    arcpy: 'Script Python (arcpy) que cria a geodatabase diretamente, chamando a API oficial do ArcGIS (CreateFileGDB, CreateFeatureclass, AddField, CreateRelationshipClass — associações viram relationship classes de verdade). Quando o modelo tem relações espaciais entre classes com geometria, o script também cria um dataset de Topologia com as regras reais correspondentes (CreateTopology/AddRuleToTopology) — só para os predicados que têm equivalente no ArcGIS ("dentro" e "disjunto"); os demais ficam documentados em comentário, já que o ArcGIS não tem regra para "toca", "sobrepõe", "cruza" etc. Requer o Python do ArcGIS Pro (já vem instalado com ele) — se preferir não depender do ArcGIS Pro, veja a aba "Geodatabase (GDAL, sem ArcGIS)" (sem suporte a topologia). Revise o caminho da geodatabase e os tipos de campo antes de rodar.',
     gdal: 'Script Python usando GDAL/OGR (driver OpenFileGDB) — cria uma .gdb real sem precisar do ArcGIS Pro nem de licença Esri, só do GDAL (gratuito e de código aberto). O driver suporta escrever esquema e relationship classes desde a versão 3.6 do GDAL; a parte de relacionamentos roda dentro de um try/except caso a assinatura da API varie entre versões — veja o comentário no topo do script. Onde ArcGIS Pro já está disponível, a aba "Geodatabase (ArcGIS)" (arcpy) é a mais testada; esta é a alternativa para quem não tem ArcGIS Pro.',
     gpkg: 'Script SQL para aplicar sobre um GeoPackage vazio (crie um no QGIS e rode este script em um cliente SQLite). Sem mecanismo nativo de topologia: as regras espaciais ficam documentadas em comentário.',
     postgis: 'DDL para PostgreSQL/PostGIS. Ative a opção de topologia para gerar postgis.topology nas classes de rede, e revise os gatilhos de validação espacial derivados das relações espaciais do modelo.'

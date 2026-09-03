@@ -2321,53 +2321,110 @@ function buildEsriXML(){
       + "<ExtensionProperties xsi:type='esri:PropertySet'><PropertyArray xsi:type='esri:ArrayOfPropertySetProperty' /></ExtensionProperties>"
       + "<ControllerMemberships xsi:type='esri:ArrayOfControllerMembership' /></DataElement>";
   }
-  function relKey(role, keyName, keyRole){
-    return "<RelationshipClassKey xsi:type='esri:RelationshipClassKey'><ObjectKeyName>"+keyName+"</ObjectKeyName><ClassKeyName>"+keyName+"</ClassKeyName><KeyRole>"+keyRole+"</KeyRole></RelationshipClassKey>";
+  // A relationship class between two feature classes in the same dataset
+  // gets a "/FD=.../RC=..." path (confirmed by the real export); anything
+  // touching a standalone table gets a root-level "/RC=..." path instead —
+  // extended by the same "RC=" convention used elsewhere, not itself seen
+  // in a real export (that export had no standalone table).
+  function relCatalogPath(name, a, b){
+    return (geomKind(a) && geomKind(b)) ? ("/FD="+fdsName+"/RC="+name) : ("/RC="+name);
   }
-  // Relationship classes keep their previous (whitepaper-derived, not
-  // independently re-confirmed) internal structure — the user's real export
-  // had no relationship class to check it against — except for the
-  // CatalogPath prefix, updated to the same root-relative scheme confirmed
-  // for everything else in this document, so the whole file is at least
-  // internally consistent about that one convention.
-  function relationshipXml(name, originName, destName, cardinality, isComposite, origPk, destFk, fwdLabel, bwdLabel){
-    return "<DataElement xsi:type='esri:DERelationshipClass'><CatalogPath>/"+name+"</CatalogPath><Name>"+escapeXml(name)+"</Name>"
+  function relKey(objName, keyRole){
+    return "<RelationshipClassKey xsi:type='esri:RelationshipClassKey'><ObjectKeyName>"+objName+"</ObjectKeyName><ClassKeyName></ClassKeyName><KeyRole>"+keyRole+"</KeyRole></RelationshipClassKey>";
+  }
+  // Rewritten 2026-09 against a real exported relationship class (three
+  // examples: 1:1, 1:M and M:N, all default/non-attributed). That export
+  // showed the previous version of this function was wrong in several load-
+  // bearing ways, not just cosmetic ones: element order, an invented
+  // <CardinalityString> element that doesn't exist in the real schema, a
+  // missing <HasOID>/<OIDFieldName>/<Indexes>/<RelationshipRules>, and —
+  // most importantly — a made-up custom foreign-key field name where
+  // ArcGIS Pro's own default is to link purely through OBJECTID
+  // (ClassKey = the literal sentinel "esriRelClassKeyUndefined", not a
+  // field name). The one place cardinality actually changes the structure:
+  // a Many-to-Many relationship gets its own attribute table (HasOID=true,
+  // OIDFieldName="RID", an OBJECTID/OBJECTID1/RID field triple, and a
+  // DestinationClassKeys array); One-to-One/One-to-Many relationships have
+  // none of that — no DestinationClassKeys element at all, confirmed absent
+  // rather than empty. This function no longer takes a custom key-field
+  // name for that reason. Composite (generalization/aggregation) and
+  // attributed relationship classes were not themselves present in the real
+  // export — this reuses the same confirmed structure for those, extended
+  // by pattern rather than independently confirmed.
+  function relationshipXml(catalogPath, name, originName, destName, cardinality, isComposite, fwdLabel, bwdLabel){
+    const isMN = cardinality === 'esriRelCardinalityManyToMany';
+    const fieldsXml = isMN
+      ? "<Field xsi:type='esri:Field'><Name>OBJECTID</Name><Type>esriFieldTypeInteger</Type><IsNullable>true</IsNullable><Length>4</Length><Precision>0</Precision><Scale>0</Scale></Field>"
+        + "<Field xsi:type='esri:Field'><Name>OBJECTID1</Name><Type>esriFieldTypeInteger</Type><IsNullable>true</IsNullable><Length>4</Length><Precision>0</Precision><Scale>0</Scale></Field>"
+        + "<Field xsi:type='esri:Field'><Name>RID</Name><Type>esriFieldTypeOID</Type><IsNullable>false</IsNullable><Length>4</Length><Precision>0</Precision><Scale>0</Scale><Required>true</Required><Editable>false</Editable></Field>"
+      : '';
+    const destKeysXml = isMN
+      ? "<DestinationClassKeys xsi:type='esri:ArrayOfRelationshipClassKey'>"+relKey('OBJECTID','esriRelKeyRoleDestinationPrimary')+relKey('OBJECTID1','esriRelKeyRoleDestinationForeign')+"</DestinationClassKeys>"
+      : '';
+    return "<DataElement xsi:type='esri:DERelationshipClass'><CatalogPath>"+catalogPath+"</CatalogPath><Name>"+escapeXml(name)+"</Name>"
       + "<DatasetType>esriDTRelationshipClass</DatasetType><DSID>-1</DSID><Versioned>false</Versioned><CanVersion>false</CanVersion>"
-      + "<Fields xsi:type='esri:Fields'><FieldArray xsi:type='esri:ArrayOfField'>"+fieldXml(null,true)+"</FieldArray></Fields>"
-      + "<AliasName>"+escapeXml(name)+"</AliasName><ModelName></ModelName>"
-      + "<CardinalityString>"+cardinality+"</CardinalityString><Cardinality>"+cardinality+"</Cardinality>"
-      + "<Notification>esriRelNotificationNone</Notification><IsAttachmentRelationship>false</IsAttachmentRelationship><IsAttributed>false</IsAttributed>"
-      + "<IsComposite>"+isComposite+"</IsComposite><KeyType>esriRelKeyTypeSingle</KeyType>"
-      + "<ClassKey>"+destFk+"</ClassKey><ForwardPathLabel>"+escapeXml(fwdLabel)+"</ForwardPathLabel><BackwardPathLabel>"+escapeXml(bwdLabel)+"</BackwardPathLabel>"
+      + "<ConfigurationKeyword></ConfigurationKeyword>"
+      + "<HasOID>"+isMN+"</HasOID><OIDFieldName>"+(isMN?'RID':'')+"</OIDFieldName>"
+      + "<Fields xsi:type='esri:Fields'><FieldArray xsi:type='esri:ArrayOfField'>"+fieldsXml+"</FieldArray></Fields>"
+      + "<Indexes xsi:type='esri:Indexes'><IndexArray xsi:type='esri:ArrayOfIndex' /></Indexes>"
+      + "<CLSID>{A07E9CB1-9A95-11D2-891A-0000F877762D}</CLSID><EXTCLSID></EXTCLSID>"
+      + "<RelationshipClassNames xsi:type='esri:Names' />"
+      + "<AliasName>"+escapeXml(name)+"</AliasName><ModelName></ModelName><HasGlobalID>false</HasGlobalID><GlobalIDFieldName></GlobalIDFieldName><RasterFieldName></RasterFieldName>"
+      + "<ExtensionProperties xsi:type='esri:PropertySet'><PropertyArray xsi:type='esri:ArrayOfPropertySetProperty' /></ExtensionProperties>"
+      + "<ControllerMemberships xsi:type='esri:ArrayOfControllerMembership' />"
+      + "<EditorTrackingEnabled>false</EditorTrackingEnabled><CreatorFieldName></CreatorFieldName><CreatedAtFieldName></CreatedAtFieldName><EditorFieldName></EditorFieldName><EditedAtFieldName></EditedAtFieldName>"
+      + "<IsTimeInUTC>true</IsTimeInUTC>"
+      + "<Cardinality>"+cardinality+"</Cardinality><Notification>esriRelNotificationNone</Notification><IsAttributed>false</IsAttributed><IsComposite>"+isComposite+"</IsComposite>"
       + "<OriginClassNames xsi:type='esri:Names'><Name>"+escapeXml(originName)+"</Name></OriginClassNames>"
       + "<DestinationClassNames xsi:type='esri:Names'><Name>"+escapeXml(destName)+"</Name></DestinationClassNames>"
-      + "<OriginClassKeys xsi:type='esri:ArrayOfRelationshipClassKey'>"+relKey('origin', origPk, 'esriRelKeyTypeOriginPrimary')+"</OriginClassKeys>"
-      + "<DestinationClassKeys xsi:type='esri:ArrayOfRelationshipClassKey'>"+relKey('dest', destFk, 'esriRelKeyTypeOriginForeign')+"</DestinationClassKeys>"
+      + "<KeyType>esriRelKeyTypeSingle</KeyType><ClassKey>esriRelClassKeyUndefined</ClassKey>"
+      + "<ForwardPathLabel>"+escapeXml(fwdLabel)+"</ForwardPathLabel><BackwardPathLabel>"+escapeXml(bwdLabel)+"</BackwardPathLabel><IsReflexive>false</IsReflexive>"
+      + "<OriginClassKeys xsi:type='esri:ArrayOfRelationshipClassKey'>"+relKey('OBJECTID','esriRelKeyRoleOriginPrimary')+relKey('OBJECTID','esriRelKeyRoleOriginForeign')+"</OriginClassKeys>"
+      + destKeysXml
+      + "<RelationshipRules xsi:type='esri:ArrayOfRelationshipRule' />"
+      + "<IsAttachmentRelationship>false</IsAttachmentRelationship><ChangeTracked>false</ChangeTracked><ReplicaTracked>false</ReplicaTracked>"
       + "</DataElement>";
   }
 
   const geoElements = geoClasses.map(dataElement).join('\n          ');
   const flatElements = flatClasses.map(dataElement).join('\n      ');
 
-  const relElements = [];
+  // A relationship class nests inside the Feature Dataset's <Children> —
+  // alongside its member classes and the topology — exactly when BOTH
+  // member classes are feature classes in that dataset (confirmed by the
+  // same real export: Linha1_Linha2, Poligono1_Poligono2 and Ponto1_Ponto2
+  // all nested there). Anything touching a plain table is kept standalone,
+  // by extension of that same rule rather than independent confirmation.
+  const nestedRelElements = [];
+  const standaloneRelElements = [];
+  function pushRel(xmlStr, a, b){
+    if(geomKind(a) && geomKind(b)) nestedRelElements.push(xmlStr);
+    else standaloneRelElements.push(xmlStr);
+  }
   state.relationships.forEach(r=>{
     const a = state.classes.find(x=>x.id===r.sourceId), b = state.classes.find(x=>x.id===r.targetId);
     if(!a || !b) return;
     if(r.type==='generalization'){
-      relElements.push(relationshipXml(pascalIdent(a.name)+'Generaliza'+pascalIdent(b.name), pascalIdent(b.name), pascalIdent(a.name), 'esriRelCardinalityOneToOne', true, 'OBJECTID', sqlIdent(b.name)+'_id', 'é especializada por', 'especializa'));
+      const name = pascalIdent(a.name)+'Generaliza'+pascalIdent(b.name);
+      pushRel(relationshipXml(relCatalogPath(name, a, b), name, pascalIdent(b.name), pascalIdent(a.name), 'esriRelCardinalityOneToOne', true, 'é especializada por', 'especializa'), a, b);
     } else if(r.type==='aggregation'){
-      relElements.push(relationshipXml(pascalIdent(a.name)+'Agrega'+pascalIdent(b.name), pascalIdent(a.name), pascalIdent(b.name), 'esriRelCardinalityOneToMany', true, 'OBJECTID', sqlIdent(a.name)+'_id', 'agrega', 'é parte de'));
+      const name = pascalIdent(a.name)+'Agrega'+pascalIdent(b.name);
+      pushRel(relationshipXml(relCatalogPath(name, a, b), name, pascalIdent(a.name), pascalIdent(b.name), 'esriRelCardinalityOneToMany', true, 'agrega', 'é parte de'), a, b);
     } else if(r.type==='network'){
-      relElements.push(relationshipXml(pascalIdent(a.name)+'ConectaOrigem'+pascalIdent(b.name), pascalIdent(a.name), pascalIdent(b.name), 'esriRelCardinalityOneToMany', false, 'OBJECTID', sqlIdent(a.name)+'_no_origem_id', 'é origem de', 'parte de (nó origem)'));
-      relElements.push(relationshipXml(pascalIdent(a.name)+'ConectaDestino'+pascalIdent(b.name), pascalIdent(a.name), pascalIdent(b.name), 'esriRelCardinalityOneToMany', false, 'OBJECTID', sqlIdent(a.name)+'_no_destino_id', 'é destino de', 'parte de (nó destino)'));
+      const name1 = pascalIdent(a.name)+'ConectaOrigem'+pascalIdent(b.name);
+      pushRel(relationshipXml(relCatalogPath(name1, a, b), name1, pascalIdent(a.name), pascalIdent(b.name), 'esriRelCardinalityOneToMany', false, 'é origem de', 'parte de (nó origem)'), a, b);
+      const name2 = pascalIdent(a.name)+'ConectaDestino'+pascalIdent(b.name);
+      pushRel(relationshipXml(relCatalogPath(name2, a, b), name2, pascalIdent(a.name), pascalIdent(b.name), 'esriRelCardinalityOneToMany', false, 'é destino de', 'parte de (nó destino)'), a, b);
     } else if(r.type==='association'){
       const plan = associationPlan(r);
       const card = plan.mode==='junction' ? 'esriRelCardinalityManyToMany' : 'esriRelCardinalityOneToMany';
       if(plan.mode==='junction'){
-        relElements.push(relationshipXml(pascalIdent(a.name)+'_'+pascalIdent(b.name), pascalIdent(a.name), pascalIdent(b.name), card, false, 'OBJECTID', 'OBJECTID', r.name||'relaciona-se com', r.name||'relaciona-se com'));
+        const name = pascalIdent(a.name)+'_'+pascalIdent(b.name);
+        pushRel(relationshipXml(relCatalogPath(name, a, b), name, pascalIdent(a.name), pascalIdent(b.name), card, false, r.name||'relaciona-se com', r.name||'relaciona-se com'), a, b);
       } else {
         const fkClass = state.classes.find(x=>x.id===plan.fkOn), refClass = state.classes.find(x=>x.id===plan.refTo);
-        relElements.push(relationshipXml(pascalIdent(refClass.name)+'_'+pascalIdent(fkClass.name), pascalIdent(refClass.name), pascalIdent(fkClass.name), card, false, 'OBJECTID', sqlIdent(refClass.name)+'_id', r.name||'relaciona-se com', r.name||'relaciona-se com'));
+        const name = pascalIdent(refClass.name)+'_'+pascalIdent(fkClass.name);
+        pushRel(relationshipXml(relCatalogPath(name, refClass, fkClass), name, pascalIdent(refClass.name), pascalIdent(fkClass.name), card, false, r.name||'relaciona-se com', r.name||'relaciona-se com'), refClass, fkClass);
       }
     }
   });
@@ -2380,11 +2437,12 @@ function buildEsriXML(){
     + "<esri:Workspace xmlns:esri='http://www.esri.com/schemas/ArcGIS/10.8' xmlns:xs='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'>\n"
     + "  <!-- Gerado por GeoGeoGeo a partir de um modelo conceitual. Documento-esquema (sem dados) para\n"
     + "       importar em ArcGIS Pro / ArcCatalog: Catalog > botão direito na geodatabase > Import > XML Workspace Document.\n"
-    + "       Estrutura (aninhamento em Children, caminhos /FD=.../FC=..., e a topologia com TopologyRuleType real)\n"
-    + "       conferida contra um XML Workspace Document exportado de verdade do ArcGIS Pro do próprio usuário;\n"
-    + "       os IDs de classe usados para ligar as regras de topologia são numeração local deste documento — o\n"
-    + "       DSID real só existe depois de importado. Revise tipos de campo, comprimento de texto e o\n"
-    + "       resultado da topologia após a importação. -->\n"
+    + "       Estrutura (aninhamento em Children, caminhos /FD=.../FC=..., a topologia com TopologyRuleType real, e as\n"
+    + "       relationship classes) conferida contra dois XML Workspace Documents exportados de verdade do ArcGIS Pro\n"
+    + "       do próprio usuário (um com uma topologia completa, outro com relationship classes de exemplo); os IDs\n"
+    + "       de classe usados para ligar as regras de topologia são numeração local deste documento — o DSID real\n"
+    + "       só existe depois de importado. Revise tipos de campo, comprimento de texto e o resultado da\n"
+    + "       topologia/relacionamentos após a importação. -->\n"
     + unmappedNote
     + "  <WorkspaceDefinition xsi:type='esri:WorkspaceDefinition'>\n"
     + "    <WorkspaceType>esriLocalDatabaseWorkspace</WorkspaceType>\n"
@@ -2394,10 +2452,10 @@ function buildEsriXML(){
     + "    <DatasetDefinitions xsi:type='esri:ArrayOfDataElement'>\n"
     + (geoClasses.length ?
         "      <DataElement xsi:type='esri:DEFeatureDataset'><CatalogPath>/FD="+fdsName+"</CatalogPath><Name>"+fdsName+"</Name><DatasetType>esriDTFeatureDataset</DatasetType><DSID>-1</DSID><Versioned>false</Versioned><CanVersion>false</CanVersion>"+sref()
-          + "<Children xsi:type='esri:ArrayOfDataElement'>\n          " + geoElements + "\n          " + topologyElement + "\n        </Children></DataElement>\n"
+          + "<Children xsi:type='esri:ArrayOfDataElement'>\n          " + geoElements + "\n          " + topologyElement + (nestedRelElements.length ? "\n          " + nestedRelElements.join('\n          ') : '') + "\n        </Children></DataElement>\n"
         : '')
     + (flatElements ? "      " + flatElements + "\n" : '')
-    + (relElements.length ? "      " + relElements.join('\n      ') + "\n" : '')
+    + (standaloneRelElements.length ? "      " + standaloneRelElements.join('\n      ') + "\n" : '')
     + "    </DatasetDefinitions>\n"
     + "  </WorkspaceDefinition>\n"
     + "  <WorkspaceData xsi:type='esri:WorkspaceData' />\n"

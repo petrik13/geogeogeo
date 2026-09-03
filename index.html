@@ -2070,14 +2070,45 @@ function geomCategory(c){
    predicate, not exact equivalents — see each entry's `caveat`. */
 function topologyRuleFor(predicate, catA, catB){
   if(predicate==='dentro'){
-    if(catA==='area'&&catB==='area') return {rule:'Must Be Covered By (Area-Area)'};
+    if(catA==='area'&&catB==='area') return {rule:'Must Be Covered By Feature Class Of (Area-Area)'};
     if(catA==='line'&&catB==='area') return {rule:'Must Be Inside (Line-Area)'};
     if(catA==='point'&&catB==='area') return {rule:'Must Be Properly Inside (Point-Area)'};
     return null;
   }
   if(predicate==='disjunto'){
     if(catA==='area'&&catB==='area') return {rule:'Must Not Overlap With (Area-Area)', caveat:'permite fronteiras se tocando — não é disjunção estrita'};
-    if(catA==='line'&&catB==='line') return {rule:'Must Not Intersect With (Line-Line)'};
+    // A real two-class "line must not cross line" rule DOES exist in ArcGIS
+    // (confirmed below, in topologyRuleXmlEnumFor, against a real exported
+    // topology) — but only its raw esriTRTLineNoIntersectLine enum name is
+    // confirmed, not the exact wording of the documented arcpy string
+    // parameter, so it stays unmapped here rather than risking an
+    // AddRuleToTopology call with an invalid rule_type string.
+    return null;
+  }
+  return null;
+}
+/* Real esriTRT* topology-rule-type enum NAMES (not numbers) for a raw XML
+   Workspace Document's <TopologyRuleType> element — confirmed by reading a
+   real topology the user exported from their own ArcGIS Pro as an XML
+   Workspace Document (2026-09), which showed this element holds the enum's
+   symbolic name as text (e.g. "esriTRTAreaCoveredByAreaClass"), not the
+   numeric code a different (ArcObjects/community-thread) representation had
+   suggested earlier — that numeric table turned out not to apply to this
+   file format. Origin/destination order below matches the real file's rules
+   exactly (e.g. rule 24: OriginClassID=area-being-covered,
+   DestinationClassID=covering area — same origin=part/dest=whole convention
+   already used by topologyRuleFor's coverageCandidates). Only entries
+   directly observed in that real export are included. */
+function topologyRuleXmlEnumFor(predicate, catA, catB){
+  if(predicate==='dentro'){
+    if(catA==='area'&&catB==='area') return 'esriTRTAreaCoveredByAreaClass';
+    if(catA==='line'&&catB==='area') return 'esriTRTLineInsideArea';
+    if(catA==='point'&&catB==='area') return 'esriTRTPointProperlyInsideArea';
+    return null;
+  }
+  if(predicate==='disjunto'){
+    if(catA==='area'&&catB==='area') return 'esriTRTAreaNoOverlapArea';
+    if(catA==='line'&&catB==='line') return 'esriTRTLineNoIntersectLine';
     return null;
   }
   return null;
@@ -2151,9 +2182,35 @@ function buildEsriXML(){
   const geoClasses = state.classes.filter(c=>c.kind==='geo');
   const flatClasses = state.classes.filter(c=>c.kind!=='geo');
   const fdsName = wsName + '_FD';
+  // ArcGIS Pro's own default name for a topology created inside a dataset is
+  // "<dataset>_Topology" (confirmed by a real export, see below) — matched
+  // here and in buildArcpyScript for consistency with what ArcGIS Pro itself
+  // would suggest.
+  const topoName = fdsName + '_Topology';
+
+  // Local surrogate dataset IDs. A real ArcGIS-exported XML Workspace
+  // Document resolves a Topology rule's Origin/DestinationClassID against
+  // each feature class's own <DSID> (confirmed 2026-09 by reading a real
+  // topology the user exported from their own ArcGIS Pro) rather than by
+  // name or array position. A document authored for IMPORT — not exported
+  // from an existing database — has no real DSIDs yet, so every class here
+  // gets a small, internally-consistent placeholder number instead of the
+  // usual "-1" (fine for a class with no cross-references, but it would
+  // make every class indistinguishable to a topology rule). This is a
+  // standard local-surrogate-key technique for a hand-authored version of an
+  // export format; unlike the rest of this function's structure, this
+  // specific choice for a from-scratch document was not itself directly
+  // confirmed against a real ArcGIS Pro import — worth checking after import.
+  let nextDsid = 1;
+  const dsidOf = new Map();
+  [...geoClasses, ...flatClasses].forEach(c=>{ dsidOf.set(c.id, nextDsid++); });
 
   function sref(){
     return "<SpatialReference xsi:type='esri:GeographicCoordinateSystem'><WKID>"+srid+"</WKID><LatestWKID>"+srid+"</LatestWKID></SpatialReference>";
+  }
+  function xmlGuid(){
+    const h = ()=>Math.floor(Math.random()*0x10000).toString(16).toUpperCase().padStart(4,'0');
+    return h()+h()+'-'+h()+'-'+h()+'-'+h()+'-'+h()+h()+h();
   }
   function fieldXml(f, isOid){
     if(isOid){
@@ -2168,17 +2225,80 @@ function buildEsriXML(){
     return "<Field xsi:type='esri:Field'><Name>Shape</Name><Type>esriFieldTypeGeometry</Type><IsNullable>true</IsNullable><Length>0</Length><Precision>0</Precision><Scale>0</Scale><Required>false</Required><Editable>true</Editable><ModelName>Shape</ModelName>"
       + "<GeometryDef xsi:type='esri:GeometryDef'><AvgNumPoints>0</AvgNumPoints><GeometryType>"+gk.esri+"</GeometryType><HasM>false</HasM><HasZ>false</HasZ>"+sref()+"</GeometryDef></Field>";
   }
+
+  // ---- Spatial relationships & spatial aggregations -> topology coverage
+  // candidates. Mirrors buildArcpyScript's own pass exactly, so the XML and
+  // the arcpy script agree on which relations become real topology rules. ----
+  const coverageCandidates = [];
+  state.relationships.forEach(r=>{
+    const a = state.classes.find(x=>x.id===r.sourceId), b = state.classes.find(x=>x.id===r.targetId);
+    if(!a || !b) return;
+    if(r.type==='aggregation'){
+      if(geomKind(a) && geomKind(b)) coverageCandidates.push({origin:b, dest:a, predicate:'dentro', label:b.name+' contido em '+a.name+' (agregação espacial)'});
+    } else if(r.type==='spatial'){
+      if(geomKind(a) && geomKind(b)) coverageCandidates.push({origin:a, dest:b, predicate:r.topoRule, label:a.name+' '+TOPO_RULE_LABEL[r.topoRule]+' '+b.name});
+      else coverageCandidates.push({origin:a, dest:b, predicate:r.topoRule, label:a.name+' '+TOPO_RULE_LABEL[r.topoRule]+' '+b.name, noGeom:true});
+    }
+  });
+  const unmappedSpatialNotes = [];
+  const topoRuleEntries = [];
+  const topoParticipants = new Set();
+  coverageCandidates.forEach(({origin,dest,predicate,label,noGeom})=>{
+    if(noGeom){ unmappedSpatialNotes.push(label+' — uma das classes não tem geometria; sem regra de topologia.'); return; }
+    const catA = geomCategory(origin), catB = geomCategory(dest);
+    const enumType = topologyRuleXmlEnumFor(predicate, catA, catB);
+    if(!enumType){ unmappedSpatialNotes.push(label+' — sem regra de topologia equivalente no ArcGIS.'); return; }
+    topoParticipants.add(origin.id); topoParticipants.add(dest.id);
+    topoRuleEntries.push({enumType, originId: dsidOf.get(origin.id), destId: dsidOf.get(dest.id)});
+  });
+
+  function topologyRuleXml(entry, ruleId){
+    return "<TopologyRule xsi:type='esri:TopologyRule'><HelpString></HelpString><RuleID>"+ruleId+"</RuleID><Name></Name>"
+      + "<GUID>"+xmlGuid()+"</GUID>"
+      + "<TopologyRuleType>"+entry.enumType+"</TopologyRuleType>"
+      + "<OriginClassID>"+entry.originId+"</OriginClassID><OriginSubtype>0</OriginSubtype>"
+      + "<DestinationClassID>"+entry.destId+"</DestinationClassID><DestinationSubtype>0</DestinationSubtype>"
+      + "<TriggerErrorEvents>false</TriggerErrorEvents><AllOriginSubtypes>true</AllOriginSubtypes><AllDestinationSubtypes>true</AllDestinationSubtypes></TopologyRule>";
+  }
+
+  const topologyElement = topoRuleEntries.length ? (
+    "<DataElement xsi:type='esri:DETopology'><CatalogPath>/FD="+fdsName+"/TOPO="+topoName+"</CatalogPath><Name>"+topoName+"</Name>"
+    + "<DatasetType>esriDTTopology</DatasetType><DSID>-1</DSID><Versioned>false</Versioned><CanVersion>true</CanVersion>"
+    + "<ConfigurationKeyword></ConfigurationKeyword>"
+    + "<Extent xsi:type='esri:EnvelopeN'><XMin>NaN</XMin><YMin>NaN</YMin><XMax>NaN</XMax><YMax>NaN</YMax>"+sref()+"</Extent>"
+    + sref()
+    + "<ClusterTolerance>0.001</ClusterTolerance><ZClusterTolerance>0.001</ZClusterTolerance>"
+    + "<MaxGeneratedErrorCount>-1</MaxGeneratedErrorCount>"
+    + "<FeatureClassNames xsi:type='esri:Names'>"+[...topoParticipants].map(id=>state.classes.find(c=>c.id===id)).filter(Boolean).map(c=>"<Name>"+escapeXml(pascalIdent(c.name))+"</Name>").join('')+"</FeatureClassNames>"
+    + "<TopologyRules xsi:type='esri:ArrayOfTopologyRule'>"+topoRuleEntries.map((e,i)=>topologyRuleXml(e,i+1)).join('')+"</TopologyRules>"
+    + "<TopologyID>-1</TopologyID><EditorTrackingEnabled>false</EditorTrackingEnabled>"
+    + "<CreatorFieldName></CreatorFieldName><CreatedAtFieldName></CreatedAtFieldName><EditorFieldName></EditorFieldName><EditedAtFieldName></EditedAtFieldName>"
+    + "<IsTimeInUTC>true</IsTimeInUTC><Properties xsi:nil='true' /></DataElement>"
+  ) : '';
+
+  function controllerMembershipsXml(c){
+    if(!topoParticipants.has(c.id)) return "<ControllerMemberships xsi:type='esri:ArrayOfControllerMembership' />";
+    return "<ControllerMemberships xsi:type='esri:ArrayOfControllerMembership'><ControllerMembership xsi:type='esri:TopologyMembership'><TopologyName>"+topoName+"</TopologyName><Weight>5</Weight><XYRank>1</XYRank><ZRank>1</ZRank><EventNotificationOnValidate>false</EventNotificationOnValidate></ControllerMembership></ControllerMemberships>";
+  }
+
+  // CatalogPath uses the root-relative "/FD=.../FC=..." scheme a real
+  // ArcGIS Pro export actually uses (confirmed 2026-09), not the
+  // "\\workspace\\dataset\\class" scheme assumed before that evidence
+  // existed. A standalone table's exact convention wasn't itself present in
+  // that real export (it had no tables) — "/Name" here is the same
+  // root-relative pattern extended by analogy, not independently confirmed.
   function dataElement(c){
     const fields = computeExportFields(c);
     const gk = geomKind(c);
     const isFC = !!gk;
-    const catalogPath = "\\\\"+wsName+(isFC?("\\\\"+fdsName):"")+"\\\\"+pascalIdent(c.name);
+    const catalogPath = isFC ? ("/FD="+fdsName+"/FC="+pascalIdent(c.name)) : ("/"+pascalIdent(c.name));
     let fieldsXml = fieldXml(null,true) + fields.map(f=>fieldXml(f,false)).join('');
     if(isFC) fieldsXml += shapeFieldXml(gk);
     const note = gk && gk.approx ? "<!-- Observação: primitiva conceitual '"+c.primitive+"' não tem equivalente vetorial direto no geodatabase; exportada como "+gk.esri+" (revisar armazenamento em ArcGIS Pro). -->" : "";
+    const dsid = dsidOf.get(c.id);
     if(isFC){
       return note + "<DataElement xsi:type='esri:DEFeatureClass'><CatalogPath>"+catalogPath+"</CatalogPath><Name>"+escapeXml(pascalIdent(c.name))+"</Name>"
-        + "<DatasetType>esriDTFeatureClass</DatasetType><DSID>-1</DSID><Versioned>false</Versioned><CanVersion>false</CanVersion>"
+        + "<DatasetType>esriDTFeatureClass</DatasetType><DSID>"+dsid+"</DSID><Versioned>false</Versioned><CanVersion>false</CanVersion>"
         + "<HasOID>true</HasOID><OIDFieldName>OBJECTID</OIDFieldName>"
         + "<Fields xsi:type='esri:Fields'><FieldArray xsi:type='esri:ArrayOfField'>"+fieldsXml+"</FieldArray></Fields>"
         + "<Indexes xsi:type='esri:Indexes'><IndexArray xsi:type='esri:ArrayOfIndex' /></Indexes>"
@@ -2186,12 +2306,12 @@ function buildEsriXML(){
         + "<RelationshipClassNames xsi:type='esri:Names' />"
         + "<AliasName>"+escapeXml(c.name)+"</AliasName><ModelName></ModelName><HasGlobalID>false</HasGlobalID><GlobalIDFieldName></GlobalIDFieldName><RasterFieldName></RasterFieldName>"
         + "<ExtensionProperties xsi:type='esri:PropertySet'><PropertyArray xsi:type='esri:ArrayOfPropertySetProperty' /></ExtensionProperties>"
-        + "<ControllerMemberships xsi:type='esri:ArrayOfControllerMembership' />"
+        + controllerMembershipsXml(c)
         + "<FeatureType>esriFTSimple</FeatureType><ShapeType>"+gk.esri+"</ShapeType><ShapeFieldName>Shape</ShapeFieldName><HasM>false</HasM><HasZ>false</HasZ><HasSpatialIndex>true</HasSpatialIndex>"
         + "<AreaFieldName></AreaFieldName><LengthFieldName></LengthFieldName><Extent xsi:nil='true' />"+sref()+"</DataElement>";
     }
     return "<DataElement xsi:type='esri:DETable'><CatalogPath>"+catalogPath+"</CatalogPath><Name>"+escapeXml(pascalIdent(c.name))+"</Name>"
-      + "<DatasetType>esriDTTable</DatasetType><DSID>-1</DSID><Versioned>false</Versioned><CanVersion>false</CanVersion>"
+      + "<DatasetType>esriDTTable</DatasetType><DSID>"+dsid+"</DSID><Versioned>false</Versioned><CanVersion>false</CanVersion>"
       + "<HasOID>true</HasOID><OIDFieldName>OBJECTID</OIDFieldName>"
       + "<Fields xsi:type='esri:Fields'><FieldArray xsi:type='esri:ArrayOfField'>"+fieldsXml+"</FieldArray></Fields>"
       + "<Indexes xsi:type='esri:Indexes'><IndexArray xsi:type='esri:ArrayOfIndex' /></Indexes>"
@@ -2204,8 +2324,14 @@ function buildEsriXML(){
   function relKey(role, keyName, keyRole){
     return "<RelationshipClassKey xsi:type='esri:RelationshipClassKey'><ObjectKeyName>"+keyName+"</ObjectKeyName><ClassKeyName>"+keyName+"</ClassKeyName><KeyRole>"+keyRole+"</KeyRole></RelationshipClassKey>";
   }
+  // Relationship classes keep their previous (whitepaper-derived, not
+  // independently re-confirmed) internal structure — the user's real export
+  // had no relationship class to check it against — except for the
+  // CatalogPath prefix, updated to the same root-relative scheme confirmed
+  // for everything else in this document, so the whole file is at least
+  // internally consistent about that one convention.
   function relationshipXml(name, originName, destName, cardinality, isComposite, origPk, destFk, fwdLabel, bwdLabel){
-    return "<DataElement xsi:type='esri:DERelationshipClass'><CatalogPath>\\\\"+wsName+"\\\\"+name+"</CatalogPath><Name>"+escapeXml(name)+"</Name>"
+    return "<DataElement xsi:type='esri:DERelationshipClass'><CatalogPath>/"+name+"</CatalogPath><Name>"+escapeXml(name)+"</Name>"
       + "<DatasetType>esriDTRelationshipClass</DatasetType><DSID>-1</DSID><Versioned>false</Versioned><CanVersion>false</CanVersion>"
       + "<Fields xsi:type='esri:Fields'><FieldArray xsi:type='esri:ArrayOfField'>"+fieldXml(null,true)+"</FieldArray></Fields>"
       + "<AliasName>"+escapeXml(name)+"</AliasName><ModelName></ModelName>"
@@ -2220,10 +2346,10 @@ function buildEsriXML(){
       + "</DataElement>";
   }
 
-  const dataElements = [...geoClasses, ...flatClasses].map(dataElement).join('\n      ');
+  const geoElements = geoClasses.map(dataElement).join('\n          ');
+  const flatElements = flatClasses.map(dataElement).join('\n      ');
 
   const relElements = [];
-  const spatialNotes = [];
   state.relationships.forEach(r=>{
     const a = state.classes.find(x=>x.id===r.sourceId), b = state.classes.find(x=>x.id===r.targetId);
     if(!a || !b) return;
@@ -2243,31 +2369,38 @@ function buildEsriXML(){
         const fkClass = state.classes.find(x=>x.id===plan.fkOn), refClass = state.classes.find(x=>x.id===plan.refTo);
         relElements.push(relationshipXml(pascalIdent(refClass.name)+'_'+pascalIdent(fkClass.name), pascalIdent(refClass.name), pascalIdent(fkClass.name), card, false, 'OBJECTID', sqlIdent(refClass.name)+'_id', r.name||'relaciona-se com', r.name||'relaciona-se com'));
       }
-    } else if(r.type==='spatial'){
-      spatialNotes.push(a.name+' '+TOPO_RULE_LABEL[r.topoRule]+' '+b.name);
     }
   });
 
-  const topoComment = spatialNotes.length
-    ? "\n  <!-- Regras de topologia (relações espaciais do modelo conceitual) — recomenda-se criar um dataset de\n       Topologia dentro do Feature Dataset '"+fdsName+"' via ArcGIS Pro > Catalog > New > Topology, usando estas regras como guia:\n       "+spatialNotes.map(s=>'- '+s).join('\n       ')+"\n  -->\n"
+  const unmappedNote = unmappedSpatialNotes.length
+    ? "\n  <!-- Relações espaciais sem regra real de topologia gerada (documentadas aqui, não como TopologyRule):\n       "+unmappedSpatialNotes.map(s=>'- '+s).join('\n       ')+"\n  -->\n"
     : '';
 
   const xml = "<?xml version='1.0' encoding='UTF-8'?>\n"
     + "<esri:Workspace xmlns:esri='http://www.esri.com/schemas/ArcGIS/10.8' xmlns:xs='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'>\n"
     + "  <!-- Gerado por GeoGeoGeo a partir de um modelo conceitual. Documento-esquema (sem dados) para\n"
     + "       importar em ArcGIS Pro / ArcCatalog: Catalog > botão direito na geodatabase > Import > XML Workspace Document.\n"
-    + "       Revise tipos de campo, comprimento de texto e o esquema de topologia sugerido antes do uso em produção. -->\n"
-    + topoComment
+    + "       Estrutura (aninhamento em Children, caminhos /FD=.../FC=..., e a topologia com TopologyRuleType real)\n"
+    + "       conferida contra um XML Workspace Document exportado de verdade do ArcGIS Pro do próprio usuário;\n"
+    + "       os IDs de classe usados para ligar as regras de topologia são numeração local deste documento — o\n"
+    + "       DSID real só existe depois de importado. Revise tipos de campo, comprimento de texto e o\n"
+    + "       resultado da topologia após a importação. -->\n"
+    + unmappedNote
     + "  <WorkspaceDefinition xsi:type='esri:WorkspaceDefinition'>\n"
     + "    <WorkspaceType>esriLocalDatabaseWorkspace</WorkspaceType>\n"
     + "    <Version></Version>\n"
     + "    <Domains xsi:type='esri:ArrayOfDomain' />\n"
+    + "    <Sequences xsi:type='esri:ArrayOfSequence' />\n"
     + "    <DatasetDefinitions xsi:type='esri:ArrayOfDataElement'>\n"
-    + (geoClasses.length ? "      <DataElement xsi:type='esri:DEFeatureDataset'><CatalogPath>\\\\"+wsName+"\\\\"+fdsName+"</CatalogPath><Name>"+fdsName+"</Name><DatasetType>esriDTFeatureDataset</DatasetType><DSID>-1</DSID><Versioned>false</Versioned><CanVersion>false</CanVersion>"+sref()+"</DataElement>\n" : '')
-    + "      " + dataElements + "\n"
-    + "      " + relElements.join('\n      ') + "\n"
+    + (geoClasses.length ?
+        "      <DataElement xsi:type='esri:DEFeatureDataset'><CatalogPath>/FD="+fdsName+"</CatalogPath><Name>"+fdsName+"</Name><DatasetType>esriDTFeatureDataset</DatasetType><DSID>-1</DSID><Versioned>false</Versioned><CanVersion>false</CanVersion>"+sref()
+          + "<Children xsi:type='esri:ArrayOfDataElement'>\n          " + geoElements + "\n          " + topologyElement + "\n        </Children></DataElement>\n"
+        : '')
+    + (flatElements ? "      " + flatElements + "\n" : '')
+    + (relElements.length ? "      " + relElements.join('\n      ') + "\n" : '')
     + "    </DatasetDefinitions>\n"
     + "  </WorkspaceDefinition>\n"
+    + "  <WorkspaceData xsi:type='esri:WorkspaceData' />\n"
     + "</esri:Workspace>\n";
   return xml;
 }
@@ -2442,7 +2575,11 @@ function buildArcpyScript(){
     L.push('# "deve estar coberto por/dentro de"); não existe regra para "deve tocar", "deve');
     L.push('# sobrepor" ou "deve cruzar" — esses predicados ficam só como comentário, não porque');
     L.push('# faltou implementar, mas porque o ArcGIS não tem regra equivalente.');
-    const topoName = wsName+'_Topology';
+    // ArcGIS Pro's own default name for a topology created inside a dataset
+    // is "<dataset>_Topology" (confirmed by the user's real export), not
+    // "<workspace>_Topology" — matched here for consistency with the XML
+    // export and with what ArcGIS Pro itself would suggest.
+    const topoName = fdsName+'_Topology';
     L.push('TOPOLOGY_NAME = "'+topoName+'"');
     L.push('TOPOLOGY_PATH = os.path.join(FDS_PATH, TOPOLOGY_NAME)');
     L.push('arcpy.management.CreateTopology(FDS_PATH, TOPOLOGY_NAME)');
@@ -2963,7 +3100,7 @@ function renderExport(){
 
   const notes = {
     arcpy: 'Script Python (arcpy) que cria a geodatabase diretamente, chamando a API oficial do ArcGIS (CreateFileGDB, CreateFeatureclass, AddField, CreateRelationshipClass — associações viram relationship classes de verdade). As relações "dentro" e as agregações espaciais do modelo viram regras de cobertura reais num dataset de Topologia (CreateTopology/AddRuleToTopology); regras gerais de qualidade geométrica (sem sobreposição/auto-interseção) entram só como sugestão comentada por classe, já que nem toda classe de área deve necessariamente proibir sobreposição — isso é decisão de quem conhece a regra de negócio. Os demais predicados (toca, sobrepõe, cruza, em frente, próximo) ficam documentados em comentário, já que o ArcGIS não tem regra equivalente para eles. Requer o Python do ArcGIS Pro (já vem instalado com ele) — se preferir não depender do ArcGIS Pro, veja a aba "Geodatabase (GDAL, sem ArcGIS)" (sem suporte a topologia). Revise o caminho da geodatabase e os tipos de campo antes de rodar.',
-    xml: 'XML Workspace Document (mesmo formato que o ArcGIS Diagrammer gera): puro arquivo, sem código para você rodar — importe no ArcGIS Pro via Catalog → Import → XML Workspace Document sobre uma File Geodatabase vazia. Traz o esquema completo (feature dataset, classes, campos, tipos, domínio geométrico) e as relationship classes derivadas de generalização, agregação, rede e associação, com cardinalidade e papéis. Topologia (regras espaciais como "dentro"/"disjunto"/agregação espacial) ainda NÃO entra neste XML: a representação real de regras de topologia no formato usa um código numérico interno do ArcObjects (esriTopologyRuleType) que não está documentado publicamente, e por isso — para não arriscar gerar um valor incorreto — essas regras continuam disponíveis apenas na aba "Geodatabase (ArcGIS)" (script arcpy). Se você precisa de topologia, use a aba "Geodatabase (ArcGIS)" sozinha (ela cria o esquema inteiro e a topologia num único script) em vez de combinar as duas — o script arcpy ainda não verifica se uma classe já existe antes de criá-la, então rodá-lo depois de importar este XML na mesma geodatabase falharia nas classes duplicadas.',
+    xml: 'XML Workspace Document (mesmo formato que o ArcGIS Diagrammer gera): puro arquivo, sem código para você rodar — importe no ArcGIS Pro via Catalog → Import → XML Workspace Document sobre uma File Geodatabase vazia. Traz o esquema completo (feature dataset, classes, campos, tipos, domínio geométrico), as relationship classes derivadas de generalização, agregação, rede e associação, e agora também um dataset de Topologia real (DETopology) para as relações "dentro" e agregações espaciais do modelo — sua estrutura (aninhamento das classes e da topologia dentro do feature dataset, caminhos de catálogo, e o nome de cada regra de topologia) foi conferida contra um XML Workspace Document exportado de verdade do seu próprio ArcGIS Pro, não deduzida. Os demais predicados (toca, sobrepõe, cruza, em frente, próximo) continuam sem regra de topologia equivalente e ficam documentados em comentário no XML. Um detalhe não verificado contra uma exportação real: os IDs internos que ligam cada regra à sua classe são uma numeração local deste documento (a geodatabase atribui os IDs de verdade só na importação) — depois de importar, abra a topologia e confira se as regras vieram associadas às classes certas; se algo vier torto, me mostre e eu ajusto.',
     gdal: 'Script Python usando GDAL/OGR (driver OpenFileGDB) — cria uma .gdb real sem precisar do ArcGIS Pro nem de licença Esri, só do GDAL (gratuito e de código aberto). O driver suporta escrever esquema e relationship classes desde a versão 3.6 do GDAL; a parte de relacionamentos roda dentro de um try/except caso a assinatura da API varie entre versões — veja o comentário no topo do script. Onde ArcGIS Pro já está disponível, a aba "Geodatabase (ArcGIS)" (arcpy) é a mais testada; esta é a alternativa para quem não tem ArcGIS Pro.',
     gpkg: 'Script SQL para aplicar sobre um GeoPackage vazio (crie um no QGIS e rode este script em um cliente SQLite). Sem mecanismo nativo de topologia: as regras espaciais ficam documentadas em comentário.',
     postgis: 'DDL para PostgreSQL/PostGIS. Ative a opção de topologia para gerar postgis.topology nas classes de rede, e revise os gatilhos de validação espacial derivados das relações espaciais do modelo.'

@@ -493,7 +493,7 @@ function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout
 /* file names the platform's downloads capability accepts as-is; anything else
    is saved with a .txt suffix appended (still a real, complete file — just
    rename it after saving to get the extension back). */
-const DOWNLOAD_ALLOWLIST = new Set(['gif','png','jpg','jpeg','webp','mp4','webm','txt','json','md','docx','pptx','epub','csv','ttf','html','svg','pdf']);
+const DOWNLOAD_ALLOWLIST = new Set(['gif','png','jpg','jpeg','webp','mp4','webm','txt','json','md','docx','pptx','epub','csv','ttf','html','svg','pdf','xml','py','sql']);
 function safeDownloadName(base, wantExt){
   return DOWNLOAD_ALLOWLIST.has(wantExt) ? (base+'.'+wantExt) : (base+'.'+wantExt+'.txt');
 }

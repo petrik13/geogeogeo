@@ -2504,9 +2504,17 @@ function buildArcpyScript(){
     L.push('    cardinality="'+cardinality+'",');
     L.push('    attributed="NONE",');
     if(fkField){
-      L.push('    origin_primary_key="OBJECTID",');
+      // A relação usa a chave primária DEFINIDA NO MODELO (o atributo marcado
+      // como PK na classe de origem), não o OBJECTID interno do arcpy — o
+      // OBJECTID só é atribuído pelo banco na hora da inserção, então não dá
+      // pra popular o campo de FK com ele antes de carregar os dados; a chave
+      // do modelo (normalmente "id") é estável e é o que você já preenche.
+      L.push('    origin_primary_key="'+pkFieldName(origin)+'",');
       L.push('    origin_foreign_key="'+fkField+'"');
     } else {
+      // Associação N:N (tabela de junção): sem campo de FK explícito no
+      // modelo — o arcpy gerencia a tabela de junção internamente e usa o
+      // OBJECTID para isso, então mantemos OBJECTID aqui.
       L.push('    origin_primary_key="OBJECTID"');
     }
     L.push(')');
@@ -2831,12 +2839,12 @@ function buildGdalScript(){
     const a = state.classes.find(x=>x.id===r.sourceId), b = state.classes.find(x=>x.id===r.targetId);
     if(!a || !b) return;
     if(r.type==='generalization'){
-      relCall(b, a, pascalIdent(a.name)+'_Generaliza_'+pascalIdent(b.name), 'GRC_ONE_TO_ONE', true, 'é especializada por', 'especializa', 'OBJECTID', sqlIdent(b.name)+'_id');
+      relCall(b, a, pascalIdent(a.name)+'_Generaliza_'+pascalIdent(b.name), 'GRC_ONE_TO_ONE', true, 'é especializada por', 'especializa', pkFieldName(b), sqlIdent(b.name)+'_id');
     } else if(r.type==='aggregation'){
-      relCall(a, b, pascalIdent(a.name)+'_Agrega_'+pascalIdent(b.name), 'GRC_ONE_TO_MANY', true, 'agrega', 'é parte de', 'OBJECTID', sqlIdent(a.name)+'_id');
+      relCall(a, b, pascalIdent(a.name)+'_Agrega_'+pascalIdent(b.name), 'GRC_ONE_TO_MANY', true, 'agrega', 'é parte de', pkFieldName(a), sqlIdent(a.name)+'_id');
     } else if(r.type==='network'){
-      relCall(a, b, pascalIdent(a.name)+'_ConectaOrigem_'+pascalIdent(b.name), 'GRC_ONE_TO_MANY', false, 'é origem de', 'parte de (nó origem)', 'OBJECTID', sqlIdent(a.name)+'_no_origem_id');
-      relCall(a, b, pascalIdent(a.name)+'_ConectaDestino_'+pascalIdent(b.name), 'GRC_ONE_TO_MANY', false, 'é destino de', 'parte de (nó destino)', 'OBJECTID', sqlIdent(a.name)+'_no_destino_id');
+      relCall(a, b, pascalIdent(a.name)+'_ConectaOrigem_'+pascalIdent(b.name), 'GRC_ONE_TO_MANY', false, 'é origem de', 'parte de (nó origem)', pkFieldName(a), sqlIdent(a.name)+'_no_origem_id');
+      relCall(a, b, pascalIdent(a.name)+'_ConectaDestino_'+pascalIdent(b.name), 'GRC_ONE_TO_MANY', false, 'é destino de', 'parte de (nó destino)', pkFieldName(a), sqlIdent(a.name)+'_no_destino_id');
     } else if(r.type==='association'){
       const plan = associationPlan(r);
       if(plan.mode==='junction'){
@@ -2845,7 +2853,7 @@ function buildGdalScript(){
         L.push('# de junção com os IDs das duas classes e dois relacionamentos ONE_TO_MANY.');
       } else {
         const fkClass = state.classes.find(x=>x.id===plan.fkOn), refClass = state.classes.find(x=>x.id===plan.refTo);
-        relCall(refClass, fkClass, pascalIdent(refClass.name)+'_'+pascalIdent(fkClass.name), 'GRC_ONE_TO_MANY', false, r.name||'relaciona-se com', r.name||'relaciona-se com', 'OBJECTID', sqlIdent(refClass.name)+'_id');
+        relCall(refClass, fkClass, pascalIdent(refClass.name)+'_'+pascalIdent(fkClass.name), 'GRC_ONE_TO_MANY', false, r.name||'relaciona-se com', r.name||'relaciona-se com', pkFieldName(refClass), sqlIdent(refClass.name)+'_id');
       }
     } else if(r.type==='spatial'){
       spatialNotes.push(a.name+' '+TOPO_RULE_LABEL[r.topoRule]+' '+b.name);
@@ -3281,6 +3289,17 @@ def general_topology_suggestion(cat):
     return None
 
 
+def pk_field_name(c):
+    """Nome do campo a usar como origin_primary_key de uma classe de
+    relacionamento — o atributo marcado como PK no modelo (normalmente
+    "id"), não o OBJECTID interno do arcpy. O OBJECTID só é atribuído pelo
+    banco na hora da inserção, então não dá pra popular o campo de FK da
+    classe dependente com ele antes de carregar os dados; a chave definida
+    no modelo é estável e é o que já vem preenchido nos seus dados."""
+    pk = next((a for a in (c.get('attributes') or []) if a.get('pk')), None)
+    return sql_ident(pk['name']) if pk else 'id'
+
+
 # ============================================================
 # Campos derivados de relacionamentos — replicam computeExportFields()/
 # associationPlan() do app.js
@@ -3506,7 +3525,12 @@ class CriarGeodatabaseOMTG:
                 message_direction='NONE',
                 cardinality=cardinality,
                 attributed='NONE',
-                origin_primary_key='OBJECTID')
+                # com FK explícito, usa a chave definida no modelo (ex.: "id"),
+                # não o OBJECTID interno do arcpy — ele só existe depois da
+                # inserção, então não dá pra preencher a FK com ele antes de
+                # carregar os dados. Sem FK (associação N:N / tabela de
+                # junção), o arcpy gerencia tudo internamente por OBJECTID.
+                origin_primary_key=(pk_field_name(origin) if fk_field else 'OBJECTID'))
             if fk_field:
                 kwargs['origin_foreign_key'] = fk_field
             arcpy.management.CreateRelationshipClass(

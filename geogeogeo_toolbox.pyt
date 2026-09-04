@@ -195,6 +195,17 @@ def general_topology_suggestion(cat):
     return None
 
 
+def pk_field_name(c):
+    """Nome do campo a usar como origin_primary_key de uma classe de
+    relacionamento — o atributo marcado como PK no modelo (normalmente
+    "id"), não o OBJECTID interno do arcpy. O OBJECTID só é atribuído pelo
+    banco na hora da inserção, então não dá pra popular o campo de FK da
+    classe dependente com ele antes de carregar os dados; a chave definida
+    no modelo é estável e é o que já vem preenchido nos seus dados."""
+    pk = next((a for a in (c.get('attributes') or []) if a.get('pk')), None)
+    return sql_ident(pk['name']) if pk else 'id'
+
+
 # ============================================================
 # Campos derivados de relacionamentos — replicam computeExportFields()/
 # associationPlan() do app.js
@@ -420,7 +431,12 @@ class CriarGeodatabaseOMTG:
                 message_direction='NONE',
                 cardinality=cardinality,
                 attributed='NONE',
-                origin_primary_key='OBJECTID')
+                # com FK explícito, usa a chave definida no modelo (ex.: "id"),
+                # não o OBJECTID interno do arcpy — ele só existe depois da
+                # inserção, então não dá pra preencher a FK com ele antes de
+                # carregar os dados. Sem FK (associação N:N / tabela de
+                # junção), o arcpy gerencia tudo internamente por OBJECTID.
+                origin_primary_key=(pk_field_name(origin) if fk_field else 'OBJECTID'))
             if fk_field:
                 kwargs['origin_foreign_key'] = fk_field
             arcpy.management.CreateRelationshipClass(

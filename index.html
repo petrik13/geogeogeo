@@ -382,6 +382,7 @@
     <div class="spacer"></div>
     <div class="btnrow">
       <button class="btn ghost" id="btnSample" title="Carregar modelo de exemplo">Exemplo</button>
+      <button class="btn ghost" id="btnPytTool" title="Baixar a ferramenta para ArcGIS Pro (.pyt) — instale uma vez em Catalog › Toolboxes › Add Toolbox">Ferramenta ArcGIS (.pyt)</button>
       <button class="btn ghost" id="btnNew" title="Novo modelo em branco">Novo</button>
       <button class="btn ghost" id="btnOpen" title="Abrir modelo (.json)">Abrir</button>
       <input type="file" id="fileOpen" accept="application/json" class="sr-only">
@@ -3649,7 +3650,7 @@ function refreshExportBody(){
     else if(activeExportTab==='xml') text = buildEsriXML();
     else if(activeExportTab==='gdal') text = buildGdalScript();
     else if(activeExportTab==='gpkg') text = buildGpkgSql();
-    else if(activeExportTab==='pyt') text = PYT_TOOLBOX_SOURCE;
+    else if(activeExportTab==='pyt') text = JSON.stringify(state, null, 2);
     else text = buildPostgisSql({useTopology: !!state.meta.pgTopology});
     pre.textContent = text;
   }catch(err){
@@ -3672,9 +3673,9 @@ function renderExport(){
     opts.appendChild(miniField('SRID', state.meta.srid, 'number', v=>{ state.meta.srid=parseInt(v,10)||4326; refreshExportBody(); }));
     opts.appendChild(miniField('Autoridade', state.meta.srsAuthority, 'text', v=>{ state.meta.srsAuthority=v; refreshExportBody(); }));
   } else if(activeExportTab==='pyt'){
-    // sem opções: este arquivo é genérico/reutilizável — não depende do
-    // modelo atual (ele lê o JSON do modelo em tempo de execução, dentro
-    // do próprio ArcGIS Pro).
+    // sem opções: aqui só mostramos o JSON do modelo atual — a mesma coisa
+    // que entra como parâmetro de entrada da ferramenta .pyt (baixada à
+    // parte, pelo botão ao lado de "Exemplo" no topo).
   } else {
     opts.appendChild(miniField('SRID', state.meta.srid, 'number', v=>{ state.meta.srid=parseInt(v,10)||4326; refreshExportBody(); }));
     opts.appendChild(miniField('Esquema', state.meta.schema, 'text', v=>{ state.meta.schema=v; refreshExportBody(); }));
@@ -3687,15 +3688,10 @@ function renderExport(){
   body.appendChild(pre);
   panel.appendChild(body);
 
-  const extByTab = {arcpy:'py', xml:'xml', gdal:'py', gpkg:'sql', postgis:'sql', pyt:'pyt'};
-  const baseByTab = {arcpy:'_arcgis_schema', xml:'_workspace', gdal:'_gdal_schema', gpkg:'_gpkg', postgis:'_postgis'};
+  const extByTab = {arcpy:'py', xml:'xml', gdal:'py', gpkg:'sql', postgis:'sql', pyt:'json'};
+  const baseByTab = {arcpy:'_arcgis_schema', xml:'_workspace', gdal:'_gdal_schema', gpkg:'_gpkg', postgis:'_postgis', pyt:''};
   const wantExt = '.'+extByTab[activeExportTab];
-  // A ferramenta .pyt é genérica e reutilizável entre modelos — seu nome de
-  // arquivo NÃO leva o nome do modelo atual, ao contrário dos demais
-  // exports (que descrevem só este modelo).
-  const dlName = activeExportTab==='pyt'
-    ? safeDownloadName('geogeogeo_toolbox', 'pyt')
-    : safeDownloadName(sqlIdent(state.meta.name||'modelo')+baseByTab[activeExportTab], extByTab[activeExportTab]);
+  const dlName = safeDownloadName(sqlIdent(state.meta.name||'modelo')+baseByTab[activeExportTab], extByTab[activeExportTab]);
   const needsRename = dlName.endsWith('.txt');
   const finalName = needsRename ? dlName.slice(0,-4) : dlName;
 
@@ -3726,7 +3722,7 @@ function renderExport(){
     gdal: 'Script Python usando GDAL/OGR (driver OpenFileGDB) — cria uma .gdb real sem precisar do ArcGIS Pro nem de licença Esri, só do GDAL (gratuito e de código aberto). O driver suporta escrever esquema e relationship classes desde a versão 3.6 do GDAL; a parte de relacionamentos roda dentro de um try/except caso a assinatura da API varie entre versões — veja o comentário no topo do script. Onde ArcGIS Pro já está disponível, a aba "Geodatabase (ArcGIS)" (arcpy) é a mais testada; esta é a alternativa para quem não tem ArcGIS Pro.',
     gpkg: 'Script SQL para aplicar sobre um GeoPackage vazio (crie um no QGIS e rode este script em um cliente SQLite). Sem mecanismo nativo de topologia: as regras espaciais ficam documentadas em comentário.',
     postgis: 'DDL para PostgreSQL/PostGIS. Ative a opção de topologia para gerar postgis.topology nas classes de rede, e revise os gatilhos de validação espacial derivados das relações espaciais do modelo.',
-    pyt: 'Uma ferramenta de verdade para o ArcGIS Pro (Python Toolbox), não um script avulso — baixe este arquivo UMA vez e instale-o (Catalog → botão direito em Toolboxes → Add Toolbox → escolha o arquivo). A partir daí ela aparece na caixa de ferramentas com uma tela de parâmetros nativa: (1) o modelo OMT-G em .json (gere pela aba "Exportar para → JSON" no canto superior direito — a cada modelo novo, um .json diferente), (2) a pasta onde salvar e (3) o nome da geodatabase a criar. Reaproveite a mesma ferramenta instalada para qualquer modelo futuro, sem baixar nada de novo — só troque o arquivo .json de entrada. Por dentro ela roda exatamente a mesma lógica desta aba "Geodatabase (ArcGIS)" (mesmos mapeamentos de geometria, campos derivados de relacionamento e regras de topologia), só que interpretando o JSON em tempo de execução em vez de gerar um script por modelo.'
+    pyt: 'Isto aqui é só o parâmetro de entrada da ferramenta — o JSON deste modelo, o mesmo que "Exportar para → JSON" no canto superior direito gera. A ferramenta em si (o arquivo .pyt) é um download separado, único e reutilizável para qualquer modelo futuro: pegue-o pelo botão "Ferramenta ArcGIS (.pyt)" ao lado de "Exemplo" no topo da tela, instale-o UMA vez no ArcGIS Pro (Catalog → botão direito em Toolboxes → Add Toolbox → escolha o arquivo) e, a cada execução, informe um .json como este como entrada, mais a pasta de destino e o nome da geodatabase a criar. Por dentro ela roda exatamente a mesma lógica desta aba "Geodatabase (ArcGIS)" (mesmos mapeamentos de geometria, campos derivados de relacionamento e regras de topologia), só que interpretando o JSON em tempo de execução em vez de gerar um script por modelo.'
   };
   panel.appendChild(E('div',{class:'exp-note'},[notes[activeExportTab]]));
   refreshExportBody();
@@ -4071,6 +4067,9 @@ function initTopbar(){
   document.getElementById('btnSample').addEventListener('click', (e)=>{
     const run = ()=>loadModel(sampleModel());
     if(state.classes.length) confirmAction(e.currentTarget, run); else run();
+  });
+  document.getElementById('btnPytTool').addEventListener('click', ()=>{
+    saveFile('geogeogeo_toolbox.pyt', PYT_TOOLBOX_SOURCE);
   });
   document.getElementById('btnNew').addEventListener('click', (e)=>{
     const run = ()=>loadModel(emptyModel());

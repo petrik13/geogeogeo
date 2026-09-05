@@ -1622,11 +1622,12 @@ function segmentsOf(points){
   return segs;
 }
 const LANE_GAP = 12;
-// Bumped up from 14 (item 11: "os relacionamentos... individualizados") —
-// two+ relationships between the very same pair of classes used to spread
-// only ~14px apart along the shared border, reading as one thick line at
-// most zoom levels; wider apart, each is clearly its own line.
-const PORT_GAP = 22, PORT_MARGIN = 10;
+// Bumped up again (Round E item 6: "as cardinalidades em cima... deve se
+// afastar as linhas") — 22px still let a "0..*"-width cardinality label on
+// one port's line reach into its neighbor's when 3-4 relationships share
+// the same pair of classes and the same border. Wide enough that adjacent
+// ports clear each other's near-box cardinality label with room to spare.
+const PORT_GAP = 36, PORT_MARGIN = 14;
 /* Port assignment: every relationship end is grouped by (classId, side) with
    every OTHER relationship that also leaves that same node from that same
    side, then spread out along the border instead of all meeting at its
@@ -1849,6 +1850,45 @@ function edgeLabelAnchors(points, rectA, rectB){
   const normB = perpClearDir(points[n-2].x-points[n-1].x, points[n-2].y-points[n-1].y);
   return {mid: midSeg, nearA, nearB, normA, normB, normMid, midDx: midSegDx, midDy: midSegDy};
 }
+/* Round E items 3/4: pick which segment of a (possibly multi-bend) route
+   carries the association's optional name + reading-direction arrow.
+   edgeLabelAnchors' own `mid` (50% of total path length) is right for the
+   cardinality labels — but for a route with a short jog somewhere along a
+   longer run, that 50% point can land ON the jog instead of the long
+   straight stretch that actually has room for a name — the name then gets
+   the jog's (often vertical, cramped) orientation instead of the route's
+   real, roomy segment, and can end up mis-rotated relative to what the
+   line looks like at a glance ("O texto ali não se adequa ainda"). This
+   scans EVERY segment (an earlier version excluded the first/last legs on
+   the theory that those already carry the near-box cardinality labels —
+   but a route's short connecting jog is exactly as likely to sit in the
+   MIDDLE, e.g. a long-horizontal / short-vertical / long-horizontal
+   "Z" jog around an obstacle, where excluding the ends left only that
+   short middle jog as the sole candidate, picking precisely the wrong
+   segment) and simply prefers the longest one, with a bias toward a
+   horizontal segment when one is close enough in length to the true
+   longest ("com preferência para um horizontal"). The near-box cardinality
+   labels sit only NEAR_DIST (20px) from their box, so a name centered on
+   even a first/last segment's own midpoint is normally far past them —
+   and resolveLabelOverlaps is the backstop for the rare case it isn't. */
+function bestLabelSegment(points){
+  const n = points.length;
+  const segs = [];
+  for(let i=0;i<n-1;i++){
+    const p1 = points[i], p2 = points[i+1];
+    const dx = p2.x-p1.x, dy = p2.y-p1.y;
+    segs.push({p1, p2, dx, dy, len: Math.hypot(dx,dy), horiz: Math.abs(dx)>=Math.abs(dy)});
+  }
+  const bestOverall = segs.reduce((a,b)=> b.len>a.len ? b : a);
+  const bestHoriz = segs.filter(s=>s.horiz).reduce((a,b)=> (!a||b.len>a.len) ? b : a, null);
+  const HORIZ_BIAS = 0.6; // a horizontal run wins unless it's under 60% of the longest segment's length
+  const chosen = (bestHoriz && bestHoriz.len >= bestOverall.len*HORIZ_BIAS) ? bestHoriz : bestOverall;
+  return {
+    mid: {x:(chosen.p1.x+chosen.p2.x)/2, y:(chosen.p1.y+chosen.p2.y)/2},
+    norm: perpClearDir(chosen.dx, chosen.dy),
+    dx: chosen.dx, dy: chosen.dy
+  };
+}
 /* Nudges apart any edge/cardinality labels whose (padded) boxes overlap —
    this catches the case port-spreading alone can't: two relationships that
    approach the SAME class from two different sides (say top and left) can
@@ -1907,7 +1947,10 @@ function buildAssocNameArrow(labelLayer, labelMetas, mid, normMid, midDx, midDy,
   labelLayer.appendChild(wrap); // in the document early so getBBox() below can measure real glyphs
 
   let t = null, nameHalfCross = 0, nameLen = 0, centerYOffset = 0;
-  const CLEAR_GAP = 3;
+  // Round E item 1 ("a flecha tem que ficar mais afastada"): how far the
+  // line itself must stay from the NEAREST point of the arrow or name —
+  // not just from their center points.
+  const MIN_GAP = 8;
   if(r.name){
     t = S('text', {class:'edge-card-label', x:0, y:0, 'text-anchor':'middle'}, [r.name]);
     wrap.appendChild(t);
@@ -1937,20 +1980,30 @@ function buildAssocNameArrow(labelLayer, labelMetas, mid, normMid, midDx, midDy,
       centerYOffset = b.y + b.height/2;
     }catch(e){}
   }
-  // Chevron sits closest to the mid-point along the line's own axis; the
-  // name (if any) sits further out, past the chevron, so neither the line
-  // nor the two annotations ever overlap each other.
-  const crossClear = r.name ? (nameHalfCross+CLEAR_GAP) : 4;
+  // The arrow (closest to the mid-point along the line's own axis) and the
+  // name (if any, sitting further out past the arrow) both sit at the SAME
+  // perpendicular offset from the line — so that offset has to clear the
+  // line by MIN_GAP past whichever of the two reaches furthest back toward
+  // it: the name's own half-height, or the arrowhead's wingspan (Round E
+  // item 5 — "a flecha passa por cima da linha ainda" traced to exactly
+  // this: the old crossClear was smaller than the wing's own reach back
+  // toward the line, so the wing tip landed on or past the line itself).
+  const ARROW_LEN = 18, ARROW_HEAD = 6, ARROW_WING = 3, ARROW_GAP_AFTER = 6;
+  const crossClear = MIN_GAP + Math.max(ARROW_WING, r.name ? nameHalfCross : 0);
   const bx = mid.x + normMid.x*crossClear, by = mid.y + normMid.y*crossClear;
-  const ARROW_FWD = 6, ARROW_BACK = 5, ARROW_WING = 3.6, ARROW_GAP_AFTER = 5;
-  const tipX = bx+fx*ARROW_FWD, tipY = by+fy*ARROW_FWD;
-  const backX = bx-fx*ARROW_BACK, backY = by-fy*ARROW_BACK;
-  const leftX = backX-fy*ARROW_WING, leftY = backY+fx*ARROW_WING;
-  const rightX = backX+fy*ARROW_WING, rightY = backY-fx*ARROW_WING;
-  wrap.insertBefore(S('path', {d:'M'+leftX+','+leftY+' L'+tipX+','+tipY+' L'+rightX+','+rightY,
+  // A real arrow — a visible shaft plus an open head at the tip — instead of
+  // a bare chevron that reads as just a "<"/">" glyph floating in space
+  // (Round E item 2 — "tem que ser flecha mesmo").
+  const tailX = bx-fx*ARROW_LEN/2, tailY = by-fy*ARROW_LEN/2;
+  const tipX = bx+fx*ARROW_LEN/2, tipY = by+fy*ARROW_LEN/2;
+  const headBackX = tipX-fx*ARROW_HEAD, headBackY = tipY-fy*ARROW_HEAD;
+  const leftX = headBackX-fy*ARROW_WING, leftY = headBackY+fx*ARROW_WING;
+  const rightX = headBackX+fy*ARROW_WING, rightY = headBackY-fx*ARROW_WING;
+  wrap.insertBefore(S('path', {d:'M'+tailX+','+tailY+' L'+tipX+','+tipY+
+    ' M'+leftX+','+leftY+' L'+tipX+','+tipY+' L'+rightX+','+rightY,
     style:'fill:none;stroke:var(--canvas-line);stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round;'}), wrap.firstChild);
   if(t){
-    const nameDist = ARROW_FWD+ARROW_GAP_AFTER+nameLen/2;
+    const nameDist = ARROW_LEN/2+ARROW_GAP_AFTER+nameLen/2;
     const nx = bx+fx*nameDist, ny = by+fy*nameDist;
     if(vertical){
       // Shift the baseline so the glyph box's true CENTER — not the
@@ -2081,7 +2134,11 @@ function buildEdgeDom(route, labelLayer, labelMetas, rects){
   if(r.type==='association'){
     lbl(nearA.x, nearA.y, r.cardSource||'1', normA);
     lbl(nearB.x, nearB.y, r.cardTarget||'0..*', normB);
-    buildAssocNameArrow(labelLayer, labelMetas, mid, normMid, midDx, midDy, r);
+    // Round E items 3/4: the name+arrow use the route's own longest
+    // (horizontal-biased) segment, not the generic 50%-of-path-length `mid`
+    // — see bestLabelSegment for why.
+    const bestSeg = bestLabelSegment(points);
+    buildAssocNameArrow(labelLayer, labelMetas, bestSeg.mid, bestSeg.norm, bestSeg.dx, bestSeg.dy, r);
   } else if(relFamily(r.type)==='aggregation'){
     lbl(nearA.x, nearA.y, r.cardSource||'1', normA);
     lbl(nearB.x, nearB.y, r.cardTarget||'0..*', normB);

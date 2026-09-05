@@ -124,6 +124,9 @@
   .brand .name{ font-weight:600; font-size:14.5px; letter-spacing:.1px; white-space:nowrap;}
   .brand .name small{ display:block; font-weight:400; color:var(--muted); font-size:13px; letter-spacing:.06em; text-transform:uppercase;}
   .model-name{ min-width:160px; max-width:320px; flex:1; font-weight:500; }
+  .pagetabs{ display:flex; gap:2px; background:var(--surface-2); border-radius:8px; padding:3px; flex:none; }
+  .pagetab{ border:none; background:transparent; padding:6px 12px; border-radius:6px; font-size:13px; font-weight:600; color:var(--muted); cursor:pointer; }
+  .pagetab.active{ background:var(--surface); color:var(--ink); box-shadow:var(--shadow); }
   .topbar .spacer{ flex:1; }
   .btnrow{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
   .btn{
@@ -290,6 +293,12 @@
   .node-card .cattr .attype{ fill:#7a887f; }
   .node-card .cpk{ font-weight:700; }
   .node-card .attr-key{ color:var(--accent); }
+  .node-card .attr-fk{ color:var(--edge-association); }
+  .node-card .col-handle{ opacity:0; fill:var(--canvas-bg); stroke:var(--accent); stroke-width:1.4; cursor:crosshair; transition:opacity .12s,r .1s; }
+  .node-card:hover .col-handle{ opacity:.85; }
+  .node-card .col-handle:hover{ opacity:1; fill:var(--accent); }
+  .fk-picker-row td{ padding:2px 6px 9px; background:var(--surface-2); }
+  .fk-picker-row .field-row{ gap:8px; }
   .node-card .attr-required{ font-family:"IBM Plex Mono"; font-size:12.5px; font-weight:700; fill:var(--canvas-required); }
 
   .edge-path{ fill:none; stroke-linecap:round; stroke-linejoin:round; }
@@ -379,10 +388,14 @@
       <div class="name">GeoGeoGeo<small>Modelagem geográfica</small></div>
     </div>
     <input id="modelName" class="model-name" type="text" value="Novo modelo" aria-label="Nome do modelo">
+    <div class="pagetabs" id="pageTabs">
+      <button class="pagetab active" id="pageTabConceptual" data-page="conceptual">Conceitual</button>
+      <button class="pagetab" id="pageTabLogical" data-page="logical">Lógica</button>
+    </div>
+    <button class="btn" id="btnEvolve" title="Gerar/atualizar o modelo lógico a partir do conceitual">Evoluir para o lógico →</button>
     <div class="spacer"></div>
     <div class="btnrow">
       <button class="btn ghost" id="btnSample" title="Carregar modelo de exemplo">Exemplo</button>
-      <button class="btn ghost" id="btnPytTool" title="Baixar a ferramenta para ArcGIS Pro (.pyt) — instale uma vez em Catalog › Toolboxes › Add Toolbox">Ferramenta ArcGIS (.pyt)</button>
       <button class="btn ghost" id="btnNew" title="Novo modelo em branco">Novo</button>
       <button class="btn ghost" id="btnOpen" title="Abrir modelo (.json)">Abrir</button>
       <input type="file" id="fileOpen" accept="application/json" class="sr-only">
@@ -399,28 +412,47 @@
 
   <div class="layout">
     <aside class="rail rail-left">
-      <div class="rail-section">
-        <div class="rail-label">Adicionar classe</div>
-        <div class="addgrid" id="addClassGrid"></div>
-      </div>
-      <div class="rail-section">
-        <div class="rail-label">Adicionar relacionamento</div>
-        <select id="relTypeSelect" class="relselect"></select>
-        <div class="relhint" id="relHint">Escolha o tipo e arraste a partir do conector (○) na borda de uma classe até outra.</div>
-        <div id="relCardHintMini"></div>
-      </div>
-      <div class="rail-scroll">
+      <div id="railConceptual">
         <div class="rail-section">
-          <div class="rail-label">Classes <span class="count" id="countClasses">0</span></div>
-          <div id="classList"></div>
+          <div class="rail-label">Adicionar classe</div>
+          <div class="addgrid" id="addClassGrid"></div>
         </div>
         <div class="rail-section">
-          <div class="rail-label">Relacionamentos <span class="count" id="countRels">0</span></div>
-          <div id="relList"></div>
+          <div class="rail-label">Adicionar relacionamento</div>
+          <select id="relTypeSelect" class="relselect"></select>
+          <div class="relhint" id="relHint">Escolha o tipo e arraste a partir do conector (○) na borda de uma classe até outra.</div>
+          <div id="relCardHintMini"></div>
         </div>
-        <div class="rail-section grow">
-          <div class="rail-label">Validação <span class="count" id="countIssues">0</span></div>
-          <div id="validationList"></div>
+        <div class="rail-scroll">
+          <div class="rail-section">
+            <div class="rail-label">Classes <span class="count" id="countClasses">0</span></div>
+            <div id="classList"></div>
+          </div>
+          <div class="rail-section">
+            <div class="rail-label">Relacionamentos <span class="count" id="countRels">0</span></div>
+            <div id="relList"></div>
+          </div>
+          <div class="rail-section grow">
+            <div class="rail-label">Validação <span class="count" id="countIssues">0</span></div>
+            <div id="validationList"></div>
+          </div>
+        </div>
+      </div>
+      <div id="railLogical" hidden>
+        <div class="rail-section">
+          <div class="rail-label">Modelo lógico</div>
+          <button class="btn" id="btnAddTable" style="width:100%">+ Nova tabela</button>
+          <div class="relhint">Arraste de uma coluna FK (●) até a PK de outra tabela para ligar — ou marque "FK" nas propriedades da coluna e escolha lá a tabela/PK.</div>
+        </div>
+        <div class="rail-scroll">
+          <div class="rail-section">
+            <div class="rail-label">Tabelas <span class="count" id="countTables">0</span></div>
+            <div id="tableList"></div>
+          </div>
+          <div class="rail-section grow">
+            <div class="rail-label">Validação <span class="count" id="countIssuesLogical">0</span></div>
+            <div id="validationListLogical"></div>
+          </div>
         </div>
       </div>
     </aside>
@@ -449,11 +481,9 @@
     <aside class="rail rail-right">
       <div class="tabs">
         <div class="tab active" data-tab="prop">Propriedades</div>
-        <div class="tab" data-tab="export">Exportar</div>
         <div class="tab" data-tab="legend">Ajuda</div>
       </div>
       <div class="panel active" id="panelProp"></div>
-      <div class="panel" id="panelExport"></div>
       <div class="panel" id="panelLegend"></div>
     </aside>
   </div>
@@ -679,14 +709,17 @@ let state = null;
 let selection = {type:null, id:null};
 let relMode = {type:'association'};
 let view = {x:-40, y:-40, w:1200, h:800};
-let drag = null;
+let drag = null; // {kind:'class'|'table', id, offX, offY, moved} — whole-node drag, either page
 let panning = null;
-let connDrag = null; // {sourceId, sourceSide, x, y} — dragging a relationship from a class connector handle
+let connDrag = null; // {sourceId, sourceSide, x, y} — dragging a relationship from a class connector handle (conceptual page only)
 let activeRightTab = 'prop';
-let activeExportTab = 'arcpy';
+let activePage = 'conceptual'; // 'conceptual' | 'logical'
+let logicalSelection = {type:null, id:null}; // {type:'table'|null, id}
+let colDrag = null; // {sourceTableId, sourceColumnId, x, y} — dragging a column-to-column FK link (logical page, Power BI style)
+let logicalColRects = {}; // columnId -> {tableId, x, y, w, h} in canvas coords, rebuilt every renderLogicalCanvas() for drop-target hit-testing
 
 function emptyModel(name){
-  return { meta:{ name: name||'Novo modelo', srid:4326, schema:'public', workspaceName:'ModeloOMTG', srsAuthority:'EPSG' }, classes:[], relationships:[] };
+  return { meta:{ name: name||'Novo modelo', srid:4326, schema:'public', workspaceName:'ModeloOMTG', srsAuthority:'EPSG' }, classes:[], relationships:[], logical:{tables:[]} };
 }
 function newClassObj(kind, idx){
   const id = uid('c');
@@ -743,6 +776,102 @@ function selectRel(id){ selection = {type:'rel', id}; switchRightTab('prop'); to
 
 function handleNodeClick(classId){
   selectClass(classId);
+}
+
+/* ============================================================
+   LOGICAL MODEL (page 2) — Power BI–style column-to-column tables.
+   state.logical = { tables: [ { id, name, x, y, w, h, columns:
+     [ {id, name, type, pk, nullable, fk, refTableId, refColumnId} ] } ] }
+   No separate "links" array: an FK relationship is just a column with
+   fk:true plus refTableId/refColumnId pointing at another table's PK
+   column — a table can carry as many FK columns as it needs.
+   ============================================================ */
+function newTableObj(idx){
+  const id = uid('t');
+  return {
+    id, name: 'NovaTabela'+(idx+1),
+    x: 40 + (idx % 4) * 250,
+    y: 40 + Math.floor(idx / 4) * 210,
+    w: 208, h: 60,
+    columns: [{id:uid('col'), name:'id', type:'integer', pk:true, nullable:false, fk:false, refTableId:null, refColumnId:null}]
+  };
+}
+function addTable(){
+  const t = newTableObj(state.logical.tables.length);
+  state.logical.tables.push(t);
+  logicalSelection = {type:'table', id:t.id};
+  touch();
+}
+function addTableAt(x, y){
+  const t = newTableObj(state.logical.tables.length);
+  t.x = Math.round(x); t.y = Math.round(y);
+  state.logical.tables.push(t);
+  logicalSelection = {type:'table', id:t.id};
+  touch();
+}
+function deleteTable(id){
+  state.logical.tables = state.logical.tables.filter(t=>t.id!==id);
+  // a table that referenced the deleted one loses that FK rather than pointing at nothing
+  state.logical.tables.forEach(t=> t.columns.forEach(c=>{
+    if(c.refTableId===id){ c.fk=false; c.refTableId=null; c.refColumnId=null; }
+  }));
+  if(logicalSelection.type==='table' && logicalSelection.id===id) logicalSelection = {type:null,id:null};
+  touch();
+}
+function selectTable(id){ logicalSelection = {type:'table', id}; switchRightTab('prop'); touch(); }
+
+/* "Evoluir para o lógico": one-way generation from the conceptual model.
+   Reuses computeExportFields()/associationPlan() — the same relational
+   inference that used to feed the (now removed) SQL/arcpy exporters — as
+   the starting point the user then edits by hand on the logical page.
+   The two pages are independent after this: later edits to the conceptual
+   model do NOT re-run this automatically (evolve again to re-sync). */
+function evolveToLogical(){
+  const tables = [];
+  const tableByClassId = {};
+  state.classes.forEach(c=>{ tableByClassId[c.id] = uid('t'); });
+
+  state.classes.forEach(c=>{
+    const fields = computeExportFields(c);
+    const columns = fields.map(f=>({
+      id: uid('col'), name: f.name, type: f.type, pk: !!f.pk, nullable: !!f.nullable,
+      fk: !!f.fkTable, refTableId: f.fkClassId ? tableByClassId[f.fkClassId] : null, refColumnId: null,
+      _fkClassId: f.fkClassId || null
+    }));
+    if(!columns.some(col=>col.pk)){
+      // "toda entidade criada no modelo tem que ter PK" — synthesize one if the
+      // conceptual class had none marked (computeValidation only warns there).
+      columns.unshift({id:uid('col'), name:'id', type:'integer', pk:true, nullable:false, fk:false, refTableId:null, refColumnId:null, _fkClassId:null});
+    }
+    tables.push({ id: tableByClassId[c.id], name: sqlIdent(c.name), x: c.x, y: c.y, w:208, h:60, columns });
+  });
+
+  // resolve every FK column's target PK column (first PK column of the referenced table)
+  const pkColumnByTableId = {};
+  tables.forEach(t=>{ const pk = t.columns.find(col=>col.pk); if(pk) pkColumnByTableId[t.id] = pk.id; });
+  tables.forEach(t=> t.columns.forEach(col=>{
+    if(col._fkClassId) col.refColumnId = pkColumnByTableId[col.refTableId] || null;
+    delete col._fkClassId;
+  }));
+
+  // N:N associations have no single-column FK — realize them as a junction
+  // table with a composite PK made of the two sides' FK columns.
+  state.relationships.forEach(r=>{
+    if(r.type!=='association') return;
+    if(associationPlan(r).mode!=='junction') return;
+    const a = state.classes.find(x=>x.id===r.sourceId), b = state.classes.find(x=>x.id===r.targetId);
+    if(!a || !b) return;
+    const tA = tableByClassId[a.id], tB = tableByClassId[b.id];
+    const colA = {id:uid('col'), name: sqlIdent(a.name)+'_id', type:'integer', pk:true, nullable:false, fk:true, refTableId:tA, refColumnId: pkColumnByTableId[tA]||null};
+    const colB = {id:uid('col'), name: sqlIdent(b.name)+'_id', type:'integer', pk:true, nullable:false, fk:true, refTableId:tB, refColumnId: pkColumnByTableId[tB]||null};
+    const jx = ((a.x+(a.w||CARD_W)/2) + (b.x+(b.w||CARD_W)/2))/2;
+    const jy = Math.max(a.y+(a.h||60), b.y+(b.h||60)) + 90;
+    tables.push({ id: uid('t'), name: sqlIdent(r.name || (a.name+'_'+b.name)), x: Math.round(jx-104), y: Math.round(jy), w:208, h:60, columns:[colA, colB] });
+  });
+
+  state.logical = { tables };
+  logicalSelection = {type:null, id:null};
+  switchPage('logical');
 }
 
 /* ---------- sample model ---------- */
@@ -823,8 +952,9 @@ function touch(skipInspector){
   renderClassList();
   renderRelList();
   renderValidation();
+  renderTableList();
+  renderValidationLogical();
   renderCanvas();
-  renderExport();
   if(!skipInspector) renderInspector();
   scheduleAutosave();
 }
@@ -877,6 +1007,60 @@ function renderValidation(){
   }
   issues.forEach(is=>{
     const row = E('div',{class:'vitem '+is.sev, onclick:()=>{ if(is.ref.type==='class') selectClass(is.ref.id); else selectRel(is.ref.id); }},[
+      E('span',{class:'dot'}),
+      E('div',{class:'msg'},[is.msg])
+    ]);
+    wrap.appendChild(row);
+  });
+}
+
+/* ---------- left rail (logical page): table list + validation ---------- */
+function renderTableList(){
+  const wrap = document.getElementById('tableList');
+  if(!wrap || !state.logical) return;
+  wrap.innerHTML = '';
+  document.getElementById('countTables').textContent = state.logical.tables.length;
+  if(!state.logical.tables.length){
+    wrap.appendChild(E('div',{class:'empty-note'},['Nenhuma tabela ainda. Use "Evoluir para o lógico ↑" ou "+ Nova tabela".']));
+    return;
+  }
+  state.logical.tables.forEach(t=>{
+    const row = E('div',{class:'listitem'+(logicalSelection.type==='table'&&logicalSelection.id===t.id?' selected':''), onclick:()=>selectTable(t.id)},[
+      E('span',{class:'ic', html:ICONS.conventional}),
+      E('div',{class:'tx'},[ E('div',{class:'t1'},[t.name]), E('div',{class:'t2'},[t.columns.length+' coluna'+(t.columns.length===1?'':'s')]) ]),
+      E('button',{class:'del-x', title:'Excluir tabela', html:ICONS.trash, onclick:(e)=>{ e.stopPropagation(); deleteTable(t.id); }})
+    ]);
+    wrap.appendChild(row);
+  });
+}
+function computeLogicalValidation(){
+  const issues = [];
+  if(!state.logical) return issues;
+  const nameCount = {};
+  state.logical.tables.forEach(t=>{ nameCount[t.name]=(nameCount[t.name]||0)+1; });
+  state.logical.tables.forEach(t=>{
+    if(nameCount[t.name]>1) issues.push({sev:'error', ref:{id:t.id}, msg:'Nome de tabela duplicado: "'+t.name+'"'});
+    if(!t.columns.length) issues.push({sev:'warning', ref:{id:t.id}, msg:'"'+t.name+'" não possui colunas'});
+    if(t.columns.length && !t.columns.some(c=>c.pk)) issues.push({sev:'error', ref:{id:t.id}, msg:'"'+t.name+'" precisa de ao menos uma coluna PK'});
+    t.columns.forEach(c=>{
+      if(c.fk && (!c.refTableId || !c.refColumnId)) issues.push({sev:'error', ref:{id:t.id}, msg:'"'+t.name+'.'+c.name+'" está marcada como FK mas não referencia nenhuma PK'});
+      else if(c.fk && c.refTableId && !state.logical.tables.some(tt=>tt.id===c.refTableId)) issues.push({sev:'error', ref:{id:t.id}, msg:'"'+t.name+'.'+c.name+'" referencia uma tabela que não existe mais'});
+    });
+  });
+  return issues;
+}
+function renderValidationLogical(){
+  const wrap = document.getElementById('validationListLogical');
+  if(!wrap || !state.logical) return;
+  wrap.innerHTML = '';
+  const issues = computeLogicalValidation();
+  document.getElementById('countIssuesLogical').textContent = issues.length;
+  if(!issues.length){
+    wrap.appendChild(E('div',{class:'vgood'},['✓ Nenhum problema encontrado']));
+    return;
+  }
+  issues.forEach(is=>{
+    const row = E('div',{class:'vitem '+is.sev, onclick:()=>selectTable(is.ref.id)},[
       E('span',{class:'dot'}),
       E('div',{class:'msg'},[is.msg])
     ]);
@@ -1559,7 +1743,14 @@ function buildEdgeDom(route, labelLayer, labelMetas, rects){
   // (fill + apex dot) encodes total/partial and disjoint/overlapping.
   return g;
 }
+/* dispatches to whichever page is active — the conceptual canvas (OMT-G
+   classes/relationships) or the logical canvas (tables/FK columns) — so
+   every existing caller of renderCanvas() keeps working unmodified. */
 function renderCanvas(){
+  if(activePage==='logical') renderLogicalCanvas();
+  else renderConceptualCanvas();
+}
+function renderConceptualCanvas(){
   const nodeLayer = document.getElementById('nodeLayer');
   const edgeLayer = document.getElementById('edgeLayer');
   const labelLayer = document.getElementById('labelLayer');
@@ -1617,6 +1808,121 @@ function renderCanvas(){
   state.classes.forEach(c=> nodeLayer.appendChild(buildNode(c)) );
 }
 
+/* ---------- logical canvas: tables + column-to-column FK edges ---------- */
+function tableHeight(t){
+  const rows = Math.max(1, t.columns.length);
+  return CARD_HEAD_H + rows*CARD_ROW_H + 11;
+}
+function fkGlyph(){
+  const g = S('g',{class:'attr-fk'});
+  g.appendChild(S('circle',{cx:0,cy:0,r:2.5, style:'fill:none;stroke:currentColor;stroke-width:1.25'}));
+  return g;
+}
+function buildLogicalTableNode(t){
+  const isSel = logicalSelection.type==='table' && logicalSelection.id===t.id;
+  const h = tableHeight(t);
+  const g = S('g', {
+    class:'node-card table-card'+(isSel?' selected':''),
+    'data-table-id': t.id,
+    transform:'translate('+t.x+','+t.y+')',
+    onpointerdown:(evt)=>{
+      evt.stopPropagation();
+      const p = svgPoint(evt);
+      drag = {kind:'table', id:t.id, offX:p.x-t.x, offY:p.y-t.y, moved:false};
+      try{ evt.currentTarget.setPointerCapture(evt.pointerId); }catch(e){}
+    }
+  });
+  g.appendChild(S('rect',{class:'card-bg', x:0,y:0,width:t.w,height:h, rx:9}));
+  g.appendChild(S('text',{class:'cname', x:12, y:22},[t.name]));
+  g.appendChild(S('line',{class:'card-divider', x1:0,y1:CARD_HEAD_H,x2:t.w,y2:CARD_HEAD_H}));
+  const nameX = 12 + 15;
+  if(!t.columns.length){
+    g.appendChild(S('text',{class:'cattr', x:nameX, y:CARD_HEAD_H+CARD_ROW_H-6, style:'fill:var(--muted);font-style:italic;'},['(sem colunas)']));
+  } else {
+    t.columns.forEach((col,i)=>{
+      const rowY = CARD_HEAD_H + CARD_ROW_H*i;
+      const y = rowY + CARD_ROW_H - 6;
+      logicalColRects[col.id] = {tableId:t.id, x:t.x, y:t.y+rowY, w:t.w, h:CARD_ROW_H};
+      if(col.pk){
+        const k = keyGlyph();
+        k.setAttribute('transform','translate('+15+','+(y-3.6)+')');
+        g.appendChild(k);
+      } else if(col.fk){
+        const k = fkGlyph();
+        k.setAttribute('transform','translate('+15+','+(y-3.6)+')');
+        g.appendChild(k);
+      } else if(!col.nullable){
+        g.appendChild(S('text',{class:'attr-required', x:13, y:y},['*']));
+      }
+      const tEl = S('text',{class:'cattr', x:nameX, y:y});
+      const nameSpan = S('tspan',{class: col.pk ? 'cpk' : ''},[col.name]);
+      const typeSpan = S('tspan',{class:'attype'},[' : '+ATTR_TYPE_LABEL[col.type]]);
+      tEl.appendChild(nameSpan); tEl.appendChild(typeSpan);
+      g.appendChild(tEl);
+      // Power BI–style link handle: drag from any column's dot to another
+      // column that is a PK (on this table or another) to wire it as an FK —
+      // dropping directly on the target PK is what picks it, no extra dialog.
+      g.appendChild(S('circle',{class:'col-handle', cx:t.w, cy:rowY+CARD_ROW_H/2, r:4.5,
+        onpointerdown:(evt)=>{
+          evt.stopPropagation();
+          const p = svgPoint(evt);
+          colDrag = {sourceTableId:t.id, sourceColumnId:col.id, x:p.x, y:p.y};
+          try{ evt.currentTarget.setPointerCapture(evt.pointerId); }catch(e){}
+          renderColDragOverlay();
+        }
+      }));
+    });
+  }
+  return g;
+}
+function buildLogicalEdge(srcRect, targetRect){
+  const srcCx = srcRect.x+srcRect.w/2, tgtCx = targetRect.x+targetRect.w/2;
+  const goRight = tgtCx >= srcCx;
+  const p1x = goRight ? srcRect.x+srcRect.w : srcRect.x, p1y = srcRect.y+srcRect.h/2;
+  const p2x = goRight ? targetRect.x : targetRect.x+targetRect.w, p2y = targetRect.y+targetRect.h/2;
+  const dx = Math.max(40, Math.abs(p2x-p1x)/2);
+  const c1x = goRight ? p1x+dx : p1x-dx;
+  const c2x = goRight ? p2x-dx : p2x+dx;
+  const d = 'M'+p1x+','+p1y+' C'+c1x+','+p1y+' '+c2x+','+p2y+' '+p2x+','+p2y;
+  return S('path',{class:'edge-path logical-fk', d, style:'fill:none;stroke:var(--accent);stroke-width:1.6;marker-end:url(#marker-arrow-fk)'});
+}
+function renderLogicalCanvas(){
+  const nodeLayer = document.getElementById('nodeLayer');
+  const edgeLayer = document.getElementById('edgeLayer');
+  const labelLayer = document.getElementById('labelLayer');
+  nodeLayer.innerHTML = ''; edgeLayer.innerHTML = ''; if(labelLayer) labelLayer.innerHTML = '';
+  logicalColRects = {};
+  state.logical.tables.forEach(t=>{ t.w = CARD_W; t.h = tableHeight(t); });
+  // build nodes first so logicalColRects (per-column row rects) is populated
+  // before we compute edge anchors from it
+  const nodes = state.logical.tables.map(t=> buildLogicalTableNode(t));
+  state.logical.tables.forEach(t=>{
+    t.columns.forEach(col=>{
+      if(!col.fk || !col.refTableId || !col.refColumnId) return;
+      const targetRect = logicalColRects[col.refColumnId];
+      const srcRect = logicalColRects[col.id];
+      if(!targetRect || !srcRect) return;
+      edgeLayer.appendChild(buildLogicalEdge(srcRect, targetRect));
+    });
+  });
+  nodes.forEach(n=> nodeLayer.appendChild(n));
+}
+/* Live preview line while dragging a column-to-column FK link (see
+   buildLogicalTableNode / colDrag). Shares the conceptual page's overlay
+   layer — only one of connDrag/colDrag is ever active, since each page
+   builds only its own drag-handle elements. */
+function renderColDragOverlay(){
+  const layer = document.getElementById('connDragLayer');
+  if(!layer) return;
+  layer.innerHTML = '';
+  if(!colDrag) return;
+  const srcRect = logicalColRects[colDrag.sourceColumnId];
+  if(!srcRect) return;
+  const x1 = srcRect.x+srcRect.w, y1 = srcRect.y+srcRect.h/2;
+  layer.appendChild(S('path',{d:'M'+x1+','+y1+' L'+colDrag.x+','+colDrag.y, style:'fill:none;stroke:var(--accent);stroke-width:1.8;stroke-dasharray:4,3'}));
+  layer.appendChild(S('circle',{cx:colDrag.x, cy:colDrag.y, r:4, style:'fill:var(--accent)'}));
+}
+
 /* ---------- defs: markers + grid pattern ---------- */
 function initDefs(){
   const defs = document.getElementById('svgDefs');
@@ -1638,6 +1944,9 @@ function initDefs(){
   ]));
   defs.appendChild(S('marker',{id:'marker-arrow', viewBox:'0 0 10 10', refX:9, refY:5, markerWidth:8, markerHeight:8, orient:'auto'},[
     S('path',{d:'M1,1 L9,5 L1,9', style:'fill:none;stroke:var(--edge-network);stroke-width:1.6;stroke-linejoin:round;stroke-linecap:round'})
+  ]));
+  defs.appendChild(S('marker',{id:'marker-arrow-fk', viewBox:'0 0 10 10', refX:9, refY:5, markerWidth:8, markerHeight:8, orient:'auto'},[
+    S('path',{d:'M1,1 L9,5 L1,9', style:'fill:none;stroke:var(--accent);stroke-width:1.6;stroke-linejoin:round;stroke-linecap:round'})
   ]));
   const minor = S('pattern',{id:'gridMinor', width:24, height:24, patternUnits:'userSpaceOnUse'},[
     S('path',{d:'M0,24 L0,0 L24,0', style:'fill:none;stroke:var(--canvas-grid);stroke-width:1'})
@@ -1676,11 +1985,13 @@ function svgPoint(evt){
   return { x: view.x + (evt.clientX-rect.left-offX)/scale, y: view.y + (evt.clientY-rect.top-offY)/scale };
 }
 function fitView(){
-  if(!state.classes.length){ view = {x:-40,y:-40,w:1200,h:800}; applyViewBox(); return; }
+  const items = activePage==='logical' ? state.logical.tables : state.classes;
+  const heightOf = activePage==='logical' ? (t=>tableHeight(t)) : (c=>c.h||60);
+  if(!items.length){ view = {x:-40,y:-40,w:1200,h:800}; applyViewBox(); return; }
   let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
-  state.classes.forEach(c=>{
-    minX=Math.min(minX,c.x); minY=Math.min(minY,c.y);
-    maxX=Math.max(maxX,c.x+(c.w||CARD_W)); maxY=Math.max(maxY,c.y+(c.h||60));
+  items.forEach(it=>{
+    minX=Math.min(minX,it.x); minY=Math.min(minY,it.y);
+    maxX=Math.max(maxX,it.x+(it.w||CARD_W)); maxY=Math.max(maxY,it.y+heightOf(it));
   });
   const pad=60;
   const w = Math.max(400,(maxX-minX)+pad*2), h = Math.max(300,(maxY-minY)+pad*2);
@@ -1702,10 +2013,17 @@ function initStageEvents(){
     if(drag){
       const p = svgPoint(evt);
       const nx = p.x - drag.offX, ny = p.y - drag.offY;
-      const c = state.classes.find(x=>x.id===drag.id);
-      if(!c) return;
-      if(Math.abs(nx-c.x)>1 || Math.abs(ny-c.y)>1) drag.moved = true;
-      c.x = nx; c.y = ny;
+      if(drag.kind==='table'){
+        const t = state.logical.tables.find(x=>x.id===drag.id);
+        if(!t) return;
+        if(Math.abs(nx-t.x)>1 || Math.abs(ny-t.y)>1) drag.moved = true;
+        t.x = nx; t.y = ny;
+      } else {
+        const c = state.classes.find(x=>x.id===drag.id);
+        if(!c) return;
+        if(Math.abs(nx-c.x)>1 || Math.abs(ny-c.y)>1) drag.moved = true;
+        c.x = nx; c.y = ny;
+      }
       renderCanvas();
     } else if(panning){
       const {scale} = svgTransform();
@@ -1718,16 +2036,25 @@ function initStageEvents(){
       const p = svgPoint(evt);
       connDrag.x = p.x; connDrag.y = p.y;
       renderConnDragOverlay();
+    } else if(colDrag){
+      const p = svgPoint(evt);
+      colDrag.x = p.x; colDrag.y = p.y;
+      renderColDragOverlay();
     }
   });
   document.addEventListener('pointerup', (evt)=>{
     if(drag){
-      const wasDrag = drag.moved, id = drag.id;
+      const wasDrag = drag.moved, id = drag.id, kind = drag.kind;
       drag = null;
-      if(!wasDrag) handleNodeClick(id); else { renderCanvas(); scheduleAutosave(); }
+      if(!wasDrag){ if(kind==='table') selectTable(id); else handleNodeClick(id); }
+      else { renderCanvas(); scheduleAutosave(); }
     }
     if(panning){
-      if(!panning.moved){ selection = {type:null,id:null}; renderInspector(); renderCanvas(); renderClassList(); renderRelList(); }
+      if(!panning.moved){
+        if(activePage==='logical') logicalSelection = {type:null,id:null};
+        else selection = {type:null,id:null};
+        renderInspector(); renderCanvas(); renderClassList(); renderRelList(); renderTableList();
+      }
       panning = null;
     }
     if(connDrag){
@@ -1738,6 +2065,30 @@ function initStageEvents(){
       connDrag = null;
       if(target){ createRelationship(relMode.type, sourceId, target.id); touch(); }
       renderConnDragOverlay();
+    }
+    if(colDrag){
+      const p = svgPoint(evt);
+      let targetColId = null;
+      for(const colId in logicalColRects){
+        if(colId===colDrag.sourceColumnId) continue;
+        const r = logicalColRects[colId];
+        if(p.x>=r.x && p.x<=r.x+r.w && p.y>=r.y && p.y<=r.y+r.h){ targetColId = colId; break; }
+      }
+      const srcTable = state.logical.tables.find(t=>t.id===colDrag.sourceTableId);
+      const srcCol = srcTable ? srcTable.columns.find(c=>c.id===colDrag.sourceColumnId) : null;
+      colDrag = null;
+      if(srcCol && targetColId){
+        const targetRect = logicalColRects[targetColId];
+        const targetTable = state.logical.tables.find(t=>t.id===targetRect.tableId);
+        const targetCol = targetTable ? targetTable.columns.find(c=>c.id===targetColId) : null;
+        if(targetCol && targetCol.pk){
+          srcCol.fk = true; srcCol.refTableId = targetTable.id; srcCol.refColumnId = targetCol.id;
+          touch();
+        } else {
+          toast('Arraste até uma coluna marcada como PK para criar a ligação.', true);
+        }
+      }
+      renderColDragOverlay();
     }
   });
   stage.addEventListener('wheel', (evt)=>{
@@ -1770,6 +2121,7 @@ function initStageEvents(){
     if(!evt.dataTransfer) return;
     const kind = evt.dataTransfer.getData('application/x-omtg-kind');
     if(kind!=='conventional' && kind!=='geo') return;
+    if(activePage==='logical') return; // palette drag/drop is conceptual-only
     evt.preventDefault();
     const p = svgPoint(evt);
     addClassAt(kind, p.x - CARD_W/2, p.y - 22);
@@ -1777,10 +2129,15 @@ function initStageEvents(){
   document.addEventListener('keydown', (evt)=>{
     if(evt.key==='Escape'){
       if(connDrag){ connDrag=null; renderConnDragOverlay(); }
+      if(colDrag){ colDrag=null; renderColDragOverlay(); }
     }
-    if((evt.key==='Delete'||evt.key==='Backspace') && selection.type && document.activeElement.tagName!=='INPUT' && document.activeElement.tagName!=='TEXTAREA' && document.activeElement.tagName!=='SELECT'){
-      if(selection.type==='class') deleteClass(selection.id);
-      else if(selection.type==='rel') deleteRel(selection.id);
+    if((evt.key==='Delete'||evt.key==='Backspace') && document.activeElement.tagName!=='INPUT' && document.activeElement.tagName!=='TEXTAREA' && document.activeElement.tagName!=='SELECT'){
+      if(activePage==='logical'){
+        if(logicalSelection.type==='table') deleteTable(logicalSelection.id);
+      } else if(selection.type){
+        if(selection.type==='class') deleteClass(selection.id);
+        else if(selection.type==='rel') deleteRel(selection.id);
+      }
     }
   });
 }
@@ -1995,9 +2352,122 @@ function buildRelInspector(r){
   return root;
 }
 
+/* Column table for a logical table's inspector — mirrors buildAttrTable, but
+   a checked "FK" adds an inline row asking which table + which of that
+   table's PK columns it references (the explicit picker the user asked
+   for), and a column can't be un-PK'd / removed if it's the table's last PK
+   ("toda entidade criada no modelo tem que ter PK"). */
+function buildColumnTable(t){
+  const table = E('table',{class:'attr-table'});
+  table.appendChild(E('tr',{},[E('th',{},['Nome']),E('th',{},['Tipo']),E('th',{},['PK']),E('th',{},['FK']),E('th',{},['Obrig.']),E('th',{})]));
+  t.columns.forEach(col=>{
+    const nameInp = E('input',{type:'text', value:col.name, oninput:(e)=>{ col.name=e.target.value; touch(true); }});
+    const typeSel = E('select',{onchange:(e)=>{ col.type=e.target.value; touch(); }});
+    ATTR_TYPES.forEach(ty=>typeSel.appendChild(E('option',{value:ty.id, selected:(ty.id===col.type)?'':null},[ty.label])));
+    const pkChk = E('input',{type:'checkbox', onchange:(e)=>{
+      if(!e.target.checked && t.columns.filter(c=>c.pk).length<=1){
+        e.target.checked = true;
+        toast('Toda tabela precisa de ao menos uma coluna PK.', true);
+        return;
+      }
+      col.pk = e.target.checked; if(col.pk) col.nullable=false; touch();
+    }});
+    if(col.pk) pkChk.checked = true;
+    const fkChk = E('input',{type:'checkbox', onchange:(e)=>{
+      col.fk = e.target.checked;
+      if(col.fk && !col.refTableId){
+        const other = state.logical.tables.find(x=>x.id!==t.id) || state.logical.tables[0];
+        if(other){
+          col.refTableId = other.id;
+          const pk = other.columns.find(c=>c.pk);
+          col.refColumnId = pk ? pk.id : null;
+        }
+      }
+      if(!col.fk){ col.refTableId=null; col.refColumnId=null; }
+      touch();
+    }});
+    if(col.fk) fkChk.checked = true;
+    const reqChk = E('input',{type:'checkbox', onchange:(e)=>{ col.nullable = !e.target.checked; touch(); }});
+    if(!col.nullable) reqChk.checked = true;
+    const delBtn = E('button',{class:'del-x', title:'Remover coluna', html:ICONS.trash, onclick:()=>{
+      if(col.pk && t.columns.filter(c=>c.pk).length<=1){
+        toast('Toda tabela precisa de ao menos uma coluna PK — marque outra coluna como PK antes de remover esta.', true);
+        return;
+      }
+      t.columns = t.columns.filter(x=>x.id!==col.id);
+      state.logical.tables.forEach(tt=> tt.columns.forEach(c=>{
+        if(c.refColumnId===col.id){ c.fk=false; c.refTableId=null; c.refColumnId=null; }
+      }));
+      touch();
+    }});
+    table.appendChild(E('tr',{},[
+      E('td',{},[nameInp]), E('td',{},[typeSel]),
+      E('td',{style:'text-align:center'},[pkChk]), E('td',{style:'text-align:center'},[fkChk]),
+      E('td',{style:'text-align:center'},[reqChk]),
+      E('td',{},[delBtn])
+    ]));
+    if(col.fk){
+      const tblSel = E('select',{onchange:(e)=>{
+        col.refTableId = e.target.value;
+        const rt = state.logical.tables.find(x=>x.id===col.refTableId);
+        const pk = rt ? rt.columns.find(c=>c.pk) : null;
+        col.refColumnId = pk ? pk.id : null;
+        touch();
+      }});
+      state.logical.tables.forEach(rt=> tblSel.appendChild(E('option',{value:rt.id, selected:(rt.id===col.refTableId)?'':null},[rt.name])));
+      const refTable = state.logical.tables.find(x=>x.id===col.refTableId);
+      const pkCols = refTable ? refTable.columns.filter(c=>c.pk) : [];
+      const colSel = E('select',{onchange:(e)=>{ col.refColumnId = e.target.value; touch(); }});
+      if(!pkCols.length){
+        colSel.appendChild(E('option',{value:''},['(tabela sem PK)']));
+        colSel.disabled = true;
+      } else {
+        pkCols.forEach(pc=> colSel.appendChild(E('option',{value:pc.id, selected:(pc.id===col.refColumnId)?'':null},[pc.name])));
+      }
+      table.appendChild(E('tr',{class:'fk-picker-row'},[
+        E('td',{colspan:'6'},[
+          E('div',{class:'field-row'},[
+            E('div',{class:'field'},[E('label',{},['Referencia a tabela']), tblSel]),
+            E('div',{class:'field'},[E('label',{},['PK referenciada']), colSel])
+          ])
+        ])
+      ]));
+    }
+  });
+  return table;
+}
+function buildTableInspector(t){
+  const root = E('div',{style:'display:flex;flex-direction:column;flex:1;min-height:0;'});
+  const scroll = E('div',{class:'inspector-scroll'});
+  scroll.appendChild(E('div',{class:'inspector-head'},[ E('span',{class:'badge'},['tabela lógica']) ]));
+  scroll.appendChild(fieldText('Nome da tabela', t.name, v=>{ t.name=v; touch(true); }));
+  scroll.appendChild(E('hr'));
+  scroll.appendChild(E('div',{class:'rail-label'},['Colunas']));
+  scroll.appendChild(buildColumnTable(t));
+  scroll.appendChild(E('button',{class:'btn attr-add', onclick:()=>{ t.columns.push({id:uid('col'),name:'nova_coluna',type:'text',pk:false,nullable:true,fk:false,refTableId:null,refColumnId:null}); touch(); }},['+ Adicionar coluna']));
+  root.appendChild(scroll);
+  root.appendChild(E('div',{class:'inspector-actions'},[
+    E('button',{class:'btn danger ghost', onclick:()=>deleteTable(t.id)},['Excluir tabela'])
+  ]));
+  return root;
+}
+
 function renderInspector(){
   const panel = document.getElementById('panelProp');
   panel.innerHTML = '';
+  if(activePage==='logical'){
+    if(logicalSelection.type==='table'){
+      const t = state.logical.tables.find(x=>x.id===logicalSelection.id);
+      if(!t){ logicalSelection={type:null,id:null}; renderInspector(); return; }
+      panel.appendChild(buildTableInspector(t));
+    } else {
+      panel.appendChild(E('div',{class:'inspector-empty'},[
+        E('div',{class:'ic', html:ICONS.empty}),
+        E('div',{},['Selecione uma tabela no diagrama, ou crie uma nova pela barra à esquerda.'])
+      ]));
+    }
+    return;
+  }
   if(selection.type==='class'){
     const c = state.classes.find(x=>x.id===selection.id);
     if(!c){ selection={type:null,id:null}; renderInspector(); return; }
@@ -2013,123 +2483,6 @@ function renderInspector(){
     ]));
   }
 }
-
-/* ============================================================
-   EXPORT — shared helpers
-   ============================================================ */
-function geomKind(c){
-  if(c.kind!=='geo' || !c.primitive) return null;
-  const map = {
-    point:    {esri:'esriGeometryPoint',    ogc:'POINT',           approx:false},
-    node:     {esri:'esriGeometryPoint',    ogc:'POINT',           approx:false},
-    line:     {esri:'esriGeometryPolyline', ogc:'LINESTRING',      approx:false},
-    arc:      {esri:'esriGeometryPolyline', ogc:'LINESTRING',      approx:false},
-    polygon:  {esri:'esriGeometryPolygon',  ogc:'POLYGON',         approx:false},
-    isoline:      {esri:'esriGeometryPolyline', ogc:'MULTILINESTRING', approx:true},
-    tin:          {esri:'esriGeometryPolygon',  ogc:'MULTIPOLYGON',    approx:true},
-    tessellation: {esri:'esriGeometryPolygon',  ogc:'MULTIPOLYGON',    approx:true},
-    sample:       {esri:'esriGeometryPoint',    ogc:'MULTIPOINT',      approx:true},
-    partition:    {esri:'esriGeometryPolygon',  ogc:'MULTIPOLYGON',    approx:true}
-  };
-  if(c.primitive==='complex'){
-    const ck = c.complexKind||'multipolygon';
-    const cm = {multipoint:{esri:'esriGeometryMultipoint',ogc:'MULTIPOINT'}, multiline:{esri:'esriGeometryPolyline',ogc:'MULTILINESTRING'}, multipolygon:{esri:'esriGeometryPolygon',ogc:'MULTIPOLYGON'}, collection:{esri:'esriGeometryBag',ogc:'GEOMETRYCOLLECTION'}};
-    return Object.assign({approx:false}, cm[ck]);
-  }
-  return map[c.primitive] || null;
-}
-function esriFieldType(t){ return {text:'esriFieldTypeString', integer:'esriFieldTypeInteger', double:'esriFieldTypeDouble', date:'esriFieldTypeDate', datetime:'esriFieldTypeDate', boolean:'esriFieldTypeSmallInteger', blob:'esriFieldTypeBlob'}[t] || 'esriFieldTypeString'; }
-function esriFieldLen(t){ return {text:255, integer:4, double:8, date:8, datetime:8, boolean:2, blob:0}[t] ?? 255; }
-function arcpyFieldType(t){ return {text:'TEXT', integer:'LONG', double:'DOUBLE', date:'DATE', datetime:'DATE', boolean:'SHORT', blob:'BLOB'}[t] || 'TEXT'; }
-function arcpyGeomType(gk){ return gk ? ({esriGeometryPoint:'POINT', esriGeometryMultipoint:'MULTIPOINT', esriGeometryPolyline:'POLYLINE', esriGeometryPolygon:'POLYGON'}[gk.esri] || null) : null; }
-function ogrFieldType(t){ return {text:'ogr.OFTString', integer:'ogr.OFTInteger', double:'ogr.OFTReal', date:'ogr.OFTDate', datetime:'ogr.OFTDateTime', boolean:'ogr.OFTInteger', blob:'ogr.OFTBinary'}[t] || 'ogr.OFTString'; }
-function ogrGeomType(gk){ return gk ? ({esriGeometryPoint:'ogr.wkbPoint', esriGeometryMultipoint:'ogr.wkbMultiPoint', esriGeometryPolyline:'ogr.wkbMultiLineString', esriGeometryPolygon:'ogr.wkbMultiPolygon'}[gk.esri] || null) : null; }
-/* area/line/point bucket used to pick an ArcGIS topology rule — collapses
-   esriGeometryMultipoint into 'point' and drops esriGeometryBag (a
-   heterogeneous "collection" primitive) to null, since no topology rule
-   in ArcGIS's list applies to a mixed-geometry class. */
-function geomCategory(c){
-  const gk = geomKind(c);
-  if(!gk) return null;
-  if(gk.esri==='esriGeometryPolygon') return 'area';
-  if(gk.esri==='esriGeometryPolyline') return 'line';
-  if(gk.esri==='esriGeometryPoint' || gk.esri==='esriGeometryMultipoint') return 'point';
-  return null;
-}
-/* Maps an OMT-G topological predicate + the (origin, dest) geometry
-   categories to a real, documented ArcGIS "Add Rule To Topology" rule
-   string — verified against ArcGIS Pro's own tool reference (Add Rule To
-   Topology) rather than guessed. Only 'dentro' and 'disjunto' get an
-   entry: ArcGIS's topology rule vocabulary is built almost entirely around
-   FORBIDDING bad configurations ("must not overlap", "must not intersect")
-   or asserting COVERAGE ("must be covered by/inside"), not around asserting
-   that two classes touch, cross, or overlap — so 'toca', 'sobrepoe',
-   'cruza', 'em_frente' and 'proximo' have no equivalent rule to call in any
-   geometry combination, and correctly return null here rather than a
-   fabricated one. Even the two that DO map are approximations of the OMT-G
-   predicate, not exact equivalents — see each entry's `caveat`. */
-function topologyRuleFor(predicate, catA, catB){
-  if(predicate==='dentro'){
-    if(catA==='area'&&catB==='area') return {rule:'Must Be Covered By Feature Class Of (Area-Area)'};
-    if(catA==='line'&&catB==='area') return {rule:'Must Be Inside (Line-Area)'};
-    if(catA==='point'&&catB==='area') return {rule:'Must Be Properly Inside (Point-Area)'};
-    return null;
-  }
-  if(predicate==='disjunto'){
-    if(catA==='area'&&catB==='area') return {rule:'Must Not Overlap With (Area-Area)', caveat:'permite fronteiras se tocando — não é disjunção estrita'};
-    // A real two-class "line must not cross line" rule DOES exist in ArcGIS
-    // (confirmed below, in topologyRuleXmlEnumFor, against a real exported
-    // topology) — but only its raw esriTRTLineNoIntersectLine enum name is
-    // confirmed, not the exact wording of the documented arcpy string
-    // parameter, so it stays unmapped here rather than risking an
-    // AddRuleToTopology call with an invalid rule_type string.
-    return null;
-  }
-  return null;
-}
-/* Real esriTRT* topology-rule-type enum NAMES (not numbers) for a raw XML
-   Workspace Document's <TopologyRuleType> element — confirmed by reading a
-   real topology the user exported from their own ArcGIS Pro as an XML
-   Workspace Document (2026-09), which showed this element holds the enum's
-   symbolic name as text (e.g. "esriTRTAreaCoveredByAreaClass"), not the
-   numeric code a different (ArcObjects/community-thread) representation had
-   suggested earlier — that numeric table turned out not to apply to this
-   file format. Origin/destination order below matches the real file's rules
-   exactly (e.g. rule 24: OriginClassID=area-being-covered,
-   DestinationClassID=covering area — same origin=part/dest=whole convention
-   already used by topologyRuleFor's coverageCandidates). Only entries
-   directly observed in that real export are included. */
-function topologyRuleXmlEnumFor(predicate, catA, catB){
-  if(predicate==='dentro'){
-    if(catA==='area'&&catB==='area') return 'esriTRTAreaCoveredByAreaClass';
-    if(catA==='line'&&catB==='area') return 'esriTRTLineInsideArea';
-    if(catA==='point'&&catB==='area') return 'esriTRTPointProperlyInsideArea';
-    return null;
-  }
-  if(predicate==='disjunto'){
-    if(catA==='area'&&catB==='area') return 'esriTRTAreaNoOverlapArea';
-    if(catA==='line'&&catB==='line') return 'esriTRTLineNoIntersectLine';
-    return null;
-  }
-  return null;
-}
-/* Single-class geometric-integrity rules — the ones that don't come from any
-   drawn relationship at all, just from a class having area or line geometry.
-   Only "must not overlap (with itself)" is applied to every area class here;
-   "must not have gaps" is deliberately NOT auto-applied even though it's a
-   real, verified rule, because whether a layer is supposed to fully
-   partition its extent is a modeling judgment the conceptual model doesn't
-   encode (a municipality's neighborhoods should fully tile it; its
-   registered lots should not — vacant, unregistered land is normal) — so
-   it's left as guidance in a comment instead of guessed automatically. */
-function generalTopologyRules(cat){
-  if(cat==='area') return [{rule:'Must Not Overlap (Area)'}];
-  if(cat==='line') return [{rule:'Must Not Self-Intersect (Line)'}, {rule:'Must Not Self-Overlap (Line)'}];
-  return [];
-}
-function pyStr(s){ return String(s==null?'':s).replace(/\\/g,'\\\\').replace(/"/g,'\\"'); }
-function gpkgType(t){ return {text:'TEXT', integer:'INTEGER', double:'REAL', date:'DATE', datetime:'DATETIME', boolean:'BOOLEAN', blob:'BLOB'}[t] || 'TEXT'; }
-function pgType(t){ return {text:'text', integer:'integer', double:'double precision', date:'date', datetime:'timestamp', boolean:'boolean', blob:'bytea'}[t] || 'text'; }
 
 /* synthetic FK fields derived from generalization / aggregation / network relationships */
 function computeExportFields(c){
@@ -2173,1583 +2526,9 @@ function associationPlan(r){
   return {mode:'junction'};
 }
 
-/* ============================================================
-   EXPORT #1 — Esri Geodatabase XML Workspace Document
-   ============================================================ */
-function buildEsriXML(){
-  const srid = state.meta.srid || 4326;
-  const wsName = pascalIdent(state.meta.workspaceName || state.meta.name || 'ModeloOMTG');
-  const geoClasses = state.classes.filter(c=>c.kind==='geo');
-  const flatClasses = state.classes.filter(c=>c.kind!=='geo');
-  const fdsName = wsName + '_FD';
-  // ArcGIS Pro's own default name for a topology created inside a dataset is
-  // "<dataset>_Topology" (confirmed by a real export, see below) — matched
-  // here and in buildArcpyScript for consistency with what ArcGIS Pro itself
-  // would suggest.
-  const topoName = fdsName + '_Topology';
-
-  // Local surrogate dataset IDs. A real ArcGIS-exported XML Workspace
-  // Document resolves a Topology rule's Origin/DestinationClassID against
-  // each feature class's own <DSID> (confirmed 2026-09 by reading a real
-  // topology the user exported from their own ArcGIS Pro) rather than by
-  // name or array position. A document authored for IMPORT — not exported
-  // from an existing database — has no real DSIDs yet, so every class here
-  // gets a small, internally-consistent placeholder number instead of the
-  // usual "-1" (fine for a class with no cross-references, but it would
-  // make every class indistinguishable to a topology rule). This is a
-  // standard local-surrogate-key technique for a hand-authored version of an
-  // export format; unlike the rest of this function's structure, this
-  // specific choice for a from-scratch document was not itself directly
-  // confirmed against a real ArcGIS Pro import — worth checking after import.
-  let nextDsid = 1;
-  const dsidOf = new Map();
-  [...geoClasses, ...flatClasses].forEach(c=>{ dsidOf.set(c.id, nextDsid++); });
-
-  function sref(){
-    return "<SpatialReference xsi:type='esri:GeographicCoordinateSystem'><WKID>"+srid+"</WKID><LatestWKID>"+srid+"</LatestWKID></SpatialReference>";
-  }
-  function xmlGuid(){
-    const h = ()=>Math.floor(Math.random()*0x10000).toString(16).toUpperCase().padStart(4,'0');
-    return h()+h()+'-'+h()+'-'+h()+'-'+h()+'-'+h()+h()+h();
-  }
-  function fieldXml(f, isOid){
-    if(isOid){
-      return "<Field xsi:type='esri:Field'><Name>OBJECTID</Name><Type>esriFieldTypeOID</Type><IsNullable>false</IsNullable><Length>4</Length><Precision>0</Precision><Scale>0</Scale><Required>true</Required><Editable>false</Editable><ModelName>OBJECTID</ModelName></Field>";
-    }
-    const t = esriFieldType(f.type);
-    const len = f.type==='text' ? 255 : esriFieldLen(f.type);
-    return "<Field xsi:type='esri:Field'><Name>"+escapeXml(f.name)+"</Name><Type>"+t+"</Type><IsNullable>"+(f.nullable!==false)+"</IsNullable><Length>"+len+"</Length><Precision>0</Precision><Scale>0</Scale><Required>"+(f.nullable===false)+"</Required><Editable>true</Editable><ModelName>"+escapeXml(f.name)+"</ModelName></Field>"
-      + (f.fkTable ? "<!-- FK -> "+f.fkTable+" ("+(f.fkNote||'')+") -->" : "");
-  }
-  function shapeFieldXml(gk){
-    return "<Field xsi:type='esri:Field'><Name>Shape</Name><Type>esriFieldTypeGeometry</Type><IsNullable>true</IsNullable><Length>0</Length><Precision>0</Precision><Scale>0</Scale><Required>false</Required><Editable>true</Editable><ModelName>Shape</ModelName>"
-      + "<GeometryDef xsi:type='esri:GeometryDef'><AvgNumPoints>0</AvgNumPoints><GeometryType>"+gk.esri+"</GeometryType><HasM>false</HasM><HasZ>false</HasZ>"+sref()+"</GeometryDef></Field>";
-  }
-
-  // ---- Spatial relationships & spatial aggregations -> topology coverage
-  // candidates. Mirrors buildArcpyScript's own pass exactly, so the XML and
-  // the arcpy script agree on which relations become real topology rules. ----
-  const coverageCandidates = [];
-  state.relationships.forEach(r=>{
-    const a = state.classes.find(x=>x.id===r.sourceId), b = state.classes.find(x=>x.id===r.targetId);
-    if(!a || !b) return;
-    if(r.type==='aggregation'){
-      if(geomKind(a) && geomKind(b)) coverageCandidates.push({origin:b, dest:a, predicate:'dentro', label:b.name+' contido em '+a.name+' (agregação espacial)'});
-    } else if(r.type==='spatial'){
-      if(geomKind(a) && geomKind(b)) coverageCandidates.push({origin:a, dest:b, predicate:r.topoRule, label:a.name+' '+TOPO_RULE_LABEL[r.topoRule]+' '+b.name});
-      else coverageCandidates.push({origin:a, dest:b, predicate:r.topoRule, label:a.name+' '+TOPO_RULE_LABEL[r.topoRule]+' '+b.name, noGeom:true});
-    }
-  });
-  const unmappedSpatialNotes = [];
-  const topoRuleEntries = [];
-  const topoParticipants = new Set();
-  coverageCandidates.forEach(({origin,dest,predicate,label,noGeom})=>{
-    if(noGeom){ unmappedSpatialNotes.push(label+' — uma das classes não tem geometria; sem regra de topologia.'); return; }
-    const catA = geomCategory(origin), catB = geomCategory(dest);
-    const enumType = topologyRuleXmlEnumFor(predicate, catA, catB);
-    if(!enumType){ unmappedSpatialNotes.push(label+' — sem regra de topologia equivalente no ArcGIS.'); return; }
-    topoParticipants.add(origin.id); topoParticipants.add(dest.id);
-    topoRuleEntries.push({enumType, originId: dsidOf.get(origin.id), destId: dsidOf.get(dest.id)});
-  });
-
-  function topologyRuleXml(entry, ruleId){
-    return "<TopologyRule xsi:type='esri:TopologyRule'><HelpString></HelpString><RuleID>"+ruleId+"</RuleID><Name></Name>"
-      + "<GUID>"+xmlGuid()+"</GUID>"
-      + "<TopologyRuleType>"+entry.enumType+"</TopologyRuleType>"
-      + "<OriginClassID>"+entry.originId+"</OriginClassID><OriginSubtype>0</OriginSubtype>"
-      + "<DestinationClassID>"+entry.destId+"</DestinationClassID><DestinationSubtype>0</DestinationSubtype>"
-      + "<TriggerErrorEvents>false</TriggerErrorEvents><AllOriginSubtypes>true</AllOriginSubtypes><AllDestinationSubtypes>true</AllDestinationSubtypes></TopologyRule>";
-  }
-
-  const topologyElement = topoRuleEntries.length ? (
-    "<DataElement xsi:type='esri:DETopology'><CatalogPath>/FD="+fdsName+"/TOPO="+topoName+"</CatalogPath><Name>"+topoName+"</Name>"
-    + "<DatasetType>esriDTTopology</DatasetType><DSID>-1</DSID><Versioned>false</Versioned><CanVersion>true</CanVersion>"
-    + "<ConfigurationKeyword></ConfigurationKeyword>"
-    + "<Extent xsi:type='esri:EnvelopeN'><XMin>NaN</XMin><YMin>NaN</YMin><XMax>NaN</XMax><YMax>NaN</YMax>"+sref()+"</Extent>"
-    + sref()
-    + "<ClusterTolerance>0.001</ClusterTolerance><ZClusterTolerance>0.001</ZClusterTolerance>"
-    + "<MaxGeneratedErrorCount>-1</MaxGeneratedErrorCount>"
-    + "<FeatureClassNames xsi:type='esri:Names'>"+[...topoParticipants].map(id=>state.classes.find(c=>c.id===id)).filter(Boolean).map(c=>"<Name>"+escapeXml(pascalIdent(c.name))+"</Name>").join('')+"</FeatureClassNames>"
-    + "<TopologyRules xsi:type='esri:ArrayOfTopologyRule'>"+topoRuleEntries.map((e,i)=>topologyRuleXml(e,i+1)).join('')+"</TopologyRules>"
-    + "<TopologyID>-1</TopologyID><EditorTrackingEnabled>false</EditorTrackingEnabled>"
-    + "<CreatorFieldName></CreatorFieldName><CreatedAtFieldName></CreatedAtFieldName><EditorFieldName></EditorFieldName><EditedAtFieldName></EditedAtFieldName>"
-    + "<IsTimeInUTC>true</IsTimeInUTC><Properties xsi:nil='true' /></DataElement>"
-  ) : '';
-
-  function controllerMembershipsXml(c){
-    if(!topoParticipants.has(c.id)) return "<ControllerMemberships xsi:type='esri:ArrayOfControllerMembership' />";
-    return "<ControllerMemberships xsi:type='esri:ArrayOfControllerMembership'><ControllerMembership xsi:type='esri:TopologyMembership'><TopologyName>"+topoName+"</TopologyName><Weight>5</Weight><XYRank>1</XYRank><ZRank>1</ZRank><EventNotificationOnValidate>false</EventNotificationOnValidate></ControllerMembership></ControllerMemberships>";
-  }
-
-  // CatalogPath uses the root-relative "/FD=.../FC=..." scheme a real
-  // ArcGIS Pro export actually uses (confirmed 2026-09), not the
-  // "\\workspace\\dataset\\class" scheme assumed before that evidence
-  // existed. A standalone table's exact convention wasn't itself present in
-  // that real export (it had no tables) — "/Name" here is the same
-  // root-relative pattern extended by analogy, not independently confirmed.
-  function dataElement(c){
-    const fields = computeExportFields(c);
-    const gk = geomKind(c);
-    const isFC = !!gk;
-    const catalogPath = isFC ? ("/FD="+fdsName+"/FC="+pascalIdent(c.name)) : ("/"+pascalIdent(c.name));
-    let fieldsXml = fieldXml(null,true) + fields.map(f=>fieldXml(f,false)).join('');
-    if(isFC) fieldsXml += shapeFieldXml(gk);
-    const note = gk && gk.approx ? "<!-- Observação: primitiva conceitual '"+c.primitive+"' não tem equivalente vetorial direto no geodatabase; exportada como "+gk.esri+" (revisar armazenamento em ArcGIS Pro). -->" : "";
-    const dsid = dsidOf.get(c.id);
-    if(isFC){
-      return note + "<DataElement xsi:type='esri:DEFeatureClass'><CatalogPath>"+catalogPath+"</CatalogPath><Name>"+escapeXml(pascalIdent(c.name))+"</Name>"
-        + "<DatasetType>esriDTFeatureClass</DatasetType><DSID>"+dsid+"</DSID><Versioned>false</Versioned><CanVersion>false</CanVersion>"
-        + "<HasOID>true</HasOID><OIDFieldName>OBJECTID</OIDFieldName>"
-        + "<Fields xsi:type='esri:Fields'><FieldArray xsi:type='esri:ArrayOfField'>"+fieldsXml+"</FieldArray></Fields>"
-        + "<Indexes xsi:type='esri:Indexes'><IndexArray xsi:type='esri:ArrayOfIndex' /></Indexes>"
-        + "<CLSID>{52353152-891A-11D0-BEC6-00805F7C4268}</CLSID><EXTCLSID></EXTCLSID>"
-        + "<RelationshipClassNames xsi:type='esri:Names' />"
-        + "<AliasName>"+escapeXml(c.name)+"</AliasName><ModelName></ModelName><HasGlobalID>false</HasGlobalID><GlobalIDFieldName></GlobalIDFieldName><RasterFieldName></RasterFieldName>"
-        + "<ExtensionProperties xsi:type='esri:PropertySet'><PropertyArray xsi:type='esri:ArrayOfPropertySetProperty' /></ExtensionProperties>"
-        + controllerMembershipsXml(c)
-        + "<FeatureType>esriFTSimple</FeatureType><ShapeType>"+gk.esri+"</ShapeType><ShapeFieldName>Shape</ShapeFieldName><HasM>false</HasM><HasZ>false</HasZ><HasSpatialIndex>true</HasSpatialIndex>"
-        + "<AreaFieldName></AreaFieldName><LengthFieldName></LengthFieldName><Extent xsi:nil='true' />"+sref()+"</DataElement>";
-    }
-    return "<DataElement xsi:type='esri:DETable'><CatalogPath>"+catalogPath+"</CatalogPath><Name>"+escapeXml(pascalIdent(c.name))+"</Name>"
-      + "<DatasetType>esriDTTable</DatasetType><DSID>"+dsid+"</DSID><Versioned>false</Versioned><CanVersion>false</CanVersion>"
-      + "<HasOID>true</HasOID><OIDFieldName>OBJECTID</OIDFieldName>"
-      + "<Fields xsi:type='esri:Fields'><FieldArray xsi:type='esri:ArrayOfField'>"+fieldsXml+"</FieldArray></Fields>"
-      + "<Indexes xsi:type='esri:Indexes'><IndexArray xsi:type='esri:ArrayOfIndex' /></Indexes>"
-      + "<CLSID>{7A566981-C114-11D2-8A28-006097AFF44E}</CLSID><EXTCLSID></EXTCLSID>"
-      + "<RelationshipClassNames xsi:type='esri:Names' />"
-      + "<AliasName>"+escapeXml(c.name)+"</AliasName><ModelName></ModelName><HasGlobalID>false</HasGlobalID><GlobalIDFieldName></GlobalIDFieldName>"
-      + "<ExtensionProperties xsi:type='esri:PropertySet'><PropertyArray xsi:type='esri:ArrayOfPropertySetProperty' /></ExtensionProperties>"
-      + "<ControllerMemberships xsi:type='esri:ArrayOfControllerMembership' /></DataElement>";
-  }
-  // A relationship class between two feature classes in the same dataset
-  // gets a "/FD=.../RC=..." path (confirmed by the real export); anything
-  // touching a standalone table gets a root-level "/RC=..." path instead —
-  // extended by the same "RC=" convention used elsewhere, not itself seen
-  // in a real export (that export had no standalone table).
-  function relCatalogPath(name, a, b){
-    return (geomKind(a) && geomKind(b)) ? ("/FD="+fdsName+"/RC="+name) : ("/RC="+name);
-  }
-  function relKey(objName, keyRole){
-    return "<RelationshipClassKey xsi:type='esri:RelationshipClassKey'><ObjectKeyName>"+objName+"</ObjectKeyName><ClassKeyName></ClassKeyName><KeyRole>"+keyRole+"</KeyRole></RelationshipClassKey>";
-  }
-  // Rewritten 2026-09 against a real exported relationship class (three
-  // examples: 1:1, 1:M and M:N, all default/non-attributed). That export
-  // showed the previous version of this function was wrong in several load-
-  // bearing ways, not just cosmetic ones: element order, an invented
-  // <CardinalityString> element that doesn't exist in the real schema, a
-  // missing <HasOID>/<OIDFieldName>/<Indexes>/<RelationshipRules>, and —
-  // most importantly — a made-up custom foreign-key field name where
-  // ArcGIS Pro's own default is to link purely through OBJECTID
-  // (ClassKey = the literal sentinel "esriRelClassKeyUndefined", not a
-  // field name). The one place cardinality actually changes the structure:
-  // a Many-to-Many relationship gets its own attribute table (HasOID=true,
-  // OIDFieldName="RID", an OBJECTID/OBJECTID1/RID field triple, and a
-  // DestinationClassKeys array); One-to-One/One-to-Many relationships have
-  // none of that — no DestinationClassKeys element at all, confirmed absent
-  // rather than empty. This function no longer takes a custom key-field
-  // name for that reason. Composite (generalization/aggregation) and
-  // attributed relationship classes were not themselves present in the real
-  // export — this reuses the same confirmed structure for those, extended
-  // by pattern rather than independently confirmed.
-  function relationshipXml(catalogPath, name, originName, destName, cardinality, isComposite, fwdLabel, bwdLabel){
-    const isMN = cardinality === 'esriRelCardinalityManyToMany';
-    const fieldsXml = isMN
-      ? "<Field xsi:type='esri:Field'><Name>OBJECTID</Name><Type>esriFieldTypeInteger</Type><IsNullable>true</IsNullable><Length>4</Length><Precision>0</Precision><Scale>0</Scale></Field>"
-        + "<Field xsi:type='esri:Field'><Name>OBJECTID1</Name><Type>esriFieldTypeInteger</Type><IsNullable>true</IsNullable><Length>4</Length><Precision>0</Precision><Scale>0</Scale></Field>"
-        + "<Field xsi:type='esri:Field'><Name>RID</Name><Type>esriFieldTypeOID</Type><IsNullable>false</IsNullable><Length>4</Length><Precision>0</Precision><Scale>0</Scale><Required>true</Required><Editable>false</Editable></Field>"
-      : '';
-    const destKeysXml = isMN
-      ? "<DestinationClassKeys xsi:type='esri:ArrayOfRelationshipClassKey'>"+relKey('OBJECTID','esriRelKeyRoleDestinationPrimary')+relKey('OBJECTID1','esriRelKeyRoleDestinationForeign')+"</DestinationClassKeys>"
-      : '';
-    return "<DataElement xsi:type='esri:DERelationshipClass'><CatalogPath>"+catalogPath+"</CatalogPath><Name>"+escapeXml(name)+"</Name>"
-      + "<DatasetType>esriDTRelationshipClass</DatasetType><DSID>-1</DSID><Versioned>false</Versioned><CanVersion>false</CanVersion>"
-      + "<ConfigurationKeyword></ConfigurationKeyword>"
-      + "<HasOID>"+isMN+"</HasOID><OIDFieldName>"+(isMN?'RID':'')+"</OIDFieldName>"
-      + "<Fields xsi:type='esri:Fields'><FieldArray xsi:type='esri:ArrayOfField'>"+fieldsXml+"</FieldArray></Fields>"
-      + "<Indexes xsi:type='esri:Indexes'><IndexArray xsi:type='esri:ArrayOfIndex' /></Indexes>"
-      + "<CLSID>{A07E9CB1-9A95-11D2-891A-0000F877762D}</CLSID><EXTCLSID></EXTCLSID>"
-      + "<RelationshipClassNames xsi:type='esri:Names' />"
-      + "<AliasName>"+escapeXml(name)+"</AliasName><ModelName></ModelName><HasGlobalID>false</HasGlobalID><GlobalIDFieldName></GlobalIDFieldName><RasterFieldName></RasterFieldName>"
-      + "<ExtensionProperties xsi:type='esri:PropertySet'><PropertyArray xsi:type='esri:ArrayOfPropertySetProperty' /></ExtensionProperties>"
-      + "<ControllerMemberships xsi:type='esri:ArrayOfControllerMembership' />"
-      + "<EditorTrackingEnabled>false</EditorTrackingEnabled><CreatorFieldName></CreatorFieldName><CreatedAtFieldName></CreatedAtFieldName><EditorFieldName></EditorFieldName><EditedAtFieldName></EditedAtFieldName>"
-      + "<IsTimeInUTC>true</IsTimeInUTC>"
-      + "<Cardinality>"+cardinality+"</Cardinality><Notification>esriRelNotificationNone</Notification><IsAttributed>false</IsAttributed><IsComposite>"+isComposite+"</IsComposite>"
-      + "<OriginClassNames xsi:type='esri:Names'><Name>"+escapeXml(originName)+"</Name></OriginClassNames>"
-      + "<DestinationClassNames xsi:type='esri:Names'><Name>"+escapeXml(destName)+"</Name></DestinationClassNames>"
-      + "<KeyType>esriRelKeyTypeSingle</KeyType><ClassKey>esriRelClassKeyUndefined</ClassKey>"
-      + "<ForwardPathLabel>"+escapeXml(fwdLabel)+"</ForwardPathLabel><BackwardPathLabel>"+escapeXml(bwdLabel)+"</BackwardPathLabel><IsReflexive>false</IsReflexive>"
-      + "<OriginClassKeys xsi:type='esri:ArrayOfRelationshipClassKey'>"+relKey('OBJECTID','esriRelKeyRoleOriginPrimary')+relKey('OBJECTID','esriRelKeyRoleOriginForeign')+"</OriginClassKeys>"
-      + destKeysXml
-      + "<RelationshipRules xsi:type='esri:ArrayOfRelationshipRule' />"
-      + "<IsAttachmentRelationship>false</IsAttachmentRelationship><ChangeTracked>false</ChangeTracked><ReplicaTracked>false</ReplicaTracked>"
-      + "</DataElement>";
-  }
-
-  const geoElements = geoClasses.map(dataElement).join('\n          ');
-  const flatElements = flatClasses.map(dataElement).join('\n      ');
-
-  // A relationship class nests inside the Feature Dataset's <Children> —
-  // alongside its member classes and the topology — exactly when BOTH
-  // member classes are feature classes in that dataset (confirmed by the
-  // same real export: Linha1_Linha2, Poligono1_Poligono2 and Ponto1_Ponto2
-  // all nested there). Anything touching a plain table is kept standalone,
-  // by extension of that same rule rather than independent confirmation.
-  const nestedRelElements = [];
-  const standaloneRelElements = [];
-  function pushRel(xmlStr, a, b){
-    if(geomKind(a) && geomKind(b)) nestedRelElements.push(xmlStr);
-    else standaloneRelElements.push(xmlStr);
-  }
-  state.relationships.forEach(r=>{
-    const a = state.classes.find(x=>x.id===r.sourceId), b = state.classes.find(x=>x.id===r.targetId);
-    if(!a || !b) return;
-    if(r.type==='generalization'){
-      const name = pascalIdent(a.name)+'Generaliza'+pascalIdent(b.name);
-      pushRel(relationshipXml(relCatalogPath(name, a, b), name, pascalIdent(b.name), pascalIdent(a.name), 'esriRelCardinalityOneToOne', true, 'é especializada por', 'especializa'), a, b);
-    } else if(r.type==='aggregation'){
-      const name = pascalIdent(a.name)+'Agrega'+pascalIdent(b.name);
-      pushRel(relationshipXml(relCatalogPath(name, a, b), name, pascalIdent(a.name), pascalIdent(b.name), 'esriRelCardinalityOneToMany', true, 'agrega', 'é parte de'), a, b);
-    } else if(r.type==='network'){
-      const name1 = pascalIdent(a.name)+'ConectaOrigem'+pascalIdent(b.name);
-      pushRel(relationshipXml(relCatalogPath(name1, a, b), name1, pascalIdent(a.name), pascalIdent(b.name), 'esriRelCardinalityOneToMany', false, 'é origem de', 'parte de (nó origem)'), a, b);
-      const name2 = pascalIdent(a.name)+'ConectaDestino'+pascalIdent(b.name);
-      pushRel(relationshipXml(relCatalogPath(name2, a, b), name2, pascalIdent(a.name), pascalIdent(b.name), 'esriRelCardinalityOneToMany', false, 'é destino de', 'parte de (nó destino)'), a, b);
-    } else if(r.type==='association'){
-      const plan = associationPlan(r);
-      const card = plan.mode==='junction' ? 'esriRelCardinalityManyToMany' : 'esriRelCardinalityOneToMany';
-      if(plan.mode==='junction'){
-        const name = pascalIdent(a.name)+'_'+pascalIdent(b.name);
-        pushRel(relationshipXml(relCatalogPath(name, a, b), name, pascalIdent(a.name), pascalIdent(b.name), card, false, r.name||'relaciona-se com', r.name||'relaciona-se com'), a, b);
-      } else {
-        const fkClass = state.classes.find(x=>x.id===plan.fkOn), refClass = state.classes.find(x=>x.id===plan.refTo);
-        const name = pascalIdent(refClass.name)+'_'+pascalIdent(fkClass.name);
-        pushRel(relationshipXml(relCatalogPath(name, refClass, fkClass), name, pascalIdent(refClass.name), pascalIdent(fkClass.name), card, false, r.name||'relaciona-se com', r.name||'relaciona-se com'), refClass, fkClass);
-      }
-    }
-  });
-
-  const unmappedNote = unmappedSpatialNotes.length
-    ? "\n  <!-- Relações espaciais sem regra real de topologia gerada (documentadas aqui, não como TopologyRule):\n       "+unmappedSpatialNotes.map(s=>'- '+s).join('\n       ')+"\n  -->\n"
-    : '';
-
-  const xml = "<?xml version='1.0' encoding='UTF-8'?>\n"
-    + "<esri:Workspace xmlns:esri='http://www.esri.com/schemas/ArcGIS/10.8' xmlns:xs='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'>\n"
-    + "  <!-- Gerado por GeoGeoGeo a partir de um modelo conceitual. Documento-esquema (sem dados) para\n"
-    + "       importar em ArcGIS Pro / ArcCatalog: Catalog > botão direito na geodatabase > Import > XML Workspace Document.\n"
-    + "       Estrutura (aninhamento em Children, caminhos /FD=.../FC=..., a topologia com TopologyRuleType real, e as\n"
-    + "       relationship classes) conferida contra dois XML Workspace Documents exportados de verdade do ArcGIS Pro\n"
-    + "       do próprio usuário (um com uma topologia completa, outro com relationship classes de exemplo); os IDs\n"
-    + "       de classe usados para ligar as regras de topologia são numeração local deste documento — o DSID real\n"
-    + "       só existe depois de importado. Revise tipos de campo, comprimento de texto e o resultado da\n"
-    + "       topologia/relacionamentos após a importação. -->\n"
-    + unmappedNote
-    + "  <WorkspaceDefinition xsi:type='esri:WorkspaceDefinition'>\n"
-    + "    <WorkspaceType>esriLocalDatabaseWorkspace</WorkspaceType>\n"
-    + "    <Version></Version>\n"
-    + "    <Domains xsi:type='esri:ArrayOfDomain' />\n"
-    + "    <Sequences xsi:type='esri:ArrayOfSequence' />\n"
-    + "    <DatasetDefinitions xsi:type='esri:ArrayOfDataElement'>\n"
-    + (geoClasses.length ?
-        "      <DataElement xsi:type='esri:DEFeatureDataset'><CatalogPath>/FD="+fdsName+"</CatalogPath><Name>"+fdsName+"</Name><DatasetType>esriDTFeatureDataset</DatasetType><DSID>-1</DSID><Versioned>false</Versioned><CanVersion>false</CanVersion>"+sref()
-          + "<Children xsi:type='esri:ArrayOfDataElement'>\n          " + geoElements + "\n          " + topologyElement + (nestedRelElements.length ? "\n          " + nestedRelElements.join('\n          ') : '') + "\n        </Children></DataElement>\n"
-        : '')
-    + (flatElements ? "      " + flatElements + "\n" : '')
-    + (standaloneRelElements.length ? "      " + standaloneRelElements.join('\n      ') + "\n" : '')
-    + "    </DatasetDefinitions>\n"
-    + "  </WorkspaceDefinition>\n"
-    + "  <WorkspaceData xsi:type='esri:WorkspaceData' />\n"
-    + "</esri:Workspace>\n";
-  return xml;
-}
-
-/* ============================================================
-   EXPORT #1b — Script Python (arcpy) — caminho mais confiável para
-   ArcGIS: usa a API estável/documentada em vez de um XML Workspace
-   Document escrito à mão (formato notoriamente rígido e pouco
-   documentado, cuja validação interna do ArcGIS costuma rejeitar
-   documentos gerados fora do próprio ArcGIS).
-   ============================================================ */
-function buildArcpyScript(){
-  const srid = state.meta.srid || 4326;
-  const wsName = pascalIdent(state.meta.workspaceName || state.meta.name || 'ModeloOMTG');
-  const geoClasses = state.classes.filter(c=>c.kind==='geo');
-  const flatClasses = state.classes.filter(c=>c.kind!=='geo');
-  const fdsName = wsName + '_FD';
-  const L = [];
-
-  function classIsFC(c){ return !!arcpyGeomType(geomKind(c)); }
-  function classPathExpr(c){
-    return classIsFC(c) ? ('os.path.join(FDS_PATH, "'+pascalIdent(c.name)+'")') : ('os.path.join(GDB_PATH, "'+pascalIdent(c.name)+'")');
-  }
-  function fieldLines(c, targetVar){
-    computeExportFields(c).forEach(f=>{
-      const t = arcpyFieldType(f.type);
-      const extra = [];
-      if(t==='TEXT') extra.push('field_length=255');
-      if(f.nullable===false) extra.push('field_is_nullable="NON_NULLABLE"');
-      const note = f.fkTable ? '  # FK -> '+f.fkTable+(f.fkNote?' ('+f.fkNote+')':'') : '';
-      L.push('arcpy.management.AddField('+targetVar+', "'+f.name+'", "'+t+'"'+(extra.length?', '+extra.join(', '):'')+')'+note);
-    });
-  }
-  function relCall(origin, dest, outName, cardinality, isComposite, fwdLabel, bwdLabel, fkField){
-    L.push('arcpy.management.CreateRelationshipClass(');
-    L.push('    '+classPathExpr(origin)+',');
-    L.push('    '+classPathExpr(dest)+',');
-    L.push('    os.path.join(GDB_PATH, "'+outName+'"),');
-    L.push('    relationship_type="'+(isComposite?'COMPOSITE':'SIMPLE')+'",');
-    L.push('    forward_label="'+pyStr(fwdLabel)+'",');
-    L.push('    backward_label="'+pyStr(bwdLabel)+'",');
-    L.push('    message_direction="NONE",');
-    L.push('    cardinality="'+cardinality+'",');
-    L.push('    attributed="NONE",');
-    if(fkField){
-      // A relação usa a chave primária DEFINIDA NO MODELO (o atributo marcado
-      // como PK na classe de origem), não o OBJECTID interno do arcpy — o
-      // OBJECTID só é atribuído pelo banco na hora da inserção, então não dá
-      // pra popular o campo de FK com ele antes de carregar os dados; a chave
-      // do modelo (normalmente "id") é estável e é o que você já preenche.
-      L.push('    origin_primary_key="'+pkFieldName(origin)+'",');
-      L.push('    origin_foreign_key="'+fkField+'"');
-    } else {
-      // Associação N:N (tabela de junção): sem campo de FK explícito no
-      // modelo — o arcpy gerencia a tabela de junção internamente e usa o
-      // OBJECTID para isso, então mantemos OBJECTID aqui.
-      L.push('    origin_primary_key="OBJECTID"');
-    }
-    L.push(')');
-    L.push('');
-  }
-
-  L.push('# -*- coding: utf-8 -*-');
-  L.push('"""');
-  L.push('Script gerado por GeoGeoGeo — cria o esquema do modelo "'+pyStr(state.meta.name||'Modelo')+'"');
-  L.push('em uma File Geodatabase usando arcpy (a API oficial e estável do ArcGIS), em vez de um');
-  L.push('XML Workspace Document escrito à mão — mais confiável para importar sem erros.');
-  L.push('');
-  L.push('Como usar:');
-  L.push('  1. Abra o ArcGIS Pro e a janela Python (Analysis > Python Window), ou rode este');
-  L.push('     arquivo com o Python do ArcGIS Pro (ex.: no prompt "Python Command Prompt" do');
-  L.push('     ArcGIS: python este_script.py).');
-  L.push('  2. Ajuste GDB_FOLDER abaixo para a pasta onde a geodatabase deve ficar.');
-  L.push('  3. Execute. O script cria a geodatabase (se ainda não existir), o feature dataset,');
-  L.push('     as classes/tabelas com seus campos, as classes de relacionamento e — quando há');
-  L.push('     relações "dentro" ou agregações espaciais no modelo — um dataset de Topologia com');
-  L.push('     as regras de cobertura correspondentes (ver comentários "Topologia" abaixo).');
-  L.push('  4. Revise tipos de campo antes de usar em produção. Nem todo predicado espacial do');
-  L.push('     OMT-G tem regra de topologia equivalente no ArcGIS — os que não têm ficam como');
-  L.push('     comentário explicando o motivo, não como regra criada. Regras gerais de qualidade');
-  L.push('     geométrica (sem sobreposição/auto-interseção) ficam comentadas, por classe — decida');
-  L.push('     você quais fazem sentido e descomente, já que nem toda classe deve proibir isso.');
-  L.push('"""');
-  L.push('import arcpy');
-  L.push('import os');
-  L.push('');
-  L.push('GDB_FOLDER = r"C:\\caminho\\para\\a\\pasta"   # <-- ajuste este caminho antes de rodar');
-  L.push('GDB_NAME = "'+wsName+'.gdb"');
-  L.push('SRID = '+srid+'   # código EPSG do sistema de referência espacial do modelo');
-  L.push('');
-  L.push('GDB_PATH = os.path.join(GDB_FOLDER, GDB_NAME)');
-  L.push('if not arcpy.Exists(GDB_PATH):');
-  L.push('    arcpy.management.CreateFileGDB(GDB_FOLDER, GDB_NAME)');
-  L.push('');
-  L.push('sr = arcpy.SpatialReference(SRID)');
-  L.push('');
-
-  if(geoClasses.length){
-    L.push('FDS_NAME = "'+fdsName+'"');
-    L.push('FDS_PATH = os.path.join(GDB_PATH, FDS_NAME)');
-    L.push('if not arcpy.Exists(FDS_PATH):');
-    L.push('    arcpy.management.CreateFeatureDataset(GDB_PATH, FDS_NAME, sr)');
-    L.push('');
-  }
-
-  L.push('# ---- Classes e tabelas ----');
-  [...geoClasses, ...flatClasses].forEach(c=>{
-    const gk = geomKind(c);
-    const gt = arcpyGeomType(gk);
-    const varName = pascalIdent(c.name);
-    if(gt){
-      L.push('# '+c.name+' ('+c.primitive+(gk.approx?' — sem equivalente vetorial direto; aproximado como '+gt:'')+')');
-      L.push('arcpy.management.CreateFeatureclass(FDS_PATH, "'+varName+'", "'+gt+'", spatial_reference=sr)');
-      fieldLines(c, 'os.path.join(FDS_PATH, "'+varName+'")');
-    } else {
-      if(c.kind==='geo') L.push('# '+c.name+': primitiva "'+c.primitive+'" não tem equivalente direto de geometria no arcpy — criada como tabela; adicione a geometria manualmente se necessário.');
-      else L.push('# '+c.name);
-      L.push('arcpy.management.CreateTable(GDB_PATH, "'+varName+'")');
-      fieldLines(c, 'os.path.join(GDB_PATH, "'+varName+'")');
-    }
-    L.push('');
-  });
-
-  // Coverage candidates for the Topology dataset: an explicit "dentro"
-  // spatial relationship, OR an aggregation between two classes that both
-  // have geometry — a whole/part pair where both sides are mapped features
-  // (e.g. a neighborhood aggregating blocks) behaves, geometrically, exactly
-  // like "part dentro do todo", even though it's drawn as aggregation, not
-  // as the OMT-G spatial-relationship notation. Aggregation's own forward
-  // label is "agrega" (source aggregates target — source is the whole), so
-  // the part being covered is the TARGET and the whole is the SOURCE.
-  const coverageCandidates = [];
-  L.push('# ---- Classes de relacionamento ----');
-  state.relationships.forEach(r=>{
-    const a = state.classes.find(x=>x.id===r.sourceId), b = state.classes.find(x=>x.id===r.targetId);
-    if(!a || !b) return;
-    if(r.type==='generalization'){
-      relCall(b, a, pascalIdent(a.name)+'_Generaliza_'+pascalIdent(b.name), 'ONE_TO_ONE', true, 'é especializada por', 'especializa', sqlIdent(b.name)+'_id');
-    } else if(r.type==='aggregation'){
-      relCall(a, b, pascalIdent(a.name)+'_Agrega_'+pascalIdent(b.name), 'ONE_TO_MANY', true, 'agrega', 'é parte de', sqlIdent(a.name)+'_id');
-      if(geomKind(a) && geomKind(b)){
-        coverageCandidates.push({origin:b, dest:a, predicate:'dentro', label:b.name+' contido em '+a.name+' (agregação espacial)'});
-      }
-    } else if(r.type==='network'){
-      relCall(a, b, pascalIdent(a.name)+'_ConectaOrigem_'+pascalIdent(b.name), 'ONE_TO_MANY', false, 'é origem de', 'parte de (nó origem)', sqlIdent(a.name)+'_no_origem_id');
-      relCall(a, b, pascalIdent(a.name)+'_ConectaDestino_'+pascalIdent(b.name), 'ONE_TO_MANY', false, 'é destino de', 'parte de (nó destino)', sqlIdent(a.name)+'_no_destino_id');
-    } else if(r.type==='association'){
-      const plan = associationPlan(r);
-      if(plan.mode==='junction'){
-        L.push('# associação N:N "'+(r.name||'')+'" ('+a.name+' <-> '+b.name+') — sem atributos próprios;');
-        L.push('# o arcpy cria e gerencia a tabela de junção internamente.');
-        relCall(a, b, pascalIdent(a.name)+'_'+pascalIdent(b.name), 'MANY_TO_MANY', false, r.name||'relaciona-se com', r.name||'relaciona-se com', null);
-      } else {
-        const fkClass = state.classes.find(x=>x.id===plan.fkOn), refClass = state.classes.find(x=>x.id===plan.refTo);
-        relCall(refClass, fkClass, pascalIdent(refClass.name)+'_'+pascalIdent(fkClass.name), 'ONE_TO_MANY', false, r.name||'relaciona-se com', r.name||'relaciona-se com', sqlIdent(refClass.name)+'_id');
-      }
-    } else if(r.type==='spatial'){
-      if(geomKind(a) && geomKind(b)){
-        coverageCandidates.push({origin:a, dest:b, predicate:r.topoRule, label:a.name+' '+TOPO_RULE_LABEL[r.topoRule]+' '+b.name});
-      } else {
-        coverageCandidates.push({origin:a, dest:b, predicate:r.topoRule, label:a.name+' '+TOPO_RULE_LABEL[r.topoRule]+' '+b.name, noGeom:true});
-      }
-    }
-  });
-
-  const areaLineGeo = geoClasses.filter(c=>{ const cat = geomCategory(c); return cat==='area'||cat==='line'; });
-  if(areaLineGeo.length || coverageCandidates.length){
-    L.push('# ---- Topologia ----');
-    L.push('# Um dataset de Topologia do ArcGIS guarda regras de INTEGRIDADE entre classes');
-    L.push('# inteiras (ex.: "feições de A não podem sobrepor feições de B"), não afirmações');
-    L.push('# sobre um par específico de feições. As regras abaixo vêm de dois lugares');
-    L.push('# diferentes: regras de cobertura, criadas de verdade porque vêm de uma relação');
-    L.push('# "dentro" ou de uma agregação espacial que você desenhou no modelo (a parte deve');
-    L.push('# estar coberta pelo todo); e regras gerais de qualidade geométrica (sem sobrepor/');
-    L.push('# auto-interceptar), que ficam só como SUGESTÃO comentada — se uma classe de área');
-    L.push('# pode legitimamente ter feições sobrepostas (zoneamentos, camadas de classificação');
-    L.push('# distintas sobre a mesma área etc.), aplicar isso de forma automática estaria errado;');
-    L.push('# só quem conhece a regra de negócio da classe sabe se cabe. Descomente por classe.');
-    L.push('# O vocabulário do ArcGIS é quase todo negativo/de cobertura ("não pode sobrepor",');
-    L.push('# "deve estar coberto por/dentro de"); não existe regra para "deve tocar", "deve');
-    L.push('# sobrepor" ou "deve cruzar" — esses predicados ficam só como comentário, não porque');
-    L.push('# faltou implementar, mas porque o ArcGIS não tem regra equivalente.');
-    // ArcGIS Pro's own default name for a topology created inside a dataset
-    // is "<dataset>_Topology" (confirmed by the user's real export), not
-    // "<workspace>_Topology" — matched here for consistency with the XML
-    // export and with what ArcGIS Pro itself would suggest.
-    const topoName = fdsName+'_Topology';
-    L.push('TOPOLOGY_NAME = "'+topoName+'"');
-    L.push('TOPOLOGY_PATH = os.path.join(FDS_PATH, TOPOLOGY_NAME)');
-    L.push('arcpy.management.CreateTopology(FDS_PATH, TOPOLOGY_NAME)');
-    const addedFC = new Set();
-    const addFC = c=>{
-      const v = pascalIdent(c.name);
-      if(!addedFC.has(v)){ addedFC.add(v); L.push('arcpy.management.AddFeatureClassToTopology(TOPOLOGY_PATH, os.path.join(FDS_PATH, "'+v+'"), 1, 1)'); }
-    };
-    // Only classes with an actual, model-derived coverage rule are added to
-    // the topology automatically — that reflects a containment relationship
-    // you drew. A class gets added for a general rule only when its
-    // suggestion below is uncommented.
-    coverageCandidates.forEach(({origin,dest,noGeom})=>{ if(!noGeom){ addFC(origin); addFC(dest); } });
-    L.push('');
-    if(areaLineGeo.length){
-      L.push('# Sugestões de qualidade geométrica (comentadas — decida por classe e descomente):');
-      areaLineGeo.forEach(c=>{
-        const v = pascalIdent(c.name);
-        generalTopologyRules(geomCategory(c)).forEach(({rule})=>{
-          L.push('# arcpy.management.AddFeatureClassToTopology(TOPOLOGY_PATH, os.path.join(FDS_PATH, "'+v+'"), 1, 1)  # se ainda não adicionada acima');
-          L.push('# arcpy.management.AddRuleToTopology(TOPOLOGY_PATH, "'+rule+'", os.path.join(FDS_PATH, "'+v+'"), "", "", "")');
-        });
-      });
-      L.push('# "Must Not Have Gaps (Area)" também é só sugestão — faz sentido para uma classe');
-      L.push('# que deve cobrir totalmente sua extensão sem buracos (ex.: bairros dentro do');
-      L.push('# limite do município), não para uma que pode ter vazios legítimos (ex.: lotes,');
-      L.push('# já que nem todo terreno é um lote registrado):');
-      L.push('# arcpy.management.AddRuleToTopology(TOPOLOGY_PATH,');
-      L.push('#   "Must Not Have Gaps (Area)", os.path.join(FDS_PATH, "<Classe>"), "", "", "")');
-      L.push('');
-    }
-    if(coverageCandidates.length){
-      L.push('# Regras de cobertura (relações "dentro" e agregações espaciais):');
-      coverageCandidates.forEach(({origin,dest,predicate,label,noGeom})=>{
-        if(noGeom){
-          L.push('# '+label+' — uma das classes não tem geometria; sem regra de topologia.');
-          L.push('');
-          return;
-        }
-        const catA = geomCategory(origin), catB = geomCategory(dest);
-        const mapped = topologyRuleFor(predicate, catA, catB);
-        if(mapped){
-          L.push('# '+label+(mapped.caveat ? '  ('+mapped.caveat+')' : ''));
-          L.push('arcpy.management.AddRuleToTopology(TOPOLOGY_PATH, "'+mapped.rule+'", os.path.join(FDS_PATH, "'+pascalIdent(origin.name)+'"), "", os.path.join(FDS_PATH, "'+pascalIdent(dest.name)+'"), "")');
-        } else {
-          L.push('# '+label+' — predicado "'+(TOPO_RULE_SHORT[predicate]||predicate)+'" sem regra de');
-          L.push('#   topologia equivalente no ArcGIS (ver nota acima); documente/valide separadamente.');
-        }
-        L.push('');
-      });
-    }
-    L.push('arcpy.management.ValidateTopology(TOPOLOGY_PATH, "Full_Extent")');
-    L.push('');
-  }
-
-  L.push('print("Esquema criado em: " + GDB_PATH)');
-  return L.join('\n');
-}
-
-/* ============================================================
-   EXPORT — Geodatabase via GDAL/OGR (OpenFileGDB driver)
-   Writes a real .gdb using only open-source tooling — no ArcGIS Pro
-   license needed. GDAL's OpenFileGDB driver has supported writing since
-   3.6, including relationship classes (also added in 3.6); as of GDAL
-   3.11 it's the driver Esri's own name delegates to for all writes. Field
-   names/types mirror computeExportFields() exactly, so this stays
-   consistent with the arcpy script and the SQL exports.
-   ============================================================ */
-function buildGdalScript(){
-  const srid = state.meta.srid || 4326;
-  const wsName = pascalIdent(state.meta.workspaceName || state.meta.name || 'ModeloOMTG');
-  const geoClasses = state.classes.filter(c=>c.kind==='geo');
-  const flatClasses = state.classes.filter(c=>c.kind!=='geo');
-  const fdsName = wsName + '_FD';
-  const L = [];
-
-  function classIsFC(c){ return !!ogrGeomType(geomKind(c)); }
-  function layerVar(c){ return 'lyr_'+pascalIdent(c.name); }
-  function fieldLines(c, lv){
-    computeExportFields(c).forEach(f=>{
-      const t = ogrFieldType(f.type);
-      const note = f.fkTable ? '  # FK -> '+f.fkTable+(f.fkNote?' ('+f.fkNote+')':'') : '';
-      L.push('fld = ogr.FieldDefn("'+f.name+'", '+t+')');
-      if(f.type==='text') L.push('fld.SetWidth(255)');
-      if(f.type==='boolean') L.push('fld.SetSubType(ogr.OFSTBoolean)');
-      L.push('fld.SetNullable('+(f.nullable===false?'False':'True')+')');
-      L.push(lv+'.CreateField(fld)'+note);
-    });
-  }
-  // origin = the "1"/referenced side (holds the primary key used as the
-  // relationship's join field), dest = the "many"/referencing side (holds
-  // the FK field computeExportFields() actually added on that table).
-  function relCall(origin, dest, outName, cardinalityConst, isComposite, fwdLabel, bwdLabel, originKeyField, fkField){
-    L.push('rel = gdal.Relationship("'+outName+'", "'+pascalIdent(origin.name)+'", "'+pascalIdent(dest.name)+'", gdal.'+cardinalityConst+')');
-    L.push('rel.SetType(gdal.'+(isComposite?'GRT_COMPOSITE':'GRT_ASSOCIATION')+')');
-    L.push('rel.SetForwardPathLabel("'+pyStr(fwdLabel)+'")');
-    L.push('rel.SetBackwardPathLabel("'+pyStr(bwdLabel)+'")');
-    L.push('rel.SetLeftTableFields(["'+originKeyField+'"])');
-    L.push('rel.SetRightTableFields(["'+(fkField||originKeyField)+'"])');
-    L.push('rel.SetRelatedTableType("features")');
-    L.push('add_relationship(ds, rel, "'+outName+'")');
-    L.push('');
-  }
-
-  L.push('# -*- coding: utf-8 -*-');
-  L.push('"""');
-  L.push('Script gerado por GeoGeoGeo — cria o esquema do modelo "'+pyStr(state.meta.name||'Modelo')+'"');
-  L.push('em uma File Geodatabase (.gdb) real usando GDAL/OGR (o driver OpenFileGDB),');
-  L.push('sem precisar do ArcGIS Pro nem de nenhuma licença Esri — só GDAL, que é');
-  L.push('gratuito e de código aberto.');
-  L.push('');
-  L.push('*** IMPORTANTE — leia antes de rodar ***');
-  L.push('Escrita de esquema (classes, tabelas, campos) no OpenFileGDB é suportada desde');
-  L.push('o GDAL 3.6 e é uma API estável — essa parte deste script tem alta confiança.');
-  L.push('A API de relationship classes (gdal.Relationship / Dataset.AddRelationship)');
-  L.push('também foi adicionada no GDAL 3.6, mas eu não consegui confirmar a assinatura');
-  L.push('exata (nomes/ordem dos parâmetros) contra a documentação ao vívo ao gerar este');
-  L.push('script — por segurança, a criação de cada relacionamento roda dentro de um');
-  L.push('try/except: se a chamada falhar por causa de uma diferença de versão, o');
-  L.push('script AVISA no terminal e continua (a geodatabase e todas as classes/tabelas');
-  L.push('são criadas normalmente de qualquer forma). Se algum relacionamento falhar,');
-  L.push('rode isto para conferir a assinatura certa da sua versão instalada e ajuste');
-  L.push('a função add_relationship() abaixo:');
-  L.push('    python3 -c "from osgeo import gdal; help(gdal.Relationship)"');
-  L.push('    python3 -c "from osgeo import gdal; help(gdal.Dataset.AddRelationship)"');
-  L.push('');
-  L.push('Requisitos (não precisa ArcGIS):');
-  L.push('  pip install gdal        # ou: conda install -c conda-forge gdal');
-  L.push('  — confira que a versão é >= 3.6 (idealmente >= 3.11):');
-  L.push('      python3 -c "from osgeo import gdal; print(gdal.__version__)"');
-  L.push('');
-  L.push('Como usar:');
-  L.push('  1. Ajuste GDB_FOLDER abaixo para a pasta onde a geodatabase deve ficar.');
-  L.push('  2. Rode: python3 este_script.py');
-  L.push('  3. Revise tipos de campo e o esquema de topologia sugerido nos comentários');
-  L.push('     antes de usar em produção — em especial as relações espaciais, que viram');
-  L.push('     apenas comentários de orientação (GDAL não modela topologia).');
-  L.push('"""');
-  L.push('import os');
-  L.push('from osgeo import gdal, ogr, osr');
-  L.push('');
-  L.push('gdal.UseExceptions()');
-  L.push('');
-  L.push('GDB_FOLDER = r"/caminho/para/a/pasta"   # <-- ajuste este caminho antes de rodar');
-  L.push('GDB_NAME = "'+wsName+'.gdb"');
-  L.push('SRID = '+srid+'   # código EPSG do sistema de referência espacial do modelo');
-  L.push('');
-  L.push('GDB_PATH = os.path.join(GDB_FOLDER, GDB_NAME)');
-  L.push('');
-  L.push('def add_relationship(ds, rel, name):');
-  L.push('    try:');
-  L.push('        ok = ds.AddRelationship(rel)');
-  L.push('        if not ok:');
-  L.push('            print("Aviso: AddRelationship recusou o relacionamento \'" + name + "\' "');
-  L.push('                  "(retornou False) — confira campos/tabelas envolvidos.")');
-  L.push('    except Exception as e:');
-  L.push('        print("Aviso: não foi possível criar o relacionamento \'" + name + "\': " + str(e))');
-  L.push('        print("       Confira a assinatura da API de relationships da sua versão do GDAL")');
-  L.push('        print("       (veja o comentário no topo deste arquivo) e ajuste add_relationship().")');
-  L.push('');
-  L.push('srs = osr.SpatialReference()');
-  L.push('srs.ImportFromEPSG(SRID)');
-  L.push('');
-  L.push('drv = ogr.GetDriverByName("OpenFileGDB")');
-  L.push('ds = drv.CreateDataSource(GDB_PATH)');
-  L.push('');
-
-  L.push('# ---- Classes e tabelas ----');
-  [...geoClasses, ...flatClasses].forEach(c=>{
-    const gk = geomKind(c);
-    const gt = ogrGeomType(gk);
-    const lv = layerVar(c);
-    const opts = [];
-    if(gt && c.kind==='geo') opts.push('"FEATURE_DATASET='+fdsName+'"');
-    const optsStr = opts.length ? ', options=['+opts.join(', ')+']' : '';
-    if(gt){
-      L.push('# '+c.name+' ('+c.primitive+(gk.approx?' — sem equivalente vetorial direto; aproximado como '+gt.replace('ogr.wkb',''):'')+')');
-      L.push(lv+' = ds.CreateLayer("'+pascalIdent(c.name)+'", srs=srs, geom_type='+gt+optsStr+')');
-    } else {
-      if(c.kind==='geo') L.push('# '+c.name+': primitiva "'+c.primitive+'" não tem equivalente direto de geometria no OGR — criada como tabela; adicione a geometria manualmente se necessário.');
-      else L.push('# '+c.name);
-      L.push(lv+' = ds.CreateLayer("'+pascalIdent(c.name)+'", geom_type=ogr.wkbNone)');
-    }
-    fieldLines(c, lv);
-    L.push('');
-  });
-
-  const spatialNotes = [];
-  L.push('# ---- Relacionamentos ----');
-  state.relationships.forEach(r=>{
-    const a = state.classes.find(x=>x.id===r.sourceId), b = state.classes.find(x=>x.id===r.targetId);
-    if(!a || !b) return;
-    if(r.type==='generalization'){
-      relCall(b, a, pascalIdent(a.name)+'_Generaliza_'+pascalIdent(b.name), 'GRC_ONE_TO_ONE', true, 'é especializada por', 'especializa', pkFieldName(b), sqlIdent(b.name)+'_id');
-    } else if(r.type==='aggregation'){
-      relCall(a, b, pascalIdent(a.name)+'_Agrega_'+pascalIdent(b.name), 'GRC_ONE_TO_MANY', true, 'agrega', 'é parte de', pkFieldName(a), sqlIdent(a.name)+'_id');
-    } else if(r.type==='network'){
-      relCall(a, b, pascalIdent(a.name)+'_ConectaOrigem_'+pascalIdent(b.name), 'GRC_ONE_TO_MANY', false, 'é origem de', 'parte de (nó origem)', pkFieldName(a), sqlIdent(a.name)+'_no_origem_id');
-      relCall(a, b, pascalIdent(a.name)+'_ConectaDestino_'+pascalIdent(b.name), 'GRC_ONE_TO_MANY', false, 'é destino de', 'parte de (nó destino)', pkFieldName(a), sqlIdent(a.name)+'_no_destino_id');
-    } else if(r.type==='association'){
-      const plan = associationPlan(r);
-      if(plan.mode==='junction'){
-        L.push('# associação N:N "'+(r.name||'')+'" ('+a.name+' <-> '+b.name+') — o GDAL/OGR não gerencia');
-        L.push('# uma tabela de junção automaticamente como o arcpy; crie manualmente uma tabela');
-        L.push('# de junção com os IDs das duas classes e dois relacionamentos ONE_TO_MANY.');
-      } else {
-        const fkClass = state.classes.find(x=>x.id===plan.fkOn), refClass = state.classes.find(x=>x.id===plan.refTo);
-        relCall(refClass, fkClass, pascalIdent(refClass.name)+'_'+pascalIdent(fkClass.name), 'GRC_ONE_TO_MANY', false, r.name||'relaciona-se com', r.name||'relaciona-se com', pkFieldName(refClass), sqlIdent(refClass.name)+'_id');
-      }
-    } else if(r.type==='spatial'){
-      spatialNotes.push(a.name+' '+TOPO_RULE_LABEL[r.topoRule]+' '+b.name);
-    }
-  });
-
-  if(spatialNotes.length){
-    L.push('# ---- Regras de topologia (relações espaciais do modelo conceitual) ----');
-    L.push('# O GDAL não modela topologia — recomenda-se validar estas regras separadamente');
-    L.push('# (ex.: com um dataset de Topologia no ArcGIS Pro, ou regras QGIS/PostGIS) usando');
-    L.push('# esta lista como guia:');
-    spatialNotes.forEach(s=>L.push('#   - '+s));
-    L.push('');
-  }
-
-  L.push('ds = None');
-  L.push('print("Geodatabase criada em: " + GDB_PATH)');
-  return L.join('\n');
-}
-
 function pkFieldName(c){
   const pk = c.attributes.find(a=>a.pk);
   return pk ? sqlIdent(pk.name) : 'id';
-}
-function tblName(c){ return sqlIdent(c.name); }
-
-/* ============================================================
-   EXPORT #2 — GeoPackage (SQL DDL, OGC GeoPackage 1.2/1.3 system tables)
-   ============================================================ */
-function buildGpkgSql(){
-  const srid = state.meta.srid || 4326;
-  const authority = state.meta.srsAuthority || 'EPSG';
-  const lines = [];
-  lines.push('-- ============================================================');
-  lines.push('-- GeoPackage (OGC) — DDL gerado por GeoGeoGeo');
-  lines.push('-- Como usar: crie um GeoPackage vazio (ex.: QGIS > Novo > GeoPackage,');
-  lines.push('-- ou "ogrinfo -so out.gpkg" após criação), abra o arquivo com um cliente');
-  lines.push('-- SQLite (DB Browser for SQLite) e execute este script inteiro.');
-  lines.push('-- ============================================================\n');
-
-  lines.push('CREATE TABLE IF NOT EXISTS gpkg_spatial_ref_sys (');
-  lines.push('  srs_name TEXT NOT NULL, srs_id INTEGER NOT NULL PRIMARY KEY,');
-  lines.push('  organization TEXT NOT NULL, organization_coordsys_id INTEGER NOT NULL,');
-  lines.push('  definition TEXT NOT NULL, description TEXT);\n');
-  lines.push('CREATE TABLE IF NOT EXISTS gpkg_contents (');
-  lines.push('  table_name TEXT NOT NULL PRIMARY KEY, data_type TEXT NOT NULL,');
-  lines.push('  identifier TEXT UNIQUE, description TEXT DEFAULT \'\',');
-  lines.push('  last_change DATETIME NOT NULL DEFAULT (strftime(\'%Y-%m-%dT%H:%M:%fZ\',\'now\')),');
-  lines.push('  min_x DOUBLE, min_y DOUBLE, max_x DOUBLE, max_y DOUBLE, srs_id INTEGER,');
-  lines.push('  FOREIGN KEY (srs_id) REFERENCES gpkg_spatial_ref_sys(srs_id));\n');
-  lines.push('CREATE TABLE IF NOT EXISTS gpkg_geometry_columns (');
-  lines.push('  table_name TEXT NOT NULL, column_name TEXT NOT NULL, geometry_type_name TEXT NOT NULL,');
-  lines.push('  srs_id INTEGER NOT NULL, z TINYINT NOT NULL, m TINYINT NOT NULL,');
-  lines.push('  PRIMARY KEY (table_name, column_name),');
-  lines.push('  FOREIGN KEY (table_name) REFERENCES gpkg_contents(table_name),');
-  lines.push('  FOREIGN KEY (srs_id) REFERENCES gpkg_spatial_ref_sys(srs_id));\n');
-
-  lines.push("INSERT OR IGNORE INTO gpkg_spatial_ref_sys VALUES ('Undefined cartesian SRS', -1, 'NONE', -1, 'undefined', 'undefined cartesian coordinate reference system');");
-  lines.push("INSERT OR IGNORE INTO gpkg_spatial_ref_sys VALUES ('Undefined geographic SRS', 0, 'NONE', 0, 'undefined', 'undefined geographic coordinate reference system');");
-  lines.push("INSERT OR IGNORE INTO gpkg_spatial_ref_sys VALUES ('WGS 84 geodetic', 4326, 'EPSG', 4326, 'GEOGCRS[\"WGS 84\"]', 'longitude/latitude WGS84');");
-  if(srid!==4326 && srid!==0 && srid!==-1){
-    lines.push("INSERT OR IGNORE INTO gpkg_spatial_ref_sys VALUES ('"+authority+':'+srid+"', "+srid+", '"+authority+"', "+srid+", 'definir WKT do SRID "+srid+" manualmente se necessario', 'SRS do modelo (SRID "+srid+")');");
-  }
-  lines.push('');
-
-  state.classes.forEach(c=>{
-    const table = tblName(c);
-    const fields = computeExportFields(c);
-    const pkName = pkFieldName(c);
-    const gk = geomKind(c);
-    const cols = [];
-    cols.push('  "'+pkName+'" INTEGER PRIMARY KEY AUTOINCREMENT');
-    fields.filter(f=>f.name!==pkName).forEach(f=>{
-      let refClass = f.fkClassId ? state.classes.find(x=>x.id===f.fkClassId) : null;
-      const refCol = refClass ? pkFieldName(refClass) : 'id';
-      cols.push('  "'+f.name+'" '+gpkgType(f.type)+(f.nullable===false?' NOT NULL':'')+(refClass ? ' REFERENCES "'+tblName(refClass)+'"("'+refCol+'") /* '+(f.fkNote||'')+' */' : ''));
-    });
-    if(gk) cols.push('  "geom" BLOB /* geometria '+gk.ogc+(gk.approx?' - aproximação; primitiva conceitual: '+c.primitive:'')+' */');
-    lines.push('CREATE TABLE "'+table+'" (\n'+cols.join(',\n')+'\n);');
-    if(gk){
-      lines.push("INSERT INTO gpkg_contents (table_name, data_type, identifier, description, srs_id) VALUES ('"+table+"', 'features', '"+table+"', '"+(c.name.replace(/'/g,"''"))+"', "+srid+");");
-      lines.push("INSERT INTO gpkg_geometry_columns (table_name, column_name, geometry_type_name, srs_id, z, m) VALUES ('"+table+"', 'geom', '"+gk.ogc+"', "+srid+", 0, 0);");
-    } else {
-      lines.push("INSERT INTO gpkg_contents (table_name, data_type, identifier, description) VALUES ('"+table+"', 'attributes', '"+table+"', '"+(c.name.replace(/'/g,"''"))+"');");
-    }
-    lines.push('');
-  });
-
-  const junctions = [];
-  state.relationships.forEach(r=>{
-    if(r.type!=='association') return;
-    const plan = associationPlan(r);
-    if(plan.mode!=='junction') return;
-    const a = state.classes.find(x=>x.id===r.sourceId), b = state.classes.find(x=>x.id===r.targetId);
-    const jt = tblName(a)+'_'+tblName(b);
-    junctions.push('CREATE TABLE "'+jt+'" (\n  "'+tblName(a)+'_id" INTEGER NOT NULL REFERENCES "'+tblName(a)+'"("'+pkFieldName(a)+'"),\n  "'+tblName(b)+'_id" INTEGER NOT NULL REFERENCES "'+tblName(b)+'"("'+pkFieldName(b)+'"),\n  PRIMARY KEY ("'+tblName(a)+'_id", "'+tblName(b)+'_id")\n); -- associação N:N'+(r.name?' ('+r.name+')':''));
-  });
-  if(junctions.length){ lines.push('-- Tabelas de junção (associações N:N)'); junctions.forEach(j=>lines.push(j+'\n')); }
-
-  const spatialNotes = state.relationships.filter(r=>r.type==='spatial').map(r=>{
-    const a = state.classes.find(x=>x.id===r.sourceId), b = state.classes.find(x=>x.id===r.targetId);
-    return (a&&b) ? ('-- '+a.name+' '+TOPO_RULE_LABEL[r.topoRule]+' '+b.name) : null;
-  }).filter(Boolean);
-  if(spatialNotes.length){
-    lines.push('-- Relações espaciais / topológicas do modelo conceitual (documentação — o GeoPackage');
-    lines.push('-- não possui um mecanismo nativo de regras topológicas; valide estas regras na aplicação');
-    lines.push('-- ou com rotinas de QA em QGIS/GDAL):');
-    spatialNotes.forEach(n=>lines.push(n));
-  }
-  return lines.join('\n');
-}
-
-/* ============================================================
-   EXPORT #3 — PostGIS (SQL DDL + esquema opcional postgis.topology)
-   ============================================================ */
-function buildPostgisSql(opts){
-  opts = opts || {};
-  const srid = state.meta.srid || 4326;
-  const schema = sqlIdent(state.meta.schema || 'public');
-  const useTopology = !!opts.useTopology;
-  const lines = [];
-  lines.push('-- ============================================================');
-  lines.push('-- PostGIS — DDL gerado por GeoGeoGeo');
-  lines.push('-- Requer as extensões postgis'+(useTopology?' e postgis_topology':'')+'.');
-  lines.push('-- ============================================================\n');
-  lines.push('CREATE EXTENSION IF NOT EXISTS postgis;');
-  if(useTopology) lines.push('CREATE EXTENSION IF NOT EXISTS postgis_topology;');
-  if(schema!=='public') lines.push('CREATE SCHEMA IF NOT EXISTS "'+schema+'";');
-  lines.push('');
-
-  const topoName = sqlIdent(state.meta.workspaceName||state.meta.name||'modelo')+'_topo';
-  const networkOrTopoClasses = state.classes.filter(c=>c.kind==='geo' && (c.primitive==='node' || c.primitive==='arc'));
-  if(useTopology && networkOrTopoClasses.length){
-    lines.push('-- Esquema de topologia PostGIS para as classes de rede (nó/arco)');
-    lines.push("SELECT topology.CreateTopology('"+topoName+"', "+srid+");");
-    lines.push('');
-  }
-
-  const deferredFks = [];
-  state.classes.forEach(c=>{
-    const table = tblName(c);
-    const fields = computeExportFields(c);
-    const pkName = pkFieldName(c);
-    const gk = geomKind(c);
-    const cols = [];
-    cols.push('  "'+pkName+'" serial PRIMARY KEY');
-    fields.filter(f=>f.name!==pkName).forEach(f=>{
-      let refClass = f.fkClassId ? state.classes.find(x=>x.id===f.fkClassId) : null;
-      const refCol = refClass ? pkFieldName(refClass) : 'id';
-      cols.push('  "'+f.name+'" '+pgType(f.type)+(f.nullable===false?' NOT NULL':''));
-      if(refClass) deferredFks.push({table, col:f.name, refTable:tblName(refClass), refCol, note:f.fkNote||''});
-    });
-    if(gk && !(useTopology && (c.primitive==='node'||c.primitive==='arc'))){
-      cols.push('  geom geometry('+gk.ogc+', '+srid+')'+(gk.approx?' /* aproximação; primitiva conceitual: '+c.primitive+' */':''));
-    }
-    lines.push('CREATE TABLE "'+schema+'"."'+table+'" (\n'+cols.join(',\n')+'\n);');
-    if(gk && !(useTopology && (c.primitive==='node'||c.primitive==='arc'))){
-      lines.push('CREATE INDEX "'+table+'_geom_idx" ON "'+schema+'"."'+table+'" USING GIST (geom);');
-    }
-    if(useTopology && (c.primitive==='node'||c.primitive==='arc')){
-      lines.push("SELECT topology.AddTopoGeometryColumn('"+topoName+"', '"+schema+"', '"+table+"', 'topo_geom', '"+(c.primitive==='node'?'POINT':'LINESTRING')+"');");
-    }
-    lines.push('');
-  });
-
-  if(deferredFks.length){
-    lines.push('-- Chaves estrangeiras (declaradas após a criação de todas as tabelas, para não depender da ordem das classes)');
-    deferredFks.forEach(fk=>{
-      const cname = fk.table+'_'+fk.col+'_fkey';
-      lines.push('ALTER TABLE "'+schema+'"."'+fk.table+'" ADD CONSTRAINT "'+cname+'" FOREIGN KEY ("'+fk.col+'") REFERENCES "'+schema+'"."'+fk.refTable+'"("'+fk.refCol+'");'+(fk.note?' -- '+fk.note:''));
-    });
-    lines.push('');
-  }
-
-  const junctions = [];
-  state.relationships.forEach(r=>{
-    if(r.type!=='association') return;
-    const plan = associationPlan(r);
-    if(plan.mode!=='junction') return;
-    const a = state.classes.find(x=>x.id===r.sourceId), b = state.classes.find(x=>x.id===r.targetId);
-    const jt = tblName(a)+'_'+tblName(b);
-    junctions.push('CREATE TABLE "'+schema+'"."'+jt+'" (\n  "'+tblName(a)+'_id" integer NOT NULL REFERENCES "'+schema+'"."'+tblName(a)+'"("'+pkFieldName(a)+'") ON DELETE CASCADE,\n  "'+tblName(b)+'_id" integer NOT NULL REFERENCES "'+schema+'"."'+tblName(b)+'"("'+pkFieldName(b)+'") ON DELETE CASCADE,\n  PRIMARY KEY ("'+tblName(a)+'_id", "'+tblName(b)+'_id")\n); -- associação N:N'+(r.name?' ('+r.name+')':''));
-  });
-  if(junctions.length){ lines.push('-- Tabelas de junção (associações N:N)'); junctions.forEach(j=>lines.push(j+'\n')); }
-
-  const spatialRels = state.relationships.filter(r=>r.type==='spatial');
-  if(spatialRels.length){
-    lines.push('-- ------------------------------------------------------------');
-    lines.push('-- Regras de topologia / relações espaciais do modelo conceitual');
-    lines.push('-- Implementadas como gatilhos de validação (constraint triggers) usando PostGIS.');
-    lines.push('-- Ajuste a coluna de geometria caso os nomes das tabelas mudem.');
-    lines.push('-- ------------------------------------------------------------');
-    // mapeia os 7 predicados oficiais do OMT-G para as funções PostGIS equivalentes
-    const fnDef = {
-      touches:   {fn:'ST_Touches'},
-      dentro:    {fn:'ST_Within'},
-      disjunto:  {fn:'ST_Disjoint'},
-      sobrepoe:  {fn:'ST_Overlaps'},
-      cruza:     {fn:'ST_Crosses'},
-      proximo:   {fn:'ST_DWithin', extra:', 100', note:"'próximo' usa ST_DWithin com distância de exemplo (100, nas unidades do SRID) — ajuste o limiar conforme a escala do seu modelo."},
-      em_frente: {fn:'ST_Intersects', note:"'em frente' é uma relação de orientação/adjacência sem predicado espacial direto no PostGIS; ST_Intersects é usado apenas como aproximação — ajuste a lógica manualmente se precisar de um teste mais específico (ex.: buffer + ST_Azimuth)."}
-    };
-    spatialRels.forEach((r,i)=>{
-      const a = state.classes.find(x=>x.id===r.sourceId), b = state.classes.find(x=>x.id===r.targetId);
-      if(!a||!b) return;
-      const def = fnDef[r.topoRule] || {fn:'ST_Intersects'};
-      const fn = def.fn, extra = def.extra || '';
-      const fname = 'chk_'+tblName(a)+'_'+r.topoRule+'_'+tblName(b);
-      if(def.note) lines.push('-- '+def.note);
-      lines.push('CREATE OR REPLACE FUNCTION "'+schema+'".'+fname+'() RETURNS trigger AS $$');
-      lines.push('BEGIN');
-      lines.push('  IF EXISTS (');
-      lines.push('    SELECT 1 FROM "'+schema+'"."'+tblName(b)+'" b');
-      lines.push('    WHERE NOT '+fn+'(NEW.geom, b.geom'+extra+')');
-      lines.push('  ) THEN');
-      lines.push("    RAISE WARNING '% pode violar a regra espacial % com %', TG_TABLE_NAME, '"+r.topoRule+"', '"+tblName(b)+"';");
-      lines.push('  END IF;');
-      lines.push('  RETURN NEW;');
-      lines.push('END;');
-      lines.push('$$ LANGUAGE plpgsql;');
-      lines.push('-- Ative com: CREATE CONSTRAINT TRIGGER '+fname+'_trg AFTER INSERT OR UPDATE ON "'+schema+'"."'+tblName(a)+'"');
-      lines.push('--   FOR EACH ROW EXECUTE FUNCTION "'+schema+'".'+fname+'();  -- ('+a.name+' '+TOPO_RULE_LABEL[r.topoRule]+' '+b.name+')');
-      lines.push('');
-    });
-  }
-  return lines.join('\n');
-}
-
-/* ============================================================
-   EXPORT — ArcGIS Python Toolbox (.pyt), estático (não depende do
-   modelo — lê o JSON exportado em tempo de execução dentro do ArcGIS
-   Pro). Instale uma vez (Catalog > Add Toolbox); veja getParameterInfo
-   no próprio arquivo para os parâmetros. Mantém a MESMA lógica de
-   buildArcpyScript() acima (mesmos mapeamentos geomKind/geomCategory/
-   topologyRuleFor/computeExportFields/associationPlan), portada para
-   Python e verificada contra este mesmo modelo de exemplo.
-   ============================================================ */
-const PYT_TOOLBOX_SOURCE = String.raw`
-# -*- coding: utf-8 -*-
-"""
-GeoGeoGeo — ArcGIS Python Toolbox
-==================================
-
-Ferramenta para o ArcGIS Pro que lê um modelo OMT-G exportado do GeoGeoGeo
-(o arquivo .json que o botão "Exportar para > JSON" da aplicação gera) e cria
-o esquema correspondente em uma File Geodatabase: feature dataset, classes/
-tabelas com seus campos, classes de relacionamento e — quando o modelo tem
-relações "dentro" ou agregações espaciais — um dataset de Topologia com as
-regras de cobertura correspondentes.
-
-Diferente de um script avulso, esta é uma ferramenta de geoprocessamento de
-verdade: adicione este arquivo uma vez ao ArcGIS Pro (Catalog > Toolboxes >
-Add Toolbox, escolha este .pyt) e ela passa a aparecer na caixa de
-ferramentas, com uma interface de parâmetros nativa, pronta para reusar em
-qualquer modelo novo — sem precisar gerar/colar um script a cada vez.
-
-Como usar no ArcGIS Pro:
-  1. Painel Catalog > botão direito em "Toolboxes" > Add Toolbox > selecione
-     este arquivo (geogeogeo_toolbox.pyt).
-  2. Abra a ferramenta "Criar Geodatabase (OMT-G)" dentro dela.
-  3. Informe o arquivo .json do modelo, a pasta de destino e o nome da
-     geodatabase a criar (ou reaproveitar, se já existir). Execute.
-
-Formato de entrada esperado (mesmo formato do botão "Exportar para > JSON"
-do GeoGeoGeo, ou seja, o objeto "state" interno da aplicação):
-    {
-      "meta": {"name": str, "srid": int, "workspaceName": str, ...},
-      "classes": [
-        {"id": str, "name": str, "kind": "geo"|"conventional",
-         "primitive": "point"|"node"|"line"|"arc"|"polygon"|"isoline"|
-                      "tin"|"tessellation"|"sample"|"partition"|"complex"|null,
-         "complexKind": "multipoint"|"multiline"|"multipolygon"|"collection"|null,
-         "attributes": [{"name": str, "type": "text"|"integer"|"double"|
-                          "date"|"datetime"|"boolean"|"blob", "pk": bool,
-                          "nullable": bool}, ...]},
-        ...
-      ],
-      "relationships": [
-        {"id": str, "type": "association"|"generalization"|"aggregation"|
-                     "network"|"spatial", "sourceId": str, "targetId": str,
-         "name": str,
-         # association:
-         "cardSource": "1"|"0..1"|"0..*"|"1..*", "cardTarget": same,
-         # generalization:
-         "total": bool, "disjoint": bool,
-         # aggregation:
-         "cardSource": ..., "cardTarget": ..., "spatialControl": bool,
-         # network:
-         "directed": bool,
-         # spatial:
-         "topoRule": "touches"|"dentro"|"disjunto"|"em_frente"|"proximo"|
-                      "sobrepoe"|"cruza"},
-        ...
-      ]
-    }
-
-Limitações conhecidas (as mesmas do exportador de script arcpy do
-GeoGeoGeo, documentadas ali com a mesma justificativa): o vocabulário de
-regras de topologia do ArcGIS é construído quase todo em torno de PROIBIR
-sobreposição/interseção ou EXIGIR cobertura — não existe regra para "deve
-tocar", "deve sobrepor" ou "deve cruzar". Por isso só os predicados OMT-G
-"dentro" (nas combinações área-área, linha-área e ponto-área) e "disjunto"
-(área-área) geram uma regra real de topologia; os demais entram apenas como
-mensagem informativa na execução, não como regra criada. Regras gerais de
-qualidade geométrica (uma classe não sobrepor a si mesma etc.) também não
-são aplicadas automaticamente — dependem de decisão de negócio por classe —
-e só aparecem como sugestão nas mensagens da ferramenta.
-"""
-
-import arcpy
-import json
-import os
-import re
-import unicodedata
-
-
-# ============================================================
-# Helpers de identificador — replicam sqlIdent()/pascalIdent() do app.js
-# ============================================================
-
-def sql_ident(s):
-    s = (s or '').strip().lower()
-    s = unicodedata.normalize('NFD', s)
-    s = ''.join(ch for ch in s if not unicodedata.combining(ch))
-    s = re.sub(r'[^a-z0-9_]+', '_', s)
-    s = s.strip('_')
-    s = re.sub(r'^(\d)', r'c\1', s)
-    return s or 'sem_nome'
-
-
-def pascal_ident(s):
-    s = re.sub(r'[^a-zA-Z0-9]+', ' ', (s or '').strip())
-    words = [w for w in s.split(' ') if w]
-    return ''.join(w[0].upper() + w[1:] for w in words) or 'SemNome'
-
-
-# ============================================================
-# Geometria — replicam geomKind()/geomCategory()/arcpyFieldType()/
-# arcpyGeomType() do app.js
-# ============================================================
-
-GEOM_MAP = {
-    'point':        {'esri': 'esriGeometryPoint',    'approx': False},
-    'node':         {'esri': 'esriGeometryPoint',    'approx': False},
-    'line':         {'esri': 'esriGeometryPolyline', 'approx': False},
-    'arc':          {'esri': 'esriGeometryPolyline', 'approx': False},
-    'polygon':      {'esri': 'esriGeometryPolygon',  'approx': False},
-    'isoline':      {'esri': 'esriGeometryPolyline', 'approx': True},
-    'tin':          {'esri': 'esriGeometryPolygon',  'approx': True},
-    'tessellation': {'esri': 'esriGeometryPolygon',  'approx': True},
-    'sample':       {'esri': 'esriGeometryPoint',    'approx': True},
-    'partition':    {'esri': 'esriGeometryPolygon',  'approx': True},
-}
-COMPLEX_MAP = {
-    'multipoint':   {'esri': 'esriGeometryMultipoint', 'approx': False},
-    'multiline':    {'esri': 'esriGeometryPolyline',   'approx': False},
-    'multipolygon': {'esri': 'esriGeometryPolygon',    'approx': False},
-    'collection':   {'esri': 'esriGeometryBag',        'approx': False},
-}
-ARCPY_FIELD_TYPE = {'text': 'TEXT', 'integer': 'LONG', 'double': 'DOUBLE', 'date': 'DATE',
-                     'datetime': 'DATE', 'boolean': 'SHORT', 'blob': 'BLOB'}
-ARCPY_GEOM_TYPE = {'esriGeometryPoint': 'POINT', 'esriGeometryMultipoint': 'MULTIPOINT',
-                    'esriGeometryPolyline': 'POLYLINE', 'esriGeometryPolygon': 'POLYGON'}
-
-TOPO_RULE_LABEL = {
-    'touches': 'toca (touches)',
-    'dentro': 'está dentro de (dentro)',
-    'disjunto': 'é disjunto de (disjunto)',
-    'em_frente': 'está em frente a (em frente)',
-    'proximo': 'está próximo de (próximo)',
-    'sobrepoe': 'sobrepõe (sobrepõe)',
-    'cruza': 'cruza (cruza)',
-}
-
-
-def geom_kind(c):
-    if c.get('kind') != 'geo' or not c.get('primitive'):
-        return None
-    if c.get('primitive') == 'complex':
-        return COMPLEX_MAP.get(c.get('complexKind') or 'multipolygon')
-    return GEOM_MAP.get(c.get('primitive'))
-
-
-def geom_category(c):
-    gk = geom_kind(c)
-    if not gk:
-        return None
-    if gk['esri'] == 'esriGeometryPolygon':
-        return 'area'
-    if gk['esri'] == 'esriGeometryPolyline':
-        return 'line'
-    if gk['esri'] in ('esriGeometryPoint', 'esriGeometryMultipoint'):
-        return 'point'
-    return None
-
-
-def arcpy_field_type(t):
-    return ARCPY_FIELD_TYPE.get(t, 'TEXT')
-
-
-def arcpy_geom_type(gk):
-    if not gk:
-        return None
-    return ARCPY_GEOM_TYPE.get(gk['esri'])
-
-
-def topology_rule_for(predicate, cat_a, cat_b):
-    """Mesma tabela, com a mesma justificativa, de topologyRuleFor() no
-    app.js — só 'dentro' e 'disjunto' têm regra real de ArcGIS mapeada,
-    verificada contra a referência oficial da ferramenta Add Rule To
-    Topology, não adivinhada."""
-    if predicate == 'dentro':
-        if cat_a == 'area' and cat_b == 'area':
-            return {'rule': 'Must Be Covered By Feature Class Of (Area-Area)'}
-        if cat_a == 'line' and cat_b == 'area':
-            return {'rule': 'Must Be Inside (Line-Area)'}
-        if cat_a == 'point' and cat_b == 'area':
-            return {'rule': 'Must Be Properly Inside (Point-Area)'}
-        return None
-    if predicate == 'disjunto':
-        if cat_a == 'area' and cat_b == 'area':
-            return {'rule': 'Must Not Overlap With (Area-Area)',
-                    'caveat': 'permite fronteiras se tocando — não é disjunção estrita'}
-        return None
-    return None
-
-
-def general_topology_suggestion(cat):
-    if cat == 'area':
-        return 'Must Not Overlap (Area)'
-    if cat == 'line':
-        return 'Must Not Self-Intersect (Line) / Must Not Self-Overlap (Line)'
-    return None
-
-
-def pk_field_name(c):
-    """Nome do campo a usar como origin_primary_key de uma classe de
-    relacionamento — o atributo marcado como PK no modelo (normalmente
-    "id"), não o OBJECTID interno do arcpy. O OBJECTID só é atribuído pelo
-    banco na hora da inserção, então não dá pra popular o campo de FK da
-    classe dependente com ele antes de carregar os dados; a chave definida
-    no modelo é estável e é o que já vem preenchido nos seus dados."""
-    pk = next((a for a in (c.get('attributes') or []) if a.get('pk')), None)
-    return sql_ident(pk['name']) if pk else 'id'
-
-
-# ============================================================
-# Campos derivados de relacionamentos — replicam computeExportFields()/
-# associationPlan() do app.js
-# ============================================================
-
-def association_plan(r):
-    def many(v):
-        return v in ('0..*', '1..*')
-
-    def one(v):
-        return v in ('1', '0..1')
-
-    cs, ct = r.get('cardSource'), r.get('cardTarget')
-    if many(cs) and one(ct):
-        return {'mode': 'fk', 'fkOn': r.get('sourceId'), 'refTo': r.get('targetId')}
-    if one(cs) and many(ct):
-        return {'mode': 'fk', 'fkOn': r.get('targetId'), 'refTo': r.get('sourceId')}
-    if one(cs) and one(ct):
-        return {'mode': 'fk', 'fkOn': r.get('sourceId'), 'refTo': r.get('targetId')}
-    return {'mode': 'junction'}
-
-
-def compute_export_fields(c, class_by_id, relationships):
-    fields = []
-    for a in c.get('attributes') or []:
-        fields.append({'name': sql_ident(a.get('name')), 'type': a.get('type'),
-                        'nullable': a.get('nullable'), 'fkTable': None})
-    for r in relationships:
-        rtype = r.get('type')
-        if rtype == 'generalization' and r.get('sourceId') == c['id']:
-            sup = class_by_id.get(r.get('targetId'))
-            if sup:
-                fields.append({'name': sql_ident(sup['name']) + '_id', 'type': 'integer',
-                                'nullable': False, 'fkTable': sql_ident(sup['name'])})
-        if rtype == 'aggregation' and r.get('targetId') == c['id']:
-            whole = class_by_id.get(r.get('sourceId'))
-            if whole:
-                nullable = r.get('cardTarget') in ('0..*', '0..1')
-                fields.append({'name': sql_ident(whole['name']) + '_id', 'type': 'integer',
-                                'nullable': nullable, 'fkTable': sql_ident(whole['name'])})
-        if rtype == 'network' and r.get('targetId') == c['id']:
-            node = class_by_id.get(r.get('sourceId'))
-            if node:
-                base = sql_ident(node['name'])
-                fields.append({'name': base + '_no_origem_id', 'type': 'integer',
-                                'nullable': True, 'fkTable': base})
-                fields.append({'name': base + '_no_destino_id', 'type': 'integer',
-                                'nullable': True, 'fkTable': base})
-        if rtype == 'association':
-            plan = association_plan(r)
-            if plan['mode'] == 'fk' and plan['fkOn'] == c['id']:
-                ref_class = class_by_id.get(plan['refTo'])
-                if ref_class:
-                    own_card = r.get('cardSource') if plan['fkOn'] == r.get('sourceId') else r.get('cardTarget')
-                    nullable = own_card in ('0..*', '0..1')
-                    fields.append({'name': sql_ident(ref_class['name']) + '_id', 'type': 'integer',
-                                    'nullable': nullable, 'fkTable': sql_ident(ref_class['name'])})
-    return fields
-
-
-# ============================================================
-# Toolbox
-# ============================================================
-
-class Toolbox:
-    def __init__(self):
-        self.label = 'GeoGeoGeo'
-        self.alias = 'geogeogeo'
-        self.tools = [CriarGeodatabaseOMTG]
-
-
-class CriarGeodatabaseOMTG:
-    def __init__(self):
-        self.label = 'Criar Geodatabase (OMT-G)'
-        self.description = (
-            'Lê um modelo OMT-G exportado do GeoGeoGeo (.json) e cria o esquema '
-            'correspondente — feature dataset, classes/tabelas, classes de '
-            'relacionamento e topologia (quando aplicável) — em uma File Geodatabase.'
-        )
-        self.category = 'GeoGeoGeo'
-
-    def getParameterInfo(self):
-        p_json = arcpy.Parameter(
-            displayName='Modelo OMT-G (.json exportado do GeoGeoGeo)',
-            name='in_json',
-            datatype='DEFile',
-            parameterType='Required',
-            direction='Input')
-        p_json.filter.list = ['json']
-
-        p_folder = arcpy.Parameter(
-            displayName='Pasta de destino',
-            name='out_folder',
-            datatype='DEFolder',
-            parameterType='Required',
-            direction='Input')
-
-        p_name = arcpy.Parameter(
-            displayName='Nome da geodatabase (sem .gdb)',
-            name='out_name',
-            datatype='GPString',
-            parameterType='Required',
-            direction='Input')
-        p_name.value = 'ModeloOMTG'
-
-        p_out_gdb = arcpy.Parameter(
-            displayName='Geodatabase criada',
-            name='out_gdb',
-            datatype='DEWorkspace',
-            parameterType='Derived',
-            direction='Output')
-
-        return [p_json, p_folder, p_name, p_out_gdb]
-
-    def isLicensed(self):
-        return True
-
-    def updateParameters(self, parameters):
-        return
-
-    def updateMessages(self, parameters):
-        return
-
-    def execute(self, parameters, messages):
-        in_json = parameters[0].valueAsText
-        out_folder = parameters[1].valueAsText
-        out_name = parameters[2].valueAsText
-
-        with open(in_json, 'r', encoding='utf-8') as f:
-            model = json.load(f)
-
-        classes = model.get('classes')
-        relationships = model.get('relationships')
-        if classes is None or relationships is None:
-            raise arcpy.ExecuteError(
-                "O arquivo JSON não parece ser um modelo exportado do GeoGeoGeo "
-                "(faltam as chaves 'classes' e/ou 'relationships').")
-
-        meta = model.get('meta') or {}
-        class_by_id = {c['id']: c for c in classes}
-
-        ws_name = pascal_ident(meta.get('workspaceName') or meta.get('name') or 'ModeloOMTG')
-        fds_name = ws_name + '_FD'
-        try:
-            srid = int(meta.get('srid') or 4326)
-        except (TypeError, ValueError):
-            arcpy.AddWarning('SRID do modelo inválido ("%s"); usando 4326 (WGS 84).' % meta.get('srid'))
-            srid = 4326
-
-        gdb_name = out_name if out_name.lower().endswith('.gdb') else out_name + '.gdb'
-        gdb_path = os.path.join(out_folder, gdb_name)
-
-        if not arcpy.Exists(gdb_path):
-            arcpy.management.CreateFileGDB(out_folder, gdb_name)
-            arcpy.AddMessage('Geodatabase criada em: ' + gdb_path)
-        else:
-            arcpy.AddMessage('Geodatabase já existente — reaproveitando: ' + gdb_path)
-
-        try:
-            sr = arcpy.SpatialReference(srid)
-        except Exception as e:
-            arcpy.AddWarning('Não foi possível criar a referência espacial para o SRID %s (%s); '
-                              'usando WGS 84 (4326).' % (srid, e))
-            sr = arcpy.SpatialReference(4326)
-
-        geo_classes = [c for c in classes if c.get('kind') == 'geo']
-        flat_classes = [c for c in classes if c.get('kind') != 'geo']
-
-        fds_path = None
-        if geo_classes:
-            fds_path = os.path.join(gdb_path, fds_name)
-            if not arcpy.Exists(fds_path):
-                arcpy.management.CreateFeatureDataset(gdb_path, fds_name, sr)
-
-        def class_path(c):
-            gt = arcpy_geom_type(geom_kind(c))
-            name = pascal_ident(c['name'])
-            if gt and fds_path:
-                return os.path.join(fds_path, name)
-            return os.path.join(gdb_path, name)
-
-        # ---- Classes e tabelas ----
-        arcpy.AddMessage('---- Classes e tabelas ----')
-        for c in list(geo_classes) + list(flat_classes):
-            gk = geom_kind(c)
-            gt = arcpy_geom_type(gk)
-            name = pascal_ident(c['name'])
-            if gt:
-                if gk.get('approx'):
-                    arcpy.AddWarning(
-                        '%s: primitiva conceitual "%s" não tem equivalente vetorial direto no '
-                        'geodatabase; criada como %s (revise o armazenamento).'
-                        % (c['name'], c.get('primitive'), gt))
-                arcpy.management.CreateFeatureclass(fds_path, name, gt, spatial_reference=sr)
-                target = os.path.join(fds_path, name)
-            else:
-                if c.get('kind') == 'geo':
-                    arcpy.AddWarning(
-                        '%s: primitiva "%s" não tem equivalente direto de geometria no arcpy; '
-                        'criada como tabela — adicione a geometria manualmente se necessário.'
-                        % (c['name'], c.get('primitive')))
-                arcpy.management.CreateTable(gdb_path, name)
-                target = os.path.join(gdb_path, name)
-            for fdef in compute_export_fields(c, class_by_id, relationships):
-                t = arcpy_field_type(fdef['type'])
-                kwargs = {}
-                if t == 'TEXT':
-                    kwargs['field_length'] = 255
-                if fdef.get('nullable') is False:
-                    kwargs['field_is_nullable'] = 'NON_NULLABLE'
-                arcpy.management.AddField(target, fdef['name'], t, **kwargs)
-            arcpy.AddMessage('  ' + c['name'] + ' -> ' + target)
-
-        # ---- Classes de relacionamento ----
-        arcpy.AddMessage('---- Classes de relacionamento ----')
-
-        def create_rel_class(origin, dest, out_rel_name, cardinality, is_composite,
-                              fwd_label, bwd_label, fk_field):
-            kwargs = dict(
-                relationship_type='COMPOSITE' if is_composite else 'SIMPLE',
-                forward_label=fwd_label,
-                backward_label=bwd_label,
-                message_direction='NONE',
-                cardinality=cardinality,
-                attributed='NONE',
-                # com FK explícito, usa a chave definida no modelo (ex.: "id"),
-                # não o OBJECTID interno do arcpy — ele só existe depois da
-                # inserção, então não dá pra preencher a FK com ele antes de
-                # carregar os dados. Sem FK (associação N:N / tabela de
-                # junção), o arcpy gerencia tudo internamente por OBJECTID.
-                origin_primary_key=(pk_field_name(origin) if fk_field else 'OBJECTID'))
-            if fk_field:
-                kwargs['origin_foreign_key'] = fk_field
-            arcpy.management.CreateRelationshipClass(
-                class_path(origin), class_path(dest),
-                os.path.join(gdb_path, out_rel_name), **kwargs)
-            arcpy.AddMessage('  ' + out_rel_name)
-
-        # candidatos de cobertura para a Topologia: relação espacial "dentro"
-        # OU agregação entre duas classes que têm geometria (agregação
-        # espacial) — mesma lógica de buildArcpyScript()/buildEsriXML().
-        coverage_candidates = []
-        for r in relationships:
-            a = class_by_id.get(r.get('sourceId'))
-            b = class_by_id.get(r.get('targetId'))
-            if not a or not b:
-                continue
-            rtype = r.get('type')
-            if rtype == 'generalization':
-                create_rel_class(b, a, pascal_ident(a['name']) + '_Generaliza_' + pascal_ident(b['name']),
-                                  'ONE_TO_ONE', True, 'é especializada por', 'especializa',
-                                  sql_ident(b['name']) + '_id')
-            elif rtype == 'aggregation':
-                create_rel_class(a, b, pascal_ident(a['name']) + '_Agrega_' + pascal_ident(b['name']),
-                                  'ONE_TO_MANY', True, 'agrega', 'é parte de',
-                                  sql_ident(a['name']) + '_id')
-                if geom_kind(a) and geom_kind(b):
-                    coverage_candidates.append({
-                        'origin': b, 'dest': a, 'predicate': 'dentro',
-                        'label': b['name'] + ' contido em ' + a['name'] + ' (agregação espacial)'})
-            elif rtype == 'network':
-                create_rel_class(a, b, pascal_ident(a['name']) + '_ConectaOrigem_' + pascal_ident(b['name']),
-                                  'ONE_TO_MANY', False, 'é origem de', 'parte de (nó origem)',
-                                  sql_ident(a['name']) + '_no_origem_id')
-                create_rel_class(a, b, pascal_ident(a['name']) + '_ConectaDestino_' + pascal_ident(b['name']),
-                                  'ONE_TO_MANY', False, 'é destino de', 'parte de (nó destino)',
-                                  sql_ident(a['name']) + '_no_destino_id')
-            elif rtype == 'association':
-                plan = association_plan(r)
-                if plan['mode'] == 'junction':
-                    create_rel_class(a, b, pascal_ident(a['name']) + '_' + pascal_ident(b['name']),
-                                      'MANY_TO_MANY', False,
-                                      r.get('name') or 'relaciona-se com',
-                                      r.get('name') or 'relaciona-se com', None)
-                else:
-                    fk_class = class_by_id.get(plan['fkOn'])
-                    ref_class = class_by_id.get(plan['refTo'])
-                    if fk_class and ref_class:
-                        create_rel_class(ref_class, fk_class,
-                                          pascal_ident(ref_class['name']) + '_' + pascal_ident(fk_class['name']),
-                                          'ONE_TO_MANY', False,
-                                          r.get('name') or 'relaciona-se com',
-                                          r.get('name') or 'relaciona-se com',
-                                          sql_ident(ref_class['name']) + '_id')
-            elif rtype == 'spatial':
-                topo_rule = r.get('topoRule')
-                label = a['name'] + ' ' + TOPO_RULE_LABEL.get(topo_rule, topo_rule or '') + ' ' + b['name']
-                if geom_kind(a) and geom_kind(b):
-                    coverage_candidates.append({'origin': a, 'dest': b, 'predicate': topo_rule, 'label': label})
-                else:
-                    coverage_candidates.append({'origin': a, 'dest': b, 'predicate': topo_rule,
-                                                 'label': label, 'noGeom': True})
-
-        # ---- Topologia ----
-        if fds_path and coverage_candidates:
-            arcpy.AddMessage('---- Topologia ----')
-            arcpy.AddMessage(
-                'O vocabulário de regras do ArcGIS é quase todo negativo/de cobertura '
-                '("não pode sobrepor", "deve estar coberto por/dentro de"); não existe regra '
-                'para "deve tocar", "deve sobrepor" ou "deve cruzar" — esses predicados aparecem '
-                'só como aviso abaixo, não como regra criada.')
-            topo_name = fds_name + '_Topology'
-            topo_path = os.path.join(fds_path, topo_name)
-            arcpy.management.CreateTopology(fds_path, topo_name)
-            added = set()
-
-            def add_fc(c):
-                nm = pascal_ident(c['name'])
-                if nm not in added:
-                    added.add(nm)
-                    arcpy.management.AddFeatureClassToTopology(topo_path, os.path.join(fds_path, nm), 1, 1)
-
-            for cand in coverage_candidates:
-                if not cand.get('noGeom'):
-                    add_fc(cand['origin'])
-                    add_fc(cand['dest'])
-
-            for cand in coverage_candidates:
-                if cand.get('noGeom'):
-                    arcpy.AddWarning(cand['label'] + ' — uma das classes não tem geometria; sem regra de topologia.')
-                    continue
-                cat_a = geom_category(cand['origin'])
-                cat_b = geom_category(cand['dest'])
-                mapped = topology_rule_for(cand['predicate'], cat_a, cat_b)
-                if mapped:
-                    arcpy.management.AddRuleToTopology(
-                        topo_path, mapped['rule'],
-                        os.path.join(fds_path, pascal_ident(cand['origin']['name'])), '',
-                        os.path.join(fds_path, pascal_ident(cand['dest']['name'])), '')
-                    msg = 'Regra de topologia: ' + cand['label']
-                    if mapped.get('caveat'):
-                        msg += ' (' + mapped['caveat'] + ')'
-                    arcpy.AddMessage(msg)
-                else:
-                    arcpy.AddWarning(cand['label'] + ' — predicado sem regra de topologia equivalente no ArcGIS.')
-
-            arcpy.management.ValidateTopology(topo_path, 'Full_Extent')
-
-            # sugestões de qualidade geométrica — nunca aplicadas automaticamente,
-            # é decisão de negócio por classe (mesmo raciocínio de
-            # generalTopologyRules() no app.js)
-            area_line = [c for c in geo_classes if geom_category(c) in ('area', 'line')]
-            if area_line:
-                arcpy.AddMessage(
-                    'Sugestão (não aplicada automaticamente — avalie caso a caso na aba '
-                    'Topologia do ArcGIS Pro): ' + ', '.join(
-                        c['name'] + ' (' + general_topology_suggestion(geom_category(c)) + ')'
-                        for c in area_line))
-
-        parameters[3].value = gdb_path
-        arcpy.AddMessage('Esquema criado com sucesso em: ' + gdb_path)
-`;
-
-/* ============================================================
-   EXPORT panel UI
-   ============================================================ */
-function miniField(label, value, type, onInput){
-  const inp = E('input',{type:type, value:(value==null?'':value), oninput:(e)=>onInput(e.target.value)});
-  return E('div',{class:'field'},[E('label',{},[label]), inp]);
-}
-function fieldCheckMini(label, checked, onChange){
-  const inp = E('input',{type:'checkbox', onchange:(e)=>onChange(e.target.checked)});
-  if(checked) inp.checked = true;
-  return E('label',{class:'chk', style:'flex-basis:100%;'},[inp, label]);
-}
-function refreshExportBody(){
-  const pre = document.getElementById('exportPre');
-  if(!pre) return;
-  try{
-    let text = '';
-    if(activeExportTab==='arcpy') text = buildArcpyScript();
-    else if(activeExportTab==='xml') text = buildEsriXML();
-    else if(activeExportTab==='gdal') text = buildGdalScript();
-    else if(activeExportTab==='gpkg') text = buildGpkgSql();
-    else if(activeExportTab==='pyt') text = JSON.stringify(state, null, 2);
-    else text = buildPostgisSql({useTopology: !!state.meta.pgTopology});
-    pre.textContent = text;
-  }catch(err){
-    pre.textContent = 'Erro ao gerar exportação: '+(err && err.message ? err.message : err);
-  }
-}
-function renderExport(){
-  const panel = document.getElementById('panelExport');
-  panel.innerHTML = '';
-  const tabsRow = E('div',{class:'exp-tabs'});
-  const tabs = [{id:'arcpy',label:'Geodatabase (ArcGIS)'},{id:'xml',label:'XML Workspace Document'},{id:'gdal',label:'Geodatabase (GDAL, sem ArcGIS)'},{id:'gpkg',label:'GeoPackage'},{id:'postgis',label:'PostGIS'},{id:'pyt',label:'Ferramenta ArcGIS (.pyt)'}];
-  tabs.forEach(t=>tabsRow.appendChild(E('div',{class:'exp-tab'+(activeExportTab===t.id?' active':''), onclick:()=>{ activeExportTab=t.id; renderExport(); }},[t.label])));
-  panel.appendChild(tabsRow);
-
-  const opts = E('div',{class:'exp-opts'});
-  if(activeExportTab==='arcpy' || activeExportTab==='xml' || activeExportTab==='gdal'){
-    opts.appendChild(miniField('SRID', state.meta.srid, 'number', v=>{ state.meta.srid=parseInt(v,10)||4326; refreshExportBody(); }));
-    opts.appendChild(miniField('Nome do workspace', state.meta.workspaceName, 'text', v=>{ state.meta.workspaceName=v; refreshExportBody(); }));
-  } else if(activeExportTab==='gpkg'){
-    opts.appendChild(miniField('SRID', state.meta.srid, 'number', v=>{ state.meta.srid=parseInt(v,10)||4326; refreshExportBody(); }));
-    opts.appendChild(miniField('Autoridade', state.meta.srsAuthority, 'text', v=>{ state.meta.srsAuthority=v; refreshExportBody(); }));
-  } else if(activeExportTab==='pyt'){
-    // sem opções: aqui só mostramos o JSON do modelo atual — a mesma coisa
-    // que entra como parâmetro de entrada da ferramenta .pyt (baixada à
-    // parte, pelo botão ao lado de "Exemplo" no topo).
-  } else {
-    opts.appendChild(miniField('SRID', state.meta.srid, 'number', v=>{ state.meta.srid=parseInt(v,10)||4326; refreshExportBody(); }));
-    opts.appendChild(miniField('Esquema', state.meta.schema, 'text', v=>{ state.meta.schema=v; refreshExportBody(); }));
-    opts.appendChild(fieldCheckMini('Incluir esquema de topologia (postgis.topology) para classes de rede', !!state.meta.pgTopology, v=>{ state.meta.pgTopology=v; refreshExportBody(); }));
-  }
-  panel.appendChild(opts);
-
-  const body = E('div',{class:'exp-body'});
-  const pre = E('pre',{id:'exportPre'},['']);
-  body.appendChild(pre);
-  panel.appendChild(body);
-
-  const extByTab = {arcpy:'py', xml:'xml', gdal:'py', gpkg:'sql', postgis:'sql', pyt:'json'};
-  const baseByTab = {arcpy:'_arcgis_schema', xml:'_workspace', gdal:'_gdal_schema', gpkg:'_gpkg', postgis:'_postgis', pyt:''};
-  const wantExt = '.'+extByTab[activeExportTab];
-  const dlName = safeDownloadName(sqlIdent(state.meta.name||'modelo')+baseByTab[activeExportTab], extByTab[activeExportTab]);
-  const needsRename = dlName.endsWith('.txt');
-  const finalName = needsRename ? dlName.slice(0,-4) : dlName;
-
-  if(needsRename){
-    const det = E('details',{class:'exp-warn'});
-    det.appendChild(E('summary',{},['⚠ O arquivo baixa como "'+dlName+'" — clique para ver como renomear / usar']));
-    det.appendChild(E('div',{class:'exp-warn-body'},[
-      E('div',{},['Esta ferramenta só baixa arquivos com algumas extensões, e "'+wantExt+'" não está entre elas — o conteúdo do arquivo está correto, só o nome sai com ".txt" no final.']),
-      E('ol',{},[
-        E('li',{},[E('b',{},['Baixar e renomear:']), ' baixe pelo botão abaixo, depois apague o ".txt" do final do nome (ficará ', E('b',{},[finalName]), '). Se não conseguir ver a extensão para apagar, ative "mostrar extensões de arquivo" nas opções de exibição de pastas do seu sistema.']),
-        E('li',{},[E('b',{},['Copiar e colar:']), ' clique em "Copiar" abaixo, cole em um editor de texto simples (Bloco de Notas, VS Code etc.) e use "Salvar como", escolhendo o nome já com a extensão "'+wantExt+'".'])
-      ]),
-      activeExportTab==='arcpy' ? E('div',{},['Depois de renomear para "'+finalName+'", abra pelo ArcGIS Pro (janela Python) ou rode com o Python do ArcGIS Pro — não precisa de nenhum programa especial além disso.']) : null,
-      activeExportTab==='xml' ? E('div',{},['Depois de renomear para "'+finalName+'", no ArcGIS Pro: no painel Catalog, clique com o botão direito numa geodatabase (crie uma File Geodatabase vazia antes, se ainda não tiver uma) → Import → XML Workspace Document, e selecione este arquivo. Nenhum script é executado — é só um arquivo lido pela ferramenta padrão do ArcGIS Pro.']) : null,
-      activeExportTab==='gdal' ? E('div',{},['Depois de renomear para "'+finalName+'", rode com "python3 '+finalName+'" — precisa apenas de Python com GDAL instalado (', E('b',{},['pip install gdal']), ' ou ', E('b',{},['conda install -c conda-forge gdal']), '), sem ArcGIS Pro nem licença Esri.']) : null
-    ]));
-    panel.appendChild(det);
-  }
-
-  const actions = E('div',{class:'exp-actions'});
-  actions.appendChild(E('button',{class:'btn ghost', onclick:(e)=>copyText(pre.textContent, e.currentTarget)},['Copiar']));
-  actions.appendChild(E('button',{class:'btn primary', title:'Salvar como '+dlName, onclick:()=>{ saveFile(dlName, pre.textContent); }},[needsRename ? 'Baixar (.txt)' : 'Baixar arquivo']));
-  panel.appendChild(actions);
-
-  const notes = {
-    arcpy: 'Script Python (arcpy) que cria a geodatabase diretamente, chamando a API oficial do ArcGIS (CreateFileGDB, CreateFeatureclass, AddField, CreateRelationshipClass — associações viram relationship classes de verdade). As relações "dentro" e as agregações espaciais do modelo viram regras de cobertura reais num dataset de Topologia (CreateTopology/AddRuleToTopology); regras gerais de qualidade geométrica (sem sobreposição/auto-interseção) entram só como sugestão comentada por classe, já que nem toda classe de área deve necessariamente proibir sobreposição — isso é decisão de quem conhece a regra de negócio. Os demais predicados (toca, sobrepõe, cruza, em frente, próximo) ficam documentados em comentário, já que o ArcGIS não tem regra equivalente para eles. Requer o Python do ArcGIS Pro (já vem instalado com ele) — se preferir não depender do ArcGIS Pro, veja a aba "Geodatabase (GDAL, sem ArcGIS)" (sem suporte a topologia). Revise o caminho da geodatabase e os tipos de campo antes de rodar.',
-    xml: 'XML Workspace Document (mesmo formato que o ArcGIS Diagrammer gera): puro arquivo, sem código para você rodar — importe no ArcGIS Pro via Catalog → Import → XML Workspace Document sobre uma File Geodatabase vazia. Traz o esquema completo (feature dataset, classes, campos, tipos, domínio geométrico), as relationship classes derivadas de generalização, agregação, rede e associação, e agora também um dataset de Topologia real (DETopology) para as relações "dentro" e agregações espaciais do modelo — sua estrutura (aninhamento das classes e da topologia dentro do feature dataset, caminhos de catálogo, e o nome de cada regra de topologia) foi conferida contra um XML Workspace Document exportado de verdade do seu próprio ArcGIS Pro, não deduzida. Os demais predicados (toca, sobrepõe, cruza, em frente, próximo) continuam sem regra de topologia equivalente e ficam documentados em comentário no XML. Um detalhe não verificado contra uma exportação real: os IDs internos que ligam cada regra à sua classe são uma numeração local deste documento (a geodatabase atribui os IDs de verdade só na importação) — depois de importar, abra a topologia e confira se as regras vieram associadas às classes certas; se algo vier torto, me mostre e eu ajusto.',
-    gdal: 'Script Python usando GDAL/OGR (driver OpenFileGDB) — cria uma .gdb real sem precisar do ArcGIS Pro nem de licença Esri, só do GDAL (gratuito e de código aberto). O driver suporta escrever esquema e relationship classes desde a versão 3.6 do GDAL; a parte de relacionamentos roda dentro de um try/except caso a assinatura da API varie entre versões — veja o comentário no topo do script. Onde ArcGIS Pro já está disponível, a aba "Geodatabase (ArcGIS)" (arcpy) é a mais testada; esta é a alternativa para quem não tem ArcGIS Pro.',
-    gpkg: 'Script SQL para aplicar sobre um GeoPackage vazio (crie um no QGIS e rode este script em um cliente SQLite). Sem mecanismo nativo de topologia: as regras espaciais ficam documentadas em comentário.',
-    postgis: 'DDL para PostgreSQL/PostGIS. Ative a opção de topologia para gerar postgis.topology nas classes de rede, e revise os gatilhos de validação espacial derivados das relações espaciais do modelo.',
-    pyt: 'Isto aqui é só o parâmetro de entrada da ferramenta — o JSON deste modelo, o mesmo que "Exportar para → JSON" no canto superior direito gera. A ferramenta em si (o arquivo .pyt) é um download separado, único e reutilizável para qualquer modelo futuro: pegue-o pelo botão "Ferramenta ArcGIS (.pyt)" ao lado de "Exemplo" no topo da tela, instale-o UMA vez no ArcGIS Pro (Catalog → botão direito em Toolboxes → Add Toolbox → escolha o arquivo) e, a cada execução, informe um .json como este como entrada, mais a pasta de destino e o nome da geodatabase a criar. Por dentro ela roda exatamente a mesma lógica desta aba "Geodatabase (ArcGIS)" (mesmos mapeamentos de geometria, campos derivados de relacionamento e regras de topologia), só que interpretando o JSON em tempo de execução em vez de gerar um script por modelo.'
-  };
-  panel.appendChild(E('div',{class:'exp-note'},[notes[activeExportTab]]));
-  refreshExportBody();
 }
 
 /* ============================================================
@@ -3824,10 +2603,13 @@ function loadAutosave(){
 function loadModel(m){
   state = m;
   if(!state.meta) state.meta = emptyModel().meta;
+  if(!state.logical) state.logical = {tables:[]};
   selection = {type:null, id:null};
+  logicalSelection = {type:null, id:null};
   connDrag = null;
+  colDrag = null;
   document.getElementById('modelName').value = state.meta.name || '';
-  renderRelControls(); renderConnDragOverlay();
+  renderRelControls(); renderConnDragOverlay(); renderColDragOverlay();
   touch();
   fitView();
 }
@@ -4092,9 +2874,6 @@ function initTopbar(){
     const run = ()=>loadModel(sampleModel());
     if(state.classes.length) confirmAction(e.currentTarget, run); else run();
   });
-  document.getElementById('btnPytTool').addEventListener('click', ()=>{
-    saveFile('geogeogeo_toolbox.pyt', PYT_TOOLBOX_SOURCE);
-  });
   document.getElementById('btnNew').addEventListener('click', (e)=>{
     const run = ()=>loadModel(emptyModel());
     if(state.classes.length) confirmAction(e.currentTarget, run); else run();
@@ -4124,15 +2903,33 @@ function initTopbar(){
    panel in sync with activeRightTab — selecting a class or relationship on
    the canvas sets activeRightTab='prop' too (see selectClass/selectRel), and
    without this shared function that switch never reached the DOM: the
-   Propriedades content updated invisibly behind whichever tab (Exportar,
-   Ajuda) happened to still be showing, so editing looked like it did
-   nothing. */
+   Propriedades content updated invisibly behind whichever tab (Ajuda)
+   happened to still be showing, so editing looked like it did nothing. */
 function switchRightTab(tabId){
   activeRightTab = tabId;
   document.querySelectorAll('.tab').forEach(t=> t.classList.toggle('active', t.dataset.tab===tabId));
   document.getElementById('panelProp').classList.toggle('active', tabId==='prop');
-  document.getElementById('panelExport').classList.toggle('active', tabId==='export');
   document.getElementById('panelLegend').classList.toggle('active', tabId==='legend');
+}
+
+/* ---------- top bar: page switch (Conceitual / Lógica) + Evoluir ---------- */
+function switchPage(page){
+  activePage = page;
+  document.querySelectorAll('.pagetab').forEach(b=> b.classList.toggle('active', b.dataset.page===page));
+  document.getElementById('railConceptual').hidden = page!=='conceptual';
+  document.getElementById('railLogical').hidden = page!=='logical';
+  touch();
+  fitView();
+}
+function initPageSwitch(){
+  document.querySelectorAll('.pagetab').forEach(btn=>{
+    btn.addEventListener('click', ()=> switchPage(btn.dataset.page));
+  });
+  document.getElementById('btnEvolve').addEventListener('click', (e)=>{
+    const run = ()=> evolveToLogical();
+    if(state.logical.tables.length) confirmAction(e.currentTarget, run); else run();
+  });
+  document.getElementById('btnAddTable').addEventListener('click', ()=> addTable());
 }
 
 /* ============================================================
@@ -4142,12 +2939,14 @@ function boot(){
   initDefs();
   initAddControls();
   initTopbar();
+  initPageSwitch();
   initResizers();
   initExportMenu();
   initStageEvents();
   const saved = loadAutosave();
   state = saved || emptyModel();
   if(!state.meta) state.meta = emptyModel().meta;
+  if(!state.logical) state.logical = {tables:[]};
   document.getElementById('modelName').value = state.meta.name || '';
   renderRelControls();
   renderLegendOnce();

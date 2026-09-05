@@ -734,17 +734,23 @@ const ICONS_CUSTOM = {
 // icon set the user specified directly, matching OMT-G's own convention.
 const STAR_PTS_CHIP = '8,2.5 9.29,6.22 13.23,6.3 10.09,8.68 11.23,12.45 8,10.2 4.77,12.45 5.91,8.68 2.77,6.3 6.71,6.22';
 const STAR_PTS_GLYPH = '0,-6.5 1.53,-2.1 6.18,-2.01 2.47,0.8 3.82,5.26 0,2.6 -3.82,5.26 -2.47,0.8 -6.18,-2.01 -1.53,-2.1';
-ICONS.point = '<svg viewBox="0 0 16 16"><polygon points="'+STAR_PTS_CHIP+'" fill="currentColor"/></svg>';
-ICONS.line = '<svg viewBox="0 0 16 16"><line x1="3" y1="13" x2="13" y2="3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
-ICONS.polygon = '<svg viewBox="0 0 16 16" fill="none"><path d="M8 2.5 13.5 6.5 11.5 13 4.5 13 2.5 6.5Z" fill="currentColor"/></svg>';
-ICONS.node = '<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="3.2" fill="currentColor"/></svg>';
-ICONS.unidirectional = '<svg viewBox="0 0 16 16"><line x1="3" y1="13" x2="12" y2="4" stroke="currentColor" stroke-width="1.5"/><path d="M7.4,4.6 12.4,3.6 11.4,8.6" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>';
-ICONS.bidirectional = '<svg viewBox="0 0 16 16"><line x1="3.5" y1="12.5" x2="12.5" y2="3.5" stroke="currentColor" stroke-width="1.5"/><path d="M7.9,4.1 12.9,3.1 11.9,8.1" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M8.1,11.9 3.1,12.9 4.1,7.9" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>';
-ICONS.isoline = '<svg viewBox="0 0 16 16" fill="none"><path d="M8,2.3C4.5,2.3,2.3,5,2.3,8s2.2,5.7,5.7,5.7,5.7-2.7,5.7-5.7S11.5,2.3,8,2.3Z" stroke="currentColor" stroke-width="1"/><path d="M8,5.2C6,5.2,5.2,6.4,5.2,8s.8,2.8,2.8,2.8,2.8-1.2,2.8-2.8S10,5.2,8,5.2Z" stroke="currentColor" stroke-width="1"/></svg>';
-ICONS.tin = ICONS_CUSTOM.tin;
-ICONS.tessellation = ICONS_CUSTOM.tessellation;
-ICONS.sample = ICONS_CUSTOM.sample;
-ICONS.partition = ICONS_CUSTOM.partition;
+// Redrawn from the user's own screenshots of the paper's Figures 3 and 4
+// (the actual pictogram artwork, not just its surrounding text) — replaces
+// the earlier best-effort reconstruction below. Geometry-only primitives
+// (Point/Line/Polygon) are open/outline symbols; geometry+topology ones
+// (Node/Unidirectional/Bidirectional) are solid dots and arrows, matching
+// the figures exactly.
+ICONS.point = '<svg viewBox="0 0 16 16"><polygon points="'+STAR_PTS_CHIP+'" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/></svg>';
+ICONS.line = '<svg viewBox="0 0 16 16"><line x1="3" y1="8" x2="13" y2="8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+ICONS.polygon = '<svg viewBox="0 0 16 16" fill="none"><rect x="4.5" y="4.5" width="7" height="7" stroke="currentColor" stroke-width="1.3"/></svg>';
+ICONS.node = '<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="2.4" fill="currentColor"/></svg>';
+ICONS.unidirectional = '<svg viewBox="0 0 16 16"><line x1="2.5" y1="8" x2="11.5" y2="8" stroke="currentColor" stroke-width="1.4"/><path d="M9,5 13,8 9,11Z" fill="currentColor"/></svg>';
+ICONS.bidirectional = '<svg viewBox="0 0 16 16"><line x1="4.5" y1="8" x2="11.5" y2="8" stroke="currentColor" stroke-width="1.4"/><path d="M9,5 13,8 9,11Z" fill="currentColor"/><path d="M7,5 3,8 7,11Z" fill="currentColor"/></svg>';
+ICONS.isoline = '<svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.6" stroke="currentColor" stroke-width="1"/><circle cx="8" cy="8" r="3.2" stroke="currentColor" stroke-width="1"/><circle cx="8" cy="8" r="1" fill="currentColor"/></svg>';
+ICONS.tin = '<svg viewBox="0 0 16 16" fill="none"><path d="M8 3 13 12.5 3 12.5Z" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/><circle cx="8.4" cy="7.3" r="1" fill="currentColor"/></svg>';
+ICONS.tessellation = '<svg viewBox="0 0 16 16" fill="none"><rect x="3" y="3" width="10" height="10" stroke="currentColor" stroke-width="1"/><path d="M3 6.3H13M3 9.7H13M6.3 3V13M9.7 3V13" stroke="currentColor" stroke-width=".7"/></svg>';
+ICONS.sample = '<svg viewBox="0 0 16 16">'+[[4,4],[9,3.5],[12,7],[3.5,9.5],[8,9],[11.5,12],[5,12.5]].map(pt=>'<circle cx="'+pt[0]+'" cy="'+pt[1]+'" r="1"/>').join('')+'</svg>';
+ICONS.partition = '<svg viewBox="0 0 16 16" fill="none"><path d="M4,3.5 C6,2.8 8.5,3.2 10,2.8 C12,2.4 13.5,4.5 12.8,6.5 C13.8,8 13,10.5 11,11 C10,13 6.5,13.5 5,11.5 C2.5,11.5 2,8.5 3.5,7 C2.2,5.5 2.8,4 4,3.5Z" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/></svg>';
 
 function classIcon(c){
   if(c.kind!=='geo') return ICONS.conventional;
@@ -795,31 +801,38 @@ function primitiveGlyphOmtg(c){
   const st = 'var(--canvas-line)';
   if(c.kind!=='geo' || !c.primitive) return g;
   const p = c.primitive;
+  // Redrawn from the user's own screenshots of the paper's Figures 3 and 4 —
+  // geometry-only primitives (point/line/polygon) are open/outline symbols,
+  // geometry+topology ones (node/unidirectional/bidirectional) are solid
+  // dots and arrows, matching the figures exactly.
   if(p==='point'){
-    g.appendChild(S('polygon',{points:STAR_PTS_GLYPH, style:'fill:'+st}));
+    g.appendChild(S('polygon',{points:STAR_PTS_GLYPH, style:'fill:none;stroke:'+st+';stroke-width:1;stroke-linejoin:round'}));
   } else if(p==='node'){
-    g.appendChild(S('circle',{cx:0,cy:0,r:3.2,style:'fill:'+st}));
+    g.appendChild(S('circle',{cx:0,cy:0,r:2.4,style:'fill:'+st}));
   } else if(p==='line'){
-    g.appendChild(S('line',{x1:-6,y1:5,x2:6,y2:-5,style:'stroke:'+st+';stroke-width:1.6;stroke-linecap:round'}));
+    g.appendChild(S('line',{x1:-6,y1:0,x2:6,y2:0,style:'stroke:'+st+';stroke-width:1.6;stroke-linecap:round'}));
   } else if(p==='unidirectional' || p==='bidirectional'){
-    g.appendChild(S('line',{x1:-6,y1:5,x2:6,y2:-5,style:'stroke:'+st+';stroke-width:1.5'}));
+    g.appendChild(S('line',{x1:-6,y1:0,x2:6,y2:0,style:'stroke:'+st+';stroke-width:1.4'}));
     // unidirectional: one arrowhead (a defined flow direction, e.g. sewage);
     // bidirectional: an arrowhead at both ends (flow either way, e.g. water/electrical)
-    g.appendChild(S('path',{d:'M1.6,-6.2 L6,-5 L4.8,-0.6', style:'fill:none;stroke:'+st+';stroke-width:1.3;stroke-linejoin:round'}));
-    if(p==='bidirectional') g.appendChild(S('path',{d:'M-1.6,6.2 L-6,5 L-4.8,0.6', style:'fill:none;stroke:'+st+';stroke-width:1.3;stroke-linejoin:round'}));
+    g.appendChild(S('path',{d:'M2,-3 L7,0 L2,3 Z', style:'fill:'+st}));
+    if(p==='bidirectional') g.appendChild(S('path',{d:'M-2,-3 L-7,0 L-2,3 Z', style:'fill:'+st}));
   } else if(p==='polygon'){
-    g.appendChild(S('path',{d:'M0,-6 L6,-1 L4,6 L-4,6 L-6,-1 Z', style:'fill:'+st+';fill-opacity:.9'}));
+    g.appendChild(S('rect',{x:-5,y:-5,width:10,height:10,style:'fill:none;stroke:'+st+';stroke-width:1.2'}));
   } else if(p==='isoline'){
-    g.appendChild(S('path',{d:'M0,-6.3C-3.5,-6.3,-6.3,-3.5,-6.3,0S-3.5,6.3,0,6.3,6.3,3.5,6.3,0,3.5,-6.3,0,-6.3Z', style:'fill:none;stroke:'+st+';stroke-width:1'}));
-    g.appendChild(S('path',{d:'M0,-3.2C-1.8,-3.2,-3.2,-1.8,-3.2,0S-1.8,3.2,0,3.2,3.2,1.8,3.2,0,1.8,-3.2,0,-3.2Z', style:'fill:none;stroke:'+st+';stroke-width:1'}));
+    g.appendChild(S('circle',{cx:0,cy:0,r:6.2,style:'fill:none;stroke:'+st+';stroke-width:1'}));
+    g.appendChild(S('circle',{cx:0,cy:0,r:3.4,style:'fill:none;stroke:'+st+';stroke-width:1'}));
+    g.appendChild(S('circle',{cx:0,cy:0,r:1,style:'fill:'+st}));
   } else if(p==='tin'){
-    g.appendChild(S('path',{d:'M-6,5 L0,-6 L6,5 Z M0,-6 L0,5', style:'fill:none;stroke:'+st+';stroke-width:1'}));
+    g.appendChild(S('path',{d:'M0,-6.2 L6.2,6.2 L-6.2,6.2 Z', style:'fill:none;stroke:'+st+';stroke-width:1'}));
+    g.appendChild(S('circle',{cx:0.5,cy:-1.2,r:1.1,style:'fill:'+st}));
   } else if(p==='tessellation'){
-    g.appendChild(S('path',{d:'M-6,-6 H6 M-6,0 H6 M-6,6 H6 M-6,-6 V6 M0,-6 V6 M6,-6 V6', style:'fill:none;stroke:'+st+';stroke-width:.9'}));
+    g.appendChild(S('rect',{x:-6,y:-6,width:12,height:12,style:'fill:none;stroke:'+st+';stroke-width:1'}));
+    g.appendChild(S('path',{d:'M-6,-2 H6 M-6,2 H6 M-2,-6 V6 M2,-6 V6', style:'fill:none;stroke:'+st+';stroke-width:.7'}));
   } else if(p==='sample'){
-    [[-5,3],[0,-4],[5,3],[-1,4]].forEach(pt=>g.appendChild(S('circle',{cx:pt[0],cy:pt[1],r:1.4,style:'fill:'+st})));
+    [[-4,-4],[3,-4.5],[6,0],[-4.5,2],[1,1.5],[5,5],[-2,5.5]].forEach(pt=>g.appendChild(S('circle',{cx:pt[0],cy:pt[1],r:1,style:'fill:'+st})));
   } else if(p==='partition'){
-    g.appendChild(S('path',{d:'M-7,-3 L-1,-6 L6,-4 L7,3 L1,6 L-6,4 Z M-1,-6 L-1,6 M-1,0 L7,3 M-1,0 L-7,-3', style:'fill:none;stroke:'+st+';stroke-width:.9'}));
+    g.appendChild(S('path',{d:'M-5,-4 C-2,-5.5 2,-4.8 4,-5.5 C6.5,-6.2 8,-3 7,-1 C8.2,1 7,4.5 4,5 C2,7.5 -2.5,8 -4.5,5.5 C-8,5.5 -8.5,1 -6.5,-1 C-8.2,-3 -7,-5 -5,-4Z', style:'fill:none;stroke:'+st+';stroke-width:1'}));
   }
   return g;
 }

@@ -142,6 +142,7 @@
   .btn.danger{ color:var(--bad); }
   .btn:disabled{ opacity:.45; cursor:not-allowed; }
   .btn svg{ width:14px; height:14px; flex:none; }
+  .btn.icon-only{ padding:7px 9px; font-size:16px; line-height:1; }
   .dl-menu-wrap{ position:relative; }
   .dl-menu{ position:absolute; top:calc(100% + 5px); right:0; background:var(--surface); border:1px solid var(--border); border-radius:8px; box-shadow:var(--shadow); padding:4px; display:flex; flex-direction:column; gap:2px; min-width:110px; z-index:20; }
   .dl-menu button{ text-align:left; padding:7px 10px; border-radius:6px; font-size:12.5px; font-weight:500; color:var(--ink); background:transparent; border:none; }
@@ -173,9 +174,26 @@
   }
   .rail-left{ border-right:1px solid var(--border); }
   .rail-right{ border-left:1px solid var(--border); }
+  /* #railConceptual/#railLogical are the direct flex children of .rail (the
+     aside), toggled visible/hidden by switchPage() — without making THEM
+     flex containers too, their child .rail-scroll's "flex:1" is inert (flex
+     properties only do anything on an actual flex item of a flex/grid
+     parent), so .rail-scroll silently fell back to sizing by content and
+     just overflowed .rail's bottom edge instead of scrolling internally.
+     :not([hidden]) keeps the browser's native [hidden]→display:none intact
+     for whichever page isn't active (an ID rule would otherwise outrank it). */
+  #railConceptual:not([hidden]), #railLogical:not([hidden]){ display:flex; flex-direction:column; flex:1; min-height:0; }
   .rail-section{ padding:12px 14px; border-bottom:1px solid var(--border); }
-  .rail-section.grow{ flex:1; overflow-y:auto; min-height:0; }
-  .rail-scroll{ flex:1; overflow-y:auto; min-height:0; display:flex; flex-direction:column; }
+  /* Each list section under a .rail-scroll (Classes/Relacionamentos on the
+     Conceitual page, Tabelas/Validação on the Lógica page) scrolls on its
+     own instead of sharing one scrollbar for the whole group — so a long
+     Classes list doesn't push Relacionamentos/Validação out of view.
+     flex-basis:auto lets a short section (few rows) stay small while a
+     long one takes the leftover space and then scrolls; min-height keeps
+     every section at least a little visible even when squeezed. */
+  .rail-scroll{ flex:1; min-height:0; display:flex; flex-direction:column; overflow:hidden; }
+  .rail-scroll > .rail-section{ flex:1 1 auto; min-height:64px; overflow-y:auto; }
+  .rail-scroll > .rail-section:last-child{ border-bottom:none; }
   .rail-label{
     font-size:13px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted);
     margin-bottom:9px; display:flex; align-items:center; justify-content:space-between; gap:8px;
@@ -239,8 +257,14 @@
   .listitem .tx .t2{ color:var(--muted); font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .listitem .del{ opacity:0; flex:none; }
   .listitem:hover .del{ opacity:1; }
-  .del-x{ width:22px; height:22px; display:flex; align-items:center; justify-content:center; border-radius:5px; color:var(--muted); border:1px solid transparent; }
+  .del-x{ width:22px; height:22px; display:flex; align-items:center; justify-content:center; border-radius:5px; color:var(--muted); border:1px solid transparent; flex:none; }
   .del-x:hover{ background:var(--bad-soft); color:var(--bad); }
+  .del-x.armed{ background:var(--bad); color:#fff; }
+  .del-x.armed:hover{ background:var(--bad); color:#fff; }
+  /* attribute-row delete button — deliberately bigger than the list-row .del-x
+     (item 4: "o botão de apagar atributo é bem pequeno") */
+  .del-x-lg{ width:30px; height:30px; }
+  .del-x-lg svg{ width:18px; height:18px; }
   .empty-note{ font-size:13px; color:var(--muted); padding:6px 2px; line-height:1.5; }
 
   .vitem{ display:flex; gap:8px; padding:7px 8px; border-radius:7px; font-size:13px; cursor:pointer; align-items:flex-start;}
@@ -393,6 +417,10 @@
       <button class="pagetab" id="pageTabLogical" data-page="logical">Lógica</button>
     </div>
     <button class="btn" id="btnEvolve" title="Gerar/atualizar o modelo lógico a partir do conceitual">Evoluir para o lógico →</button>
+    <div class="btnrow">
+      <button class="btn ghost icon-only" id="btnUndo" title="Desfazer (Ctrl+Z)" disabled>↶</button>
+      <button class="btn ghost icon-only" id="btnRedo" title="Refazer (Ctrl+Shift+Z)" disabled>↷</button>
+    </div>
     <div class="spacer"></div>
     <div class="btnrow">
       <button class="btn ghost" id="btnSample" title="Carregar modelo de exemplo">Exemplo</button>
@@ -432,10 +460,6 @@
             <div class="rail-label">Relacionamentos <span class="count" id="countRels">0</span></div>
             <div id="relList"></div>
           </div>
-          <div class="rail-section grow">
-            <div class="rail-label">Validação <span class="count" id="countIssues">0</span></div>
-            <div id="validationList"></div>
-          </div>
         </div>
       </div>
       <div id="railLogical" hidden>
@@ -467,6 +491,7 @@
         <g id="nodeLayer"></g>
         <g id="labelLayer"></g>
         <g id="connDragLayer"></g>
+        <g id="marqueeLayer"></g>
       </svg>
       <div class="stage-badge" id="stageBadge">100%</div>
       <div class="stage-toolbar">
@@ -739,24 +764,98 @@ function topoGlyph(rule){
 /* ---------- application state ---------- */
 let state = null;
 let selection = {type:null, id:null};
+let multiSelect = new Set(); // extra selected class ids beyond `selection` (mouse marquee / Ctrl+click on the conceptual canvas)
 let relMode = {type:'association'};
 let view = {x:-40, y:-40, w:1200, h:800};
 let drag = null; // {kind:'class'|'table', id, offX, offY, moved} — whole-node drag, either page
 let panning = null;
-let connDrag = null; // {sourceId, sourceSide, x, y} — dragging a relationship from a class connector handle (conceptual page only)
+let connDrag = null; // {sourceId, sourceSide, x, y} — dragging a class connector handle (conceptual page only)
+let marquee = null; // {x0,y0,x1,y1,additive,moved} — rubber-band multi-select drag on the conceptual canvas background
+let spaceHeld = false; // Space held = the background-drag gesture pans instead of marquee-selecting
 let activeRightTab = 'prop';
 let activePage = 'conceptual'; // 'conceptual' | 'logical'
 let logicalSelection = {type:null, id:null}; // {type:'table'|null, id}
 let colDrag = null; // {sourceTableId, sourceColumnId, x, y} — dragging a column-to-column FK link (logical page, Power BI style)
 let logicalColRects = {}; // columnId -> {tableId, x, y, w, h} in canvas coords, rebuilt every renderLogicalCanvas() for drop-target hit-testing
 
+/* ---------- undo/redo history ---------- */
+// Snapshots are whole-state JSON strings. historyBaseline is the state as of
+// the last committed step; undoStack/redoStack hold every step back to the
+// model's own origin (no depth cap — "desfazer até a origem de tudo").
+// Rapid changes (typing a name, dragging a class) are coalesced into ONE
+// step by piggybacking the commit check on the existing autosave debounce
+// (see scheduleAutosave) instead of snapshotting on every keystroke.
+let undoStack = [];
+let redoStack = [];
+let historyBaseline = null;
+function historyInit(){
+  historyBaseline = JSON.stringify(state);
+  undoStack = []; redoStack = [];
+  updateUndoRedoButtons();
+}
+function commitHistory(){
+  const now = JSON.stringify(state);
+  if(now===historyBaseline) return;
+  undoStack.push(historyBaseline);
+  redoStack = [];
+  historyBaseline = now;
+  updateUndoRedoButtons();
+}
+function restoreState(json){
+  state = JSON.parse(json);
+  if(!state.meta) state.meta = emptyModel().meta;
+  if(!state.logical) state.logical = {tables:[]};
+  selection = {type:null,id:null};
+  logicalSelection = {type:null,id:null};
+  multiSelect = new Set();
+  connDrag = null; colDrag = null;
+  const nameInput = document.getElementById('modelName');
+  if(nameInput) nameInput.value = state.meta.name || '';
+  renderRelControls(); renderConnDragOverlay(); renderColDragOverlay();
+  touch();
+}
+function undo(){
+  commitHistory(); // flush any pending burst first so redo can return to it
+  if(!undoStack.length) return;
+  const prev = undoStack.pop();
+  redoStack.push(historyBaseline);
+  historyBaseline = prev;
+  restoreState(prev);
+  updateUndoRedoButtons();
+}
+function redo(){
+  if(!redoStack.length) return;
+  const next = redoStack.pop();
+  undoStack.push(historyBaseline);
+  historyBaseline = next;
+  restoreState(next);
+  updateUndoRedoButtons();
+}
+function updateUndoRedoButtons(){
+  const u = document.getElementById('btnUndo'), r = document.getElementById('btnRedo');
+  if(u) u.disabled = !undoStack.length;
+  if(r) r.disabled = !redoStack.length;
+}
+
 function emptyModel(name){
   return { meta:{ name: name||'Novo modelo', srid:4326, schema:'public', workspaceName:'ModeloOMTG', srsAuthority:'EPSG' }, classes:[], relationships:[], logical:{tables:[]} };
 }
+/* Shared "base name" / "base name 2" / "base name 3"... dedupe used for new
+   class names, new attribute names, and to auto-fix a class rename that
+   collides with an existing one — first try is the bare base, only a
+   collision earns a numeric suffix (starting at 2, never "... 1"). */
+function uniqueName(base, existingNames){
+  if(!existingNames.has(base)) return base;
+  let i = 2;
+  while(existingNames.has(base+' '+i)) i++;
+  return base+' '+i;
+}
 function newClassObj(kind, idx){
   const id = uid('c');
+  const base = kind==='geo' ? 'Nova Classe Geográfica' : 'Nova Classe';
+  const existing = new Set(state.classes.map(x=>x.name));
   const c = {
-    id, name: (kind==='geo' ? 'NovaClasseGeo' : 'NovaClasse') + (idx+1),
+    id, name: uniqueName(base, existing),
     kind,
     geoType: kind==='geo' ? 'object' : null,
     primitive: kind==='geo' ? 'point' : null,
@@ -802,7 +901,7 @@ function createRelationship(type, sourceId, targetId){
   selection = {type:'rel', id:base.id};
   return base;
 }
-function selectClass(id){ selection = {type:'class', id}; switchRightTab('prop'); touch(); }
+function selectClass(id){ selection = {type:'class', id}; multiSelect = new Set(); switchRightTab('prop'); touch(); }
 function selectRel(id){ selection = {type:'rel', id}; switchRightTab('prop'); touch(); }
 
 function handleNodeClick(classId){
@@ -939,54 +1038,14 @@ function sampleModel(){
   return m;
 }
 
-/* ---------- validation ---------- */
-function computeValidation(){
-  const issues = [];
-  const byId = Object.fromEntries(state.classes.map(c=>[c.id,c]));
-  const nameCount = {};
-  state.classes.forEach(c=>{ nameCount[c.name]=(nameCount[c.name]||0)+1; });
-  const isArc = p=> p==='unidirectional' || p==='bidirectional';
-  state.classes.forEach(c=>{
-    if(nameCount[c.name]>1) issues.push({sev:'error', ref:{type:'class',id:c.id}, msg:'Nome de classe duplicado: "'+c.name+'"'});
-    if(c.kind==='geo' && !c.primitive) issues.push({sev:'error', ref:{type:'class',id:c.id}, msg:'"'+c.name+'" é geográfica mas não tem primitiva definida'});
-    if(!c.attributes.length) issues.push({sev:'warning', ref:{type:'class',id:c.id}, msg:'"'+c.name+'" não possui atributos'});
-  });
-  state.relationships.forEach(r=>{
-    const a = byId[r.sourceId], b = byId[r.targetId];
-    if(!a || !b) return;
-    if(relFamily(r.type)==='generalization'){
-      if(r.type==='generalizationSpatial' && (a.kind!=='geo' || b.kind!=='geo')){
-        issues.push({sev:'error', ref:{type:'rel',id:r.id}, msg:'Generalização espacial "'+a.name+'" → "'+b.name+'" exige que ambas as classes sejam geográficas'});
-      } else if(a.kind!==b.kind || (a.kind==='geo' && a.geoType!==b.geoType)){
-        issues.push({sev:'warning', ref:{type:'rel',id:r.id}, msg:'Especialização "'+a.name+'" → "'+b.name+'": subclasse e superclasse deveriam ter a mesma natureza de representação'});
-      }
-    }
-    if(r.type==='network'){
-      // arc-node structure (Nó↔Arco) or, recursively, arc-arc (mesma classe, sem nó) — Tabela 3 do OMT-G
-      if(r.sourceId===r.targetId){
-        if(!isArc(a.primitive)) issues.push({sev:'warning', ref:{type:'rel',id:r.id}, msg:'Rede arco-arco: "'+a.name+'" deveria ter primitiva "Linha unidirecional" ou "Linha bidirecional"'});
-      } else {
-        if(a.primitive!=='node') issues.push({sev:'warning', ref:{type:'rel',id:r.id}, msg:'Rede: "'+a.name+'" deveria ter primitiva "Nó"'});
-        if(!isArc(b.primitive)) issues.push({sev:'warning', ref:{type:'rel',id:r.id}, msg:'Rede: "'+b.name+'" deveria ter primitiva "Linha unidirecional" ou "Linha bidirecional"'});
-      }
-    }
-    if(r.type==='spatial'){
-      if(a.kind!=='geo' || b.kind!=='geo') issues.push({sev:'error', ref:{type:'rel',id:r.id}, msg:'Relação espacial entre "'+a.name+'" e "'+b.name+'" exige que ambas as classes sejam geográficas'});
-      if(r.topoRule==='proximo' && !(r.nearDistance>0)) issues.push({sev:'warning', ref:{type:'rel',id:r.id}, msg:'Relação "próximo" entre "'+a.name+'" e "'+b.name+'" precisa de uma distância definida'});
-      if((r.topoRule==='contem' || r.topoRule==='adjacente') && a.primitive!=='polygon') issues.push({sev:'warning', ref:{type:'rel',id:r.id}, msg:'Relação "'+TOPO_RULE_SHORT[r.topoRule]+'": "'+a.name+'" deveria ser um Polígono'});
-    }
-    if(r.type==='aggregationSpatial'){
-      if(a.kind!=='geo' || b.kind!=='geo') issues.push({sev:'error', ref:{type:'rel',id:r.id}, msg:'Agregação espacial "'+a.name+'"–"'+b.name+'" (todo-parte topológico) exige que ambas as classes sejam geográficas'});
-    }
-  });
-  return issues;
-}
-
 /* ---------- top-level render orchestration ---------- */
+// Note: the Conceitual page has no validation anymore ("pode tirar qualquer
+// validação para o conceitual") — duplicate names are prevented at the
+// source instead (see uniqueName()/the class-name blur handler) rather than
+// merely flagged. The Lógica page keeps its own validation untouched.
 function touch(skipInspector){
   renderClassList();
   renderRelList();
-  renderValidation();
   renderTableList();
   renderValidationLogical();
   renderCanvas();
@@ -1008,7 +1067,7 @@ function renderClassList(){
     const row = E('div',{class:'listitem'+(selection.type==='class'&&selection.id===c.id?' selected':''), onclick:()=>selectClass(c.id)},[
       E('span',{class:'ic', html:classIcon(c)}),
       E('div',{class:'tx'},[ E('div',{class:'t1'},[c.name]), E('div',{class:'t2'},[sub]) ]),
-      E('button',{class:'del-x', title:'Excluir classe', html:ICONS.trash, onclick:(e)=>{ e.stopPropagation(); deleteClass(c.id); }})
+      E('button',{class:'del-x', title:'Excluir classe', html:ICONS.trash, onclick:(e)=>{ e.stopPropagation(); confirmIconAction(e.currentTarget, ()=>deleteClass(c.id), 'a classe "'+c.name+'"'); }})
     ]);
     wrap.appendChild(row);
   });
@@ -1026,24 +1085,7 @@ function renderRelList(){
     const row = E('div',{class:'listitem'+(selection.type==='rel'&&selection.id===r.id?' selected':''), onclick:()=>selectRel(r.id)},[
       E('span',{class:'ic', html:ICONS[r.type]||ICONS.association}),
       E('div',{class:'tx'},[ E('div',{class:'t1'},[REL_TYPES[r.type].short]), E('div',{class:'t2'},[(a?a.name:'?')+' — '+(b?b.name:'?')]) ]),
-      E('button',{class:'del-x', title:'Excluir relacionamento', html:ICONS.trash, onclick:(e)=>{ e.stopPropagation(); deleteRel(r.id); }})
-    ]);
-    wrap.appendChild(row);
-  });
-}
-function renderValidation(){
-  const wrap = document.getElementById('validationList');
-  wrap.innerHTML = '';
-  const issues = computeValidation();
-  document.getElementById('countIssues').textContent = issues.length;
-  if(!issues.length){
-    wrap.appendChild(E('div',{class:'vgood'},['✓ Nenhum problema encontrado']));
-    return;
-  }
-  issues.forEach(is=>{
-    const row = E('div',{class:'vitem '+is.sev, onclick:()=>{ if(is.ref.type==='class') selectClass(is.ref.id); else selectRel(is.ref.id); }},[
-      E('span',{class:'dot'}),
-      E('div',{class:'msg'},[is.msg])
+      E('button',{class:'del-x', title:'Excluir relacionamento', html:ICONS.trash, onclick:(e)=>{ e.stopPropagation(); confirmIconAction(e.currentTarget, ()=>deleteRel(r.id), 'o relacionamento'); }})
     ]);
     wrap.appendChild(row);
   });
@@ -1063,7 +1105,7 @@ function renderTableList(){
     const row = E('div',{class:'listitem'+(logicalSelection.type==='table'&&logicalSelection.id===t.id?' selected':''), onclick:()=>selectTable(t.id)},[
       E('span',{class:'ic', html:ICONS.conventional}),
       E('div',{class:'tx'},[ E('div',{class:'t1'},[t.name]), E('div',{class:'t2'},[t.columns.length+' coluna'+(t.columns.length===1?'':'s')]) ]),
-      E('button',{class:'del-x', title:'Excluir tabela', html:ICONS.trash, onclick:(e)=>{ e.stopPropagation(); deleteTable(t.id); }})
+      E('button',{class:'del-x', title:'Excluir tabela', html:ICONS.trash, onclick:(e)=>{ e.stopPropagation(); confirmIconAction(e.currentTarget, ()=>deleteTable(t.id), 'a tabela "'+t.name+'"'); }})
     ]);
     wrap.appendChild(row);
   });
@@ -1111,6 +1153,26 @@ function classHeight(c){
   return CARD_HEAD_H + rows*CARD_ROW_H + 11;
 }
 const CARD_W = 208;
+const CARD_W_MAX = 560; // safety cap so one absurdly long name can't blow up the whole layout
+let _measureCtx = null;
+function measureTextWidth(text, font){
+  if(!_measureCtx) _measureCtx = document.createElement('canvas').getContext('2d');
+  _measureCtx.font = font;
+  return _measureCtx.measureText(text||'').width;
+}
+/* Item 6: "se o nome da classe fica muito grande ou do atributo, a caixa
+   deve acompanhar este tamanho" — the card's width now tracks its longest
+   line (class name or an attribute name) instead of always being CARD_W. */
+function classWidth(c){
+  const PAD = 24; // matches the 12px left inset used for both cname/cattr text
+  const CHIP_RESERVE = c.kind==='geo' ? 34 : 0; // room for the geometry chip beside a long class name
+  let maxW = measureTextWidth(c.name||'', '700 15px "IBM Plex Sans"') + PAD + CHIP_RESERVE;
+  c.attributes.forEach(a=>{
+    const w = measureTextWidth(a.name||'', '13px "IBM Plex Mono"') + PAD;
+    if(w>maxW) maxW = w;
+  });
+  return Math.max(CARD_W, Math.min(CARD_W_MAX, Math.round(maxW)));
+}
 function topRoundedRectPath(w,h,r){
   return 'M0,'+r+' A'+r+','+r+' 0 0 1 '+r+',0 H'+(w-r)+' A'+r+','+r+' 0 0 1 '+w+','+r+' V'+h+' H0 Z';
 }
@@ -1123,7 +1185,7 @@ function keyGlyph(){
   return g;
 }
 function buildNode(c){
-  const isSel = selection.type==='class' && selection.id===c.id;
+  const isSel = (selection.type==='class' && selection.id===c.id) || multiSelect.has(c.id);
   const g = S('g', {
     class:'node-card'+(isSel?' selected':''),
     'data-class-id': c.id,
@@ -1131,7 +1193,35 @@ function buildNode(c){
     onpointerdown:(evt)=>{
       evt.stopPropagation();
       const p = svgPoint(evt);
-      drag = {id:c.id, offX:p.x-c.x, offY:p.y-c.y, moved:false};
+      // Item 9: Ctrl/Cmd+click toggles this class in the multi-selection
+      // instead of starting a drag — a pure selection gesture.
+      if(evt.ctrlKey || evt.metaKey){
+        if(multiSelect.size===0 && selection.type==='class'){
+          if(selection.id===c.id){
+            // ctrl+clicking the only selected class toggles it off entirely
+            selection = {type:null, id:null};
+            renderInspector(); renderCanvas(); renderClassList();
+            return;
+          }
+          multiSelect.add(selection.id); // fold the existing single-selection in before extending it
+        }
+        if(multiSelect.has(c.id)) multiSelect.delete(c.id); else multiSelect.add(c.id);
+        if(multiSelect.size===1){ selection = {type:'class', id:[...multiSelect][0]}; multiSelect = new Set(); }
+        else selection = {type:null, id:null}; // 0 or 2+: inspector shows empty/"N selecionadas" instead of a stale single-class form
+        renderInspector(); renderCanvas(); renderClassList();
+        return;
+      }
+      if(multiSelect.size>=2 && multiSelect.has(c.id)){
+        // dragging any already multi-selected class moves the whole group together
+        const ids = [...multiSelect];
+        drag = {kind:'classGroup', ids, offsets: ids.map(id=>{
+          const cc = state.classes.find(x=>x.id===id);
+          return {id, offX:p.x-(cc?cc.x:0), offY:p.y-(cc?cc.y:0)};
+        }), moved:false};
+      } else {
+        multiSelect = new Set();
+        drag = {id:c.id, offX:p.x-c.x, offY:p.y-c.y, moved:false};
+      }
       try{ evt.currentTarget.setPointerCapture(evt.pointerId); }catch(e){}
     }
   });
@@ -1195,6 +1285,17 @@ function renderConnDragOverlay(){
     const el = document.querySelector('.node-card[data-class-id="'+target.id+'"]');
     if(el) el.classList.add('conn-target');
   }
+}
+/* Rubber-band rectangle while marquee-selecting classes (see initStageEvents'
+   svg pointerdown/pointermove/pointerup and buildNode's Ctrl+click toggle). */
+function renderMarqueeOverlay(){
+  const layer = document.getElementById('marqueeLayer');
+  if(!layer) return;
+  layer.innerHTML = '';
+  if(!marquee) return;
+  const x = Math.min(marquee.x0,marquee.x1), y = Math.min(marquee.y0,marquee.y1);
+  const w = Math.abs(marquee.x1-marquee.x0), h = Math.abs(marquee.y1-marquee.y0);
+  layer.appendChild(S('rect',{x,y,width:w,height:h, style:'fill:var(--accent);fill-opacity:.12;stroke:var(--accent);stroke-width:1.2;stroke-dasharray:4,3;'}));
 }
 function rectBorderPoint(rect, toward){
   const cx=rect.x+rect.w/2, cy=rect.y+rect.h/2;
@@ -1383,7 +1484,11 @@ function segmentsOf(points){
   return segs;
 }
 const LANE_GAP = 12;
-const PORT_GAP = 14, PORT_MARGIN = 10;
+// Bumped up from 14 (item 11: "os relacionamentos... individualizados") —
+// two+ relationships between the very same pair of classes used to spread
+// only ~14px apart along the shared border, reading as one thick line at
+// most zoom levels; wider apart, each is clearly its own line.
+const PORT_GAP = 22, PORT_MARGIN = 10;
 /* Port assignment: every relationship end is grouped by (classId, side) with
    every OTHER relationship that also leaves that same node from that same
    side, then spread out along the border instead of all meeting at its
@@ -1783,7 +1888,7 @@ function renderConceptualCanvas(){
   const labelLayer = document.getElementById('labelLayer');
   nodeLayer.innerHTML = ''; edgeLayer.innerHTML = ''; if(labelLayer) labelLayer.innerHTML = '';
   const rects = {};
-  state.classes.forEach(c=>{ c.w = CARD_W; c.h = classHeight(c); rects[c.id] = {x:c.x,y:c.y,w:c.w,h:c.h}; });
+  state.classes.forEach(c=>{ c.w = classWidth(c); c.h = classHeight(c); rects[c.id] = {x:c.x,y:c.y,w:c.w,h:c.h}; });
 
   // Phase 1: assign a border port to every relationship end (spreading
   // multiple edges off the same node+side apart) and route each edge
@@ -2033,11 +2138,32 @@ function initStageEvents(){
   const stage = document.getElementById('stageWrap');
   const svg = document.getElementById('canvasSvg');
   svg.addEventListener('pointerdown', (evt)=>{
+    // Item 9: a plain left-drag on the empty conceptual canvas now rubber-
+    // band multi-selects classes instead of panning — panning moves to a
+    // middle-click drag, or Space+drag for touchpad/two-button setups.
+    if(activePage==='conceptual' && evt.button===0 && !spaceHeld){
+      const p = svgPoint(evt);
+      marquee = {x0:p.x, y0:p.y, x1:p.x, y1:p.y, additive: evt.ctrlKey||evt.metaKey, moved:false};
+      try{ svg.setPointerCapture(evt.pointerId); }catch(e){}
+      return;
+    }
     panning = {x:evt.clientX, y:evt.clientY, vx:view.x, vy:view.y, moved:false};
     try{ svg.setPointerCapture(evt.pointerId); }catch(e){}
   });
   document.addEventListener('pointermove', (evt)=>{
     if(drag){
+      if(drag.kind==='classGroup'){
+        const p = svgPoint(evt);
+        drag.offsets.forEach(o=>{
+          const c = state.classes.find(x=>x.id===o.id);
+          if(!c) return;
+          const nx = p.x - o.offX, ny = p.y - o.offY;
+          if(Math.abs(nx-c.x)>1 || Math.abs(ny-c.y)>1) drag.moved = true;
+          c.x = nx; c.y = ny;
+        });
+        renderCanvas();
+        return;
+      }
       const p = svgPoint(evt);
       const nx = p.x - drag.offX, ny = p.y - drag.offY;
       if(drag.kind==='table'){
@@ -2052,6 +2178,11 @@ function initStageEvents(){
         c.x = nx; c.y = ny;
       }
       renderCanvas();
+    } else if(marquee){
+      const p = svgPoint(evt);
+      marquee.x1 = p.x; marquee.y1 = p.y;
+      if(Math.abs(marquee.x1-marquee.x0)>3 || Math.abs(marquee.y1-marquee.y0)>3) marquee.moved = true;
+      renderMarqueeOverlay();
     } else if(panning){
       const {scale} = svgTransform();
       const dx = (evt.clientX-panning.x), dy=(evt.clientY-panning.y);
@@ -2073,8 +2204,31 @@ function initStageEvents(){
     if(drag){
       const wasDrag = drag.moved, id = drag.id, kind = drag.kind;
       drag = null;
-      if(!wasDrag){ if(kind==='table') selectTable(id); else handleNodeClick(id); }
+      if(kind==='classGroup'){
+        if(wasDrag){ renderCanvas(); scheduleAutosave(); }
+        // a plain click (no movement) on an already multi-selected class
+        // just re-affirms the group selection — nothing to change
+      } else if(!wasDrag){ if(kind==='table') selectTable(id); else handleNodeClick(id); }
       else { renderCanvas(); scheduleAutosave(); }
+    }
+    if(marquee){
+      const loX = Math.min(marquee.x0,marquee.x1), hiX = Math.max(marquee.x0,marquee.x1);
+      const loY = Math.min(marquee.y0,marquee.y1), hiY = Math.max(marquee.y0,marquee.y1);
+      if(marquee.moved){
+        const hit = state.classes.filter(c=>{
+          const w = c.w||CARD_W, h = c.h||classHeight(c);
+          return c.x < hiX && c.x+w > loX && c.y < hiY && c.y+h > loY;
+        }).map(c=>c.id);
+        if(marquee.additive) hit.forEach(id=>multiSelect.add(id));
+        else multiSelect = new Set(hit);
+        if(multiSelect.size===1){ selection = {type:'class', id:[...multiSelect][0]}; multiSelect = new Set(); }
+        else selection = {type:null, id:null};
+      } else if(!marquee.additive){
+        selection = {type:null, id:null}; multiSelect = new Set();
+      }
+      marquee = null;
+      renderMarqueeOverlay();
+      renderInspector(); renderCanvas(); renderClassList(); renderRelList(); renderTableList();
     }
     if(panning){
       if(!panning.moved){
@@ -2156,18 +2310,18 @@ function initStageEvents(){
     addClassAt(kind, p.x - CARD_W/2, p.y - 22);
   });
   document.addEventListener('keydown', (evt)=>{
+    if(evt.code==='Space' && document.activeElement.tagName!=='INPUT' && document.activeElement.tagName!=='TEXTAREA'){ spaceHeld = true; }
     if(evt.key==='Escape'){
       if(connDrag){ connDrag=null; renderConnDragOverlay(); }
       if(colDrag){ colDrag=null; renderColDragOverlay(); }
+      if(marquee){ marquee=null; renderMarqueeOverlay(); }
     }
     if((evt.key==='Delete'||evt.key==='Backspace') && document.activeElement.tagName!=='INPUT' && document.activeElement.tagName!=='TEXTAREA' && document.activeElement.tagName!=='SELECT'){
-      if(activePage==='logical'){
-        if(logicalSelection.type==='table') deleteTable(logicalSelection.id);
-      } else if(selection.type){
-        if(selection.type==='class') deleteClass(selection.id);
-        else if(selection.type==='rel') deleteRel(selection.id);
-      }
+      handleDeleteKey();
     }
+  });
+  document.addEventListener('keyup', (evt)=>{
+    if(evt.code==='Space') spaceHeld = false;
   });
 }
 function zoomBy(factor){
@@ -2180,7 +2334,10 @@ function zoomBy(factor){
 
 /* ---------- left rail: add-class + relationship-mode controls ---------- */
 function makeDraggableAddBtn(kind, iconHtml, label){
-  const btn = E('button',{class:'addbtn', draggable:'true', onclick:()=>addClass(kind)},[
+  // drag-and-drop only (item 12): clicking used to drop a class at a default
+  // spot too, but that made the button feel like two different affordances —
+  // now the ONLY way to add a class is dragging it onto the canvas.
+  const btn = E('button',{class:'addbtn', draggable:'true', title:'Arraste para o canvas para adicionar'},[
     E('span',{class:'ic', html:iconHtml}), label
   ]);
   btn.addEventListener('dragstart', (evt)=>{
@@ -2197,7 +2354,7 @@ function initAddControls(){
   const grid = document.getElementById('addClassGrid');
   grid.appendChild(makeDraggableAddBtn('conventional', ICONS.conventional, 'Convencional'));
   grid.appendChild(makeDraggableAddBtn('geo', ICONS.geoObject, 'Geográfica'));
-  grid.parentNode.insertBefore(E('div',{class:'addhint'},['Arraste para o canvas para posicionar, ou clique para adicionar.']), grid.nextSibling);
+  grid.parentNode.insertBefore(E('div',{class:'addhint'},['Arraste para o canvas para posicionar a nova classe.']), grid.nextSibling);
 
   const relSelect = document.getElementById('relTypeSelect');
   Object.keys(REL_TYPES).forEach(k=>relSelect.appendChild(E('option',{value:k},[REL_TYPES[k].label])));
@@ -2294,7 +2451,9 @@ function buildAttrTable(c){
   table.appendChild(E('tr',{},[E('th',{},['Nome']),E('th',{})]));
   c.attributes.forEach(a=>{
     const nameInp = E('input',{type:'text', value:a.name, oninput:(e)=>{ a.name=e.target.value; touch(true); }});
-    const delBtn = E('button',{class:'del-x', title:'Remover atributo', html:ICONS.trash, onclick:()=>{ c.attributes = c.attributes.filter(x=>x.id!==a.id); touch(); }});
+    const delBtn = E('button',{class:'del-x del-x-lg', title:'Remover atributo', html:ICONS.trash, onclick:(e)=>{
+      confirmIconAction(e.currentTarget, ()=>{ c.attributes = c.attributes.filter(x=>x.id!==a.id); touch(); }, 'o atributo "'+a.name+'"');
+    }});
     table.appendChild(E('tr',{},[
       E('td',{},[nameInp]), E('td',{},[delBtn])
     ]));
@@ -2308,7 +2467,25 @@ function buildClassInspector(c){
   scroll.appendChild(E('div',{class:'inspector-head'},[
     E('span',{class:'badge'},[c.kind==='geo' ? (c.geoType==='field'?'geo-campo':'geo-objeto') : 'convencional'])
   ]));
-  scroll.appendChild(fieldText('Nome da classe', c.name, v=>{ c.name=v; touch(true); }));
+  const nameField = fieldText('Nome da classe', c.name, v=>{ c.name=v; touch(true); });
+  const nameInp = nameField.querySelector('input');
+  // Live typing is allowed to pass through a transient duplicate (so the
+  // user isn't blocked mid-edit); the exact-duplicate rule is only enforced
+  // once they finish (blur) — at that point it's auto-renamed to a unique
+  // variant rather than silently allowed, since two classes with the same
+  // name would be ambiguous everywhere else (lists, exports, relationships).
+  nameInp.addEventListener('blur', ()=>{
+    const v = nameInp.value.trim();
+    if(!v){ nameInp.value = c.name; return; }
+    const others = new Set(state.classes.filter(x=>x.id!==c.id).map(x=>x.name));
+    if(others.has(v)){
+      const fixed = uniqueName(v, others);
+      c.name = fixed; nameInp.value = fixed;
+      toast('Já existe uma classe "'+v+'" — renomeada para "'+fixed+'".', true);
+      touch(true);
+    }
+  });
+  scroll.appendChild(nameField);
   scroll.appendChild(fieldSeg('Tipo', c.kind, [{id:'conventional',label:'Convencional'},{id:'geo',label:'Geográfica'}], v=>{
     c.kind=v;
     if(v==='geo' && !c.geoType){ c.geoType='object'; c.primitive='point'; }
@@ -2325,10 +2502,14 @@ function buildClassInspector(c){
   scroll.appendChild(E('hr'));
   scroll.appendChild(E('div',{class:'rail-label'},['Atributos']));
   scroll.appendChild(buildAttrTable(c));
-  scroll.appendChild(E('button',{class:'btn attr-add', onclick:()=>{ c.attributes.push({id:uid('a'),name:'novo_atributo'}); touch(); }},['+ Adicionar atributo']));
+  scroll.appendChild(E('button',{class:'btn attr-add', onclick:()=>{
+    const existing = new Set(c.attributes.map(a=>a.name));
+    c.attributes.push({id:uid('a'), name: uniqueName('Novo Atributo', existing)});
+    touch();
+  }},['+ Adicionar atributo']));
   root.appendChild(scroll);
   root.appendChild(E('div',{class:'inspector-actions'},[
-    E('button',{class:'btn danger ghost', onclick:()=>deleteClass(c.id)},['Excluir classe'])
+    E('button',{class:'btn danger ghost', onclick:(e)=>confirmAction(e.currentTarget, ()=>deleteClass(c.id))},['Excluir classe'])
   ]));
   return root;
 }
@@ -2373,7 +2554,7 @@ function buildRelInspector(r){
   }
   root.appendChild(scroll);
   root.appendChild(E('div',{class:'inspector-actions'},[
-    E('button',{class:'btn danger ghost', onclick:()=>deleteRel(r.id)},['Excluir relacionamento'])
+    E('button',{class:'btn danger ghost', onclick:(e)=>confirmAction(e.currentTarget, ()=>deleteRel(r.id))},['Excluir relacionamento'])
   ]));
   return root;
 }
@@ -2415,16 +2596,18 @@ function buildColumnTable(t){
     if(col.fk) fkChk.checked = true;
     const reqChk = E('input',{type:'checkbox', onchange:(e)=>{ col.nullable = !e.target.checked; touch(); }});
     if(!col.nullable) reqChk.checked = true;
-    const delBtn = E('button',{class:'del-x', title:'Remover coluna', html:ICONS.trash, onclick:()=>{
+    const delBtn = E('button',{class:'del-x', title:'Remover coluna', html:ICONS.trash, onclick:(e)=>{
       if(col.pk && t.columns.filter(c=>c.pk).length<=1){
         toast('Toda tabela precisa de ao menos uma coluna PK — marque outra coluna como PK antes de remover esta.', true);
         return;
       }
-      t.columns = t.columns.filter(x=>x.id!==col.id);
-      state.logical.tables.forEach(tt=> tt.columns.forEach(c=>{
-        if(c.refColumnId===col.id){ c.fk=false; c.refTableId=null; c.refColumnId=null; }
-      }));
-      touch();
+      confirmIconAction(e.currentTarget, ()=>{
+        t.columns = t.columns.filter(x=>x.id!==col.id);
+        state.logical.tables.forEach(tt=> tt.columns.forEach(c=>{
+          if(c.refColumnId===col.id){ c.fk=false; c.refTableId=null; c.refColumnId=null; }
+        }));
+        touch();
+      }, 'a coluna "'+col.name+'"');
     }});
     table.appendChild(E('tr',{},[
       E('td',{},[nameInp]), E('td',{},[typeSel]),
@@ -2473,7 +2656,7 @@ function buildTableInspector(t){
   scroll.appendChild(E('button',{class:'btn attr-add', onclick:()=>{ t.columns.push({id:uid('col'),name:'nova_coluna',type:'text',pk:false,nullable:true,fk:false,refTableId:null,refColumnId:null}); touch(); }},['+ Adicionar coluna']));
   root.appendChild(scroll);
   root.appendChild(E('div',{class:'inspector-actions'},[
-    E('button',{class:'btn danger ghost', onclick:()=>deleteTable(t.id)},['Excluir tabela'])
+    E('button',{class:'btn danger ghost', onclick:(e)=>confirmAction(e.currentTarget, ()=>deleteTable(t.id))},['Excluir tabela'])
   ]));
   return root;
 }
@@ -2492,6 +2675,13 @@ function renderInspector(){
         E('div',{},['Selecione uma tabela no diagrama, ou crie uma nova pela barra à esquerda.'])
       ]));
     }
+    return;
+  }
+  if(multiSelect.size>=2){
+    panel.appendChild(E('div',{class:'inspector-empty'},[
+      E('div',{class:'ic', html:ICONS.conventional}),
+      E('div',{},[multiSelect.size+' classes selecionadas. Arraste uma delas para mover todas juntas, ou Delete para excluir todas.'])
+    ]));
     return;
   }
   if(selection.type==='class'){
@@ -2579,7 +2769,7 @@ function renderLegendOnce(){
     return E('div',{class:'legend-row'},[ E('span',{class:'ic', style:'width:18px;height:18px;color:var(--accent);', html:iconHtml}), E('div',{},[E('div',{class:'lt'},[title]), desc?E('div',{class:'ld'},[desc]):null]) ]);
   }
   const gHelp = E('div',{class:'legend-group'},[E('h3',{},['Como usar'])]);
-  gHelp.appendChild(row(ICONS.plus,'Criar uma classe','Arraste um dos botões em "Adicionar classe" para o canvas, ou clique nele para inserir no centro da tela.'));
+  gHelp.appendChild(row(ICONS.plus,'Criar uma classe','Arraste um dos botões em "Adicionar classe" para o canvas — só por arrastar, não há mais criação por clique.'));
   gHelp.appendChild(row(ICONS.association,'Criar um relacionamento','Escolha o tipo em "Adicionar relacionamento" e passe o mouse sobre uma classe: aparecem 4 conectores (○) nas bordas. Arraste de um conector até outra classe para criar o relacionamento.'));
   gHelp.appendChild(row(ICONS.conventional,'Editar uma classe ou relacionamento','Clique na classe, na linha do relacionamento no canvas, ou no item correspondente na lista à esquerda — o formulário de edição abre na aba Propriedades.'));
   gHelp.appendChild(row(ICONS.trash,'Excluir','Selecione o item e use o botão "Excluir" na aba Propriedades, o ícone de lixeira na lista à esquerda, ou a tecla Delete/Backspace.'));
@@ -2620,6 +2810,7 @@ const STORAGE_KEY = 'omtg-prancheta-model-v2';
 const LAYOUT_KEY = 'omtg-prancheta-layout-v1';
 const scheduleAutosave = debounce(()=>{
   try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){}
+  commitHistory();
 }, 600);
 function loadAutosave(){
   try{
@@ -2634,12 +2825,14 @@ function loadModel(m){
   if(!state.logical) state.logical = {tables:[]};
   selection = {type:null, id:null};
   logicalSelection = {type:null, id:null};
+  multiSelect = new Set();
   connDrag = null;
   colDrag = null;
   document.getElementById('modelName').value = state.meta.name || '';
   renderRelControls(); renderConnDragOverlay(); renderColDragOverlay();
   touch();
   fitView();
+  historyInit(); // a freshly loaded/new/sample model is undo's own "origin" — nothing before it to undo to
 }
 
 /* ---------- small UI utilities: inline confirm + toast (no native dialogs) ---------- */
@@ -2654,6 +2847,49 @@ function confirmAction(btn, action){
   btn.textContent = 'Confirmar?';
   btn.classList.add('danger');
   setTimeout(()=>{ if(btn.dataset.armed==='1'){ btn.dataset.armed='0'; btn.classList.remove('danger'); btn.textContent = btn.dataset.label; } }, 2500);
+}
+/* Same arm/confirm-on-second-click pattern as confirmAction, but for
+   icon-only buttons (trash icons in lists/rows) where swapping textContent
+   would destroy the icon's innerHTML. First click arms it (turns red +
+   toasts "clique novamente"); a second click within the window runs the
+   action; anything else (timeout, clicking elsewhere) disarms it quietly. */
+function confirmIconAction(btn, action, what){
+  if(btn.dataset.armed==='1'){
+    btn.dataset.armed='0'; btn.classList.remove('armed');
+    action();
+    return;
+  }
+  btn.dataset.armed='1';
+  btn.classList.add('armed');
+  toast('Clique novamente para excluir'+(what?' '+what:'')+'.');
+  setTimeout(()=>{ if(btn.dataset.armed==='1'){ btn.dataset.armed='0'; btn.classList.remove('armed'); } }, 2500);
+}
+/* Delete/Backspace keyboard shortcut: first press arms + toasts, a second
+   press (same selected item) within the window actually deletes — so the
+   key shares the same "ask for confirmation" behavior as every delete
+   button instead of deleting instantly. */
+let keyDeleteArm = null; // {sig, timer}
+function handleDeleteKey(){
+  let sig=null, action=null, what=null;
+  if(activePage==='logical'){
+    if(logicalSelection.type==='table'){ sig='table:'+logicalSelection.id; action=()=>deleteTable(logicalSelection.id); what='a tabela'; }
+  } else if(multiSelect.size>=2){
+    const ids=[...multiSelect].sort();
+    sig='multi:'+ids.join(',');
+    action=()=>{ ids.forEach(id=>deleteClass(id)); multiSelect=new Set(); touch(); };
+    what=ids.length+' classes selecionadas';
+  } else if(selection.type==='class'){ sig='class:'+selection.id; action=()=>deleteClass(selection.id); what='a classe'; }
+  else if(selection.type==='rel'){ sig='rel:'+selection.id; action=()=>deleteRel(selection.id); what='o relacionamento'; }
+  if(!sig) return;
+  if(keyDeleteArm && keyDeleteArm.sig===sig){
+    clearTimeout(keyDeleteArm.timer);
+    keyDeleteArm = null;
+    action();
+  } else {
+    if(keyDeleteArm) clearTimeout(keyDeleteArm.timer);
+    toast('Pressione Delete novamente para excluir '+what+'.');
+    keyDeleteArm = {sig, timer: setTimeout(()=>{ keyDeleteArm=null; }, 2500)};
+  }
 }
 function toast(msg, isError){
   const t = E('div',{style:'position:fixed;top:58px;left:50%;transform:translateX(-50%);background:'+(isError?'var(--bad)':'var(--accent)')+';color:'+(isError?'#fff':'var(--accent-ink)')+';padding:8px 14px;border-radius:8px;font-size:12.5px;z-index:50;box-shadow:var(--shadow);'},[msg]);
@@ -2943,6 +3179,7 @@ function switchRightTab(tabId){
 /* ---------- top bar: page switch (Conceitual / Lógica) + Evoluir ---------- */
 function switchPage(page){
   activePage = page;
+  if(page==='logical') multiSelect = new Set(); // multi-select is conceptual-only (item 9)
   document.querySelectorAll('.pagetab').forEach(b=> b.classList.toggle('active', b.dataset.page===page));
   document.getElementById('railConceptual').hidden = page!=='conceptual';
   document.getElementById('railLogical').hidden = page!=='logical';
@@ -2958,6 +3195,23 @@ function initPageSwitch(){
     if(state.logical.tables.length) confirmAction(e.currentTarget, run); else run();
   });
   document.getElementById('btnAddTable').addEventListener('click', ()=> addTable());
+}
+
+function initHistoryControls(){
+  const btnU = document.getElementById('btnUndo');
+  const btnR = document.getElementById('btnRedo');
+  if(btnU) btnU.addEventListener('click', undo);
+  if(btnR) btnR.addEventListener('click', redo);
+  document.addEventListener('keydown', (evt)=>{
+    const tag = document.activeElement && document.activeElement.tagName;
+    if(tag==='INPUT' || tag==='TEXTAREA' || tag==='SELECT') return; // let native text-field undo work
+    const key = evt.key.toLowerCase();
+    if(!(evt.ctrlKey||evt.metaKey) || key!=='z' && key!=='y') return;
+    evt.preventDefault();
+    if(key==='y' || (key==='z' && evt.shiftKey)) redo();
+    else undo();
+  });
+  updateUndoRedoButtons();
 }
 
 /* ============================================================
@@ -2980,6 +3234,8 @@ function boot(){
   renderLegendOnce();
   touch();
   requestAnimationFrame(fitView);
+  historyInit();
+  initHistoryControls();
 }
 boot();
 

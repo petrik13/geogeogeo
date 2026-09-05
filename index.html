@@ -905,7 +905,7 @@ function commitHistory(){
   updateUndoRedoButtons();
 }
 function restoreState(json){
-  state = JSON.parse(json);
+  state = normalizeState(JSON.parse(json));
   if(!state.meta) state.meta = emptyModel().meta;
   if(!state.logical) state.logical = {tables:[]};
   selection = {type:null,id:null};
@@ -1221,7 +1221,7 @@ function renderRelList(){
     const a = state.classes.find(x=>x.id===r.sourceId), b = state.classes.find(x=>x.id===r.targetId);
     const row = E('div',{class:'listitem'+(selection.type==='rel'&&selection.id===r.id?' selected':''), onclick:()=>selectRel(r.id)},[
       E('span',{class:'ic', html:ICONS[r.type]||ICONS.association}),
-      E('div',{class:'tx'},[ E('div',{class:'t1'},[REL_TYPES[r.type].short]), E('div',{class:'t2'},[(a?a.name:'?')+' — '+(b?b.name:'?')]) ]),
+      E('div',{class:'tx'},[ E('div',{class:'t1'},[(REL_TYPES[r.type]||REL_TYPES.association).short]), E('div',{class:'t2'},[(a?a.name:'?')+' — '+(b?b.name:'?')]) ]),
       E('button',{class:'del-x', title:'Excluir relacionamento', html:ICONS.trash, onclick:(e)=>{ e.stopPropagation(); confirmIconAction(e.currentTarget, ()=>deleteRel(r.id), 'o relacionamento'); }})
     ]);
     wrap.appendChild(row);
@@ -2916,7 +2916,7 @@ function buildRelInspector(r){
   const a = state.classes.find(x=>x.id===r.sourceId), b = state.classes.find(x=>x.id===r.targetId);
   const root = E('div',{style:'display:flex;flex-direction:column;flex:1;min-height:0;'});
   const scroll = E('div',{class:'inspector-scroll'});
-  scroll.appendChild(E('div',{class:'inspector-head'},[E('span',{class:'badge'},[REL_TYPES[r.type].label])]));
+  scroll.appendChild(E('div',{class:'inspector-head'},[E('span',{class:'badge'},[(REL_TYPES[r.type]||REL_TYPES.association).label])]));
   const ends = REL_HINTS[r.type][1];
   scroll.appendChild(E('div',{class:'field-row'},[ readout(ends[0], a?a.name:'?'), readout(ends[1], b?b.name:'?') ]));
   scroll.appendChild(E('button',{class:'btn ghost', style:'margin-bottom:11px;width:100%;justify-content:center;', onclick:()=>{ const t=r.sourceId; r.sourceId=r.targetId; r.targetId=t; touch(); }},['⇄ Inverter sentido']));
@@ -3217,8 +3217,47 @@ function loadAutosave(){
   }catch(e){}
   return null;
 }
+/* Defends every REL_TYPES[...]/primitive lookup across the app from a model
+   (autosave, an opened .json, an older export) that references a
+   relationship type or geo primitive id that no longer exists — e.g. a
+   schema that predates the generalization/aggregation Simple↔Spatial split,
+   or a removed primitive. Without this, loading such a model throws deep
+   inside a render function the very first time it indexes REL_TYPES or the
+   primitive lists with that stale id ("Cannot read properties of undefined
+   (reading 'short')") — uncaught, since it happens synchronously during
+   boot's own touch()/render call, which stops the whole page from ever
+   finishing its first paint (reads to the user as "the site won't load").
+   Mutates the model in place, then it's safe to render/persist as normal —
+   the next autosave writes back the corrected type/primitive so this is a
+   one-time repair, not a recurring patch. */
+const KNOWN_REL_TYPES = new Set(Object.keys(REL_TYPES));
+const LEGACY_REL_TYPE_MAP = {
+  generalization: 'generalizationSimple',
+  aggregation: 'aggregationSimple',
+  rede: 'network',
+  espacial: 'spatial',
+  associacao: 'association'
+};
+const KNOWN_PRIMITIVES = new Set([...GEO_OBJECT_PRIMITIVES, ...GEO_FIELD_PRIMITIVES].map(p=>p.id));
+function normalizeState(s){
+  if(!s) return s;
+  (s.relationships||[]).forEach(r=>{
+    if(!r.type || !KNOWN_REL_TYPES.has(r.type)){
+      r.type = LEGACY_REL_TYPE_MAP[r.type] || 'association';
+    }
+  });
+  (s.classes||[]).forEach(c=>{
+    if(c.kind==='geo'){
+      if(c.geoType!=='object' && c.geoType!=='field') c.geoType = 'object';
+      if(!c.primitive || !KNOWN_PRIMITIVES.has(c.primitive)){
+        c.primitive = c.geoType==='field' ? 'isoline' : 'point';
+      }
+    }
+  });
+  return s;
+}
 function loadModel(m){
-  state = m;
+  state = normalizeState(m);
   if(!state.meta) state.meta = emptyModel().meta;
   if(!state.logical) state.logical = {tables:[]};
   selection = {type:null, id:null};
@@ -3624,7 +3663,7 @@ function boot(){
   initExportMenu();
   initStageEvents();
   const saved = loadAutosave();
-  state = saved || emptyModel();
+  state = normalizeState(saved || emptyModel());
   if(!state.meta) state.meta = emptyModel().meta;
   if(!state.logical) state.logical = {tables:[]};
   document.getElementById('modelName').value = state.meta.name || '';

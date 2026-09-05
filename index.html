@@ -231,7 +231,15 @@
   .ch-box{ font-size:13px; font-weight:700; color:var(--ink); background:var(--surface); border:1.3px solid var(--accent); border-radius:6px; padding:5px 9px; white-space:nowrap; max-width:110px; overflow:hidden; text-overflow:ellipsis; }
   .ch-line-wrap{ flex:1; display:flex; flex-direction:column; align-items:center; position:relative; min-width:60px; }
   .ch-line{ width:100%; height:1.6px; background:var(--ink-soft); position:relative; }
-  .ch-mult{ font-family:"IBM Plex Mono",monospace; font-size:13px; font-weight:700; color:var(--accent); background:var(--surface-2); padding:0 4px; position:absolute; top:-9px; }
+  /* Round F item 3: "a cardinalidade está sobre o relacionamento, a regra
+     aqui deve ser a mesma do canvas" — a fixed top:-9px offset overlapped
+     the line whenever the label's own box (line-height ~19.5px) was taller
+     than that offset, exactly like the canvas's own bug before Round D's
+     fix. bottom:100% anchors by the label's own bottom edge instead of a
+     guessed top offset, so it clears the line regardless of the label's
+     height — the same "measure the real box, don't guess a constant"
+     principle the canvas SVG labels already use. */
+  .ch-mult{ font-family:"IBM Plex Mono",monospace; font-size:13px; font-weight:700; color:var(--accent); background:var(--surface-2); padding:0 4px; position:absolute; bottom:100%; margin-bottom:6px; }
   .ch-mult.left{ left:6px; }
   .ch-mult.right{ right:6px; }
   .card-hint-text{ padding:9px 12px 12px; font-size:13px; line-height:1.5; color:var(--ink-soft); border-top:1px dashed var(--border); }
@@ -1889,6 +1897,50 @@ function bestLabelSegment(points){
     dx: chosen.dx, dy: chosen.dy
   };
 }
+/* Round F item 1: "as flechas estão ainda passando por cima dos
+   relacionamentos" — a label (cardinality, or the name+arrow group) was only
+   ever kept clear of its OWN relationship's line. In a diagram with several
+   near-parallel relationships stacked close together (the very common case
+   of multiple associations between the same two classes, or just several
+   routes whose middle segments happen to run close by), a label correctly
+   cleared of its own line can still land right on top of a NEIGHBORING
+   relationship's line a few px away — the per-edge clearance math has no
+   way to know about lines it doesn't own. This runs across every OTHER
+   segment of the whole diagram (not just each edge's own) and pushes any
+   label that still overlaps one further away, in whichever direction it's
+   already offset to (so a label already placed above its own line keeps
+   moving up, never flips to the far side of the line it's clearing). */
+function avoidEdgeCrossings(metas, allSegments){
+  if(!metas || !metas.length || !allSegments || !allSegments.length) return;
+  const MARGIN = 3; // a rendered line is only ~1.5px wide; pad its hit-zone a little past the exact stroke
+  for(let pass=0; pass<6; pass++){
+    let moved = false;
+    metas.forEach(m=>{
+      const bx1=m.b.x+m.dx, by1=m.b.y+m.dy, bx2=bx1+m.b.width, by2=by1+m.b.height;
+      allSegments.forEach(seg=>{
+        const sx1=Math.min(seg.x1,seg.x2)-MARGIN, sx2=Math.max(seg.x1,seg.x2)+MARGIN;
+        const sy1=Math.min(seg.y1,seg.y2)-MARGIN, sy2=Math.max(seg.y1,seg.y2)+MARGIN;
+        const ox = Math.min(bx2,sx2) - Math.max(bx1,sx1);
+        const oy = Math.min(by2,sy2) - Math.max(by1,sy1);
+        if(ox>0 && oy>0){
+          moved = true;
+          if(seg.horiz){
+            // push vertically, staying on whichever side the label is
+            // already closer to so it never leaps across the line itself
+            const segY = (sy1+sy2)/2, labelCy = (by1+by2)/2;
+            const dir = labelCy<=segY ? -1 : 1;
+            m.dy += dir*(oy/2+0.5);
+          } else {
+            const segX = (sx1+sx2)/2, labelCx = (bx1+bx2)/2;
+            const dir = labelCx<=segX ? -1 : 1;
+            m.dx += dir*(ox/2+0.5);
+          }
+        }
+      });
+    });
+    if(!moved) break;
+  }
+}
 /* Nudges apart any edge/cardinality labels whose (padded) boxes overlap —
    this catches the case port-spreading alone can't: two relationships that
    approach the SAME class from two different sides (say top and left) can
@@ -1983,13 +2035,14 @@ function buildAssocNameArrow(labelLayer, labelMetas, mid, normMid, midDx, midDy,
   // The arrow (closest to the mid-point along the line's own axis) and the
   // name (if any, sitting further out past the arrow) both sit at the SAME
   // perpendicular offset from the line — so that offset has to clear the
-  // line by MIN_GAP past whichever of the two reaches furthest back toward
-  // it: the name's own half-height, or the arrowhead's wingspan (Round E
-  // item 5 — "a flecha passa por cima da linha ainda" traced to exactly
-  // this: the old crossClear was smaller than the wing's own reach back
-  // toward the line, so the wing tip landed on or past the line itself).
+  // line by MIN_GAP past the arrowhead's own wingspan, PLUS the name's own
+  // half-height when there is one (Round F item 2 — "se tiver texto, empurra
+  // a flecha para distante": a name reserves its own share of clearance on
+  // top of the arrow's, rather than just whichever of the two needs more —
+  // so adding a name always pushes the whole arrow+name group further from
+  // the line, never leaves it at the same distance a bare arrow would use).
   const ARROW_LEN = 18, ARROW_HEAD = 6, ARROW_WING = 3, ARROW_GAP_AFTER = 6;
-  const crossClear = MIN_GAP + Math.max(ARROW_WING, r.name ? nameHalfCross : 0);
+  const crossClear = MIN_GAP + ARROW_WING + (r.name ? nameHalfCross : 0);
   const bx = mid.x + normMid.x*crossClear, by = mid.y + normMid.y*crossClear;
   // A real arrow — a visible shaft plus an open head at the tip — instead of
   // a bare chevron that reads as just a "<"/">" glyph floating in space
@@ -2214,6 +2267,14 @@ function renderConceptualCanvas(){
   // Phase 3: build DOM
   const labelMetas = [];
   routes.forEach(route=>{ if(route) edgeLayer.appendChild(buildEdgeDom(route, labelLayer, labelMetas, rects)); });
+  // every relationship's own segments, flattened — a label only ever gets
+  // checked against its OWN line as it's placed, so this is what catches it
+  // landing on a *different*, nearby relationship's line instead (Round F
+  // item 1). Must run before resolveLabelOverlaps so overlaps between two
+  // labels are resolved starting from positions already clear of every line.
+  const allSegs = [];
+  routes.forEach(route=>{ if(route && route.segs) allSegs.push(...route.segs); });
+  avoidEdgeCrossings(labelMetas, allSegs);
   resolveLabelOverlaps(labelMetas);
   state.classes.forEach(c=> nodeLayer.appendChild(buildNode(c)) );
 }

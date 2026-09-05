@@ -184,16 +184,11 @@
      for whichever page isn't active (an ID rule would otherwise outrank it). */
   #railConceptual:not([hidden]), #railLogical:not([hidden]){ display:flex; flex-direction:column; flex:1; min-height:0; }
   .rail-section{ padding:12px 14px; border-bottom:1px solid var(--border); }
-  /* Each list section under a .rail-scroll (Classes/Relacionamentos on the
-     Conceitual page, Tabelas/Validação on the Lógica page) scrolls on its
-     own instead of sharing one scrollbar for the whole group — so a long
-     Classes list doesn't push Relacionamentos/Validação out of view.
-     flex-basis:auto lets a short section (few rows) stay small while a
-     long one takes the leftover space and then scrolls; min-height keeps
-     every section at least a little visible even when squeezed. */
-  .rail-scroll{ flex:1; min-height:0; display:flex; flex-direction:column; overflow:hidden; }
-  .rail-scroll > .rail-section{ flex:1 1 auto; min-height:64px; overflow-y:auto; }
-  .rail-scroll > .rail-section:last-child{ border-bottom:none; }
+  /* One shared scrollbar for the whole group (Classes/Relacionamentos on the
+     Conceitual page, Tabelas/Validação on the Lógica page) — a separate
+     scrollbar per section was tried and reverted (2nd round, item 6: "cada
+     um ter sua barra de rolamento" read as ugly). */
+  .rail-scroll{ flex:1; overflow-y:auto; min-height:0; display:flex; flex-direction:column; }
   .rail-label{
     font-size:13px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted);
     margin-bottom:9px; display:flex; align-items:center; justify-content:space-between; gap:8px;
@@ -220,7 +215,7 @@
     box-shadow:inset 0 0 0 2px var(--accent); background:rgba(12,100,120,.06);
   }
 
-  select.relselect{ width:100%; margin-bottom:7px; }
+  .addbtn.active{ background:var(--accent-soft); border-color:var(--accent); }
   .relarm{ width:100%; justify-content:center; }
   .relarm.active{ background:var(--accent); border-color:var(--accent); color:var(--accent-ink); }
   .relhint{ font-size:12.5px; color:var(--muted); margin-top:7px; line-height:1.45; }
@@ -257,14 +252,12 @@
   .listitem .tx .t2{ color:var(--muted); font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .listitem .del{ opacity:0; flex:none; }
   .listitem:hover .del{ opacity:1; }
-  .del-x{ width:22px; height:22px; display:flex; align-items:center; justify-content:center; border-radius:5px; color:var(--muted); border:1px solid transparent; flex:none; }
+  /* bumped up from 22px — still read as too small (item 3, 2nd round) */
+  .del-x{ width:30px; height:30px; display:flex; align-items:center; justify-content:center; border-radius:6px; color:var(--muted); border:1px solid transparent; flex:none; }
+  .del-x svg{ width:18px; height:18px; }
   .del-x:hover{ background:var(--bad-soft); color:var(--bad); }
   .del-x.armed{ background:var(--bad); color:#fff; }
   .del-x.armed:hover{ background:var(--bad); color:#fff; }
-  /* attribute-row delete button — deliberately bigger than the list-row .del-x
-     (item 4: "o botão de apagar atributo é bem pequeno") */
-  .del-x-lg{ width:30px; height:30px; }
-  .del-x-lg svg{ width:18px; height:18px; }
   .empty-note{ font-size:13px; color:var(--muted); padding:6px 2px; line-height:1.5; }
 
   .vitem{ display:flex; gap:8px; padding:7px 8px; border-radius:7px; font-size:13px; cursor:pointer; align-items:flex-start;}
@@ -447,7 +440,7 @@
         </div>
         <div class="rail-section">
           <div class="rail-label">Adicionar relacionamento</div>
-          <select id="relTypeSelect" class="relselect"></select>
+          <div class="addgrid" id="relTypeGrid"></div>
           <div class="relhint" id="relHint">Escolha o tipo e arraste a partir do conector (○) na borda de uma classe até outra.</div>
           <div id="relCardHintMini"></div>
         </div>
@@ -902,6 +895,40 @@ function createRelationship(type, sourceId, targetId){
   return base;
 }
 function selectClass(id){ selection = {type:'class', id}; multiSelect = new Set(); switchRightTab('prop'); touch(); }
+
+/* ---------- copy / paste (item 5, 2nd round) ---------- */
+let classClipboard = []; // deep-cloned class objects (ids kept, but re-issued on paste)
+function classesForClipboard(){
+  if(multiSelect.size>=2) return [...multiSelect].map(id=>state.classes.find(c=>c.id===id)).filter(Boolean);
+  if(selection.type==='class'){ const c = state.classes.find(x=>x.id===selection.id); return c ? [c] : []; }
+  return [];
+}
+function copySelection(){
+  const cs = classesForClipboard();
+  if(!cs.length) return;
+  classClipboard = cs.map(c=>JSON.parse(JSON.stringify(c)));
+  toast(cs.length>1 ? (cs.length+' classes copiadas.') : 'Classe copiada.');
+}
+function pasteClipboard(){
+  if(!classClipboard.length) return;
+  // Same "base name" / "base name 2" dedupe as creating a brand-new class
+  // (item 1) — a pasted class is named against whatever already exists.
+  const newIds = [];
+  classClipboard.forEach(src=>{
+    const existing = new Set(state.classes.map(c=>c.name));
+    const nc = JSON.parse(JSON.stringify(src));
+    nc.id = uid('c');
+    nc.name = uniqueName(src.name, existing);
+    nc.x = (src.x||0) + 32; nc.y = (src.y||0) + 32;
+    nc.attributes = (nc.attributes||[]).map(a=>({...a, id:uid('a')}));
+    state.classes.push(nc);
+    newIds.push(nc.id);
+  });
+  if(newIds.length===1){ selection = {type:'class', id:newIds[0]}; multiSelect = new Set(); }
+  else { selection = {type:null,id:null}; multiSelect = new Set(newIds); }
+  touch();
+  toast(newIds.length>1 ? (newIds.length+' classes coladas.') : 'Classe colada.');
+}
 function selectRel(id){ selection = {type:'rel', id}; switchRightTab('prop'); touch(); }
 
 function handleNodeClick(classId){
@@ -2126,7 +2153,10 @@ function fitView(){
     maxX=Math.max(maxX,it.x+(it.w||CARD_W)); maxY=Math.max(maxY,it.y+heightOf(it));
   });
   const pad=60;
-  const w = Math.max(400,(maxX-minX)+pad*2), h = Math.max(300,(maxY-minY)+pad*2);
+  // Floor raised to roughly match the empty-model default view (1200x800) —
+  // a model with just one or two classes used to fit tightly around them
+  // and open at a very high zoom ("muito zoom" no início).
+  const w = Math.max(1100,(maxX-minX)+pad*2), h = Math.max(760,(maxY-minY)+pad*2);
   const cx = (minX+maxX)/2, cy=(minY+maxY)/2;
   const ar = document.getElementById('stageWrap').clientWidth / Math.max(1,document.getElementById('stageWrap').clientHeight);
   let vw = w, vh = w/ar;
@@ -2319,6 +2349,15 @@ function initStageEvents(){
     if((evt.key==='Delete'||evt.key==='Backspace') && document.activeElement.tagName!=='INPUT' && document.activeElement.tagName!=='TEXTAREA' && document.activeElement.tagName!=='SELECT'){
       handleDeleteKey();
     }
+    // Item 5 (2nd round): Ctrl/Cmd+C copies the selected class(es), Ctrl/Cmd+V
+    // pastes a duplicate — only on the Conceitual canvas, and never while a
+    // text field has focus (that keeps the browser's native copy/paste for
+    // text working normally).
+    const tag = document.activeElement && document.activeElement.tagName;
+    if((evt.ctrlKey||evt.metaKey) && activePage==='conceptual' && tag!=='INPUT' && tag!=='TEXTAREA' && tag!=='SELECT'){
+      if(evt.key==='c' || evt.key==='C'){ copySelection(); }
+      else if(evt.key==='v' || evt.key==='V'){ pasteClipboard(); }
+    }
   });
   document.addEventListener('keyup', (evt)=>{
     if(evt.code==='Space') spaceHeld = false;
@@ -2356,10 +2395,18 @@ function initAddControls(){
   grid.appendChild(makeDraggableAddBtn('geo', ICONS.geoObject, 'Geográfica'));
   grid.parentNode.insertBefore(E('div',{class:'addhint'},['Arraste para o canvas para posicionar a nova classe.']), grid.nextSibling);
 
-  const relSelect = document.getElementById('relTypeSelect');
-  Object.keys(REL_TYPES).forEach(k=>relSelect.appendChild(E('option',{value:k},[REL_TYPES[k].label])));
-  relSelect.value = relMode.type;
-  relSelect.addEventListener('change', (e)=>{ relMode.type = e.target.value; renderRelControls(); });
+  // Item 2 (2nd round): separate buttons per relationship type — like the
+  // class buttons above — instead of one dropdown you have to open first.
+  const relGrid = document.getElementById('relTypeGrid');
+  Object.keys(REL_TYPES).forEach(k=>{
+    const btn = E('button',{class:'addbtn wide'+(k===relMode.type?' active':''), onclick:()=>{
+      relMode.type = k;
+      relGrid.querySelectorAll('.addbtn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      renderRelControls();
+    }},[ E('span',{class:'ic', html:ICONS[k]||ICONS.association}), REL_TYPES[k].short ]);
+    relGrid.appendChild(btn);
+  });
   renderRelControls();
 }
 /* [instruction, [sourceEndLabel, targetEndLabel]] per relationship type — the
@@ -2451,8 +2498,11 @@ function buildAttrTable(c){
   table.appendChild(E('tr',{},[E('th',{},['Nome']),E('th',{})]));
   c.attributes.forEach(a=>{
     const nameInp = E('input',{type:'text', value:a.name, oninput:(e)=>{ a.name=e.target.value; touch(true); }});
-    const delBtn = E('button',{class:'del-x del-x-lg', title:'Remover atributo', html:ICONS.trash, onclick:(e)=>{
-      confirmIconAction(e.currentTarget, ()=>{ c.attributes = c.attributes.filter(x=>x.id!==a.id); touch(); }, 'o atributo "'+a.name+'"');
+    // No confirmation here (item 4, 2nd round: "para excluir atributo não
+    // precisa de confirmação") — unlike every other delete button, this one
+    // deletes immediately on a single click. Undo (Ctrl+Z) covers a mis-click.
+    const delBtn = E('button',{class:'del-x', title:'Remover atributo', html:ICONS.trash, onclick:()=>{
+      c.attributes = c.attributes.filter(x=>x.id!==a.id); touch();
     }});
     table.appendChild(E('tr',{},[
       E('td',{},[nameInp]), E('td',{},[delBtn])

@@ -1294,8 +1294,12 @@ function measureTextWidth(text, font){
    line (class name or an attribute name) instead of always being CARD_W. */
 function classWidth(c){
   const PAD = 24; // matches the 12px left inset used for both cname/cattr text
-  const CHIP_RESERVE = c.kind==='geo' ? 34 : 0; // room for the geometry chip beside a long class name
-  let maxW = measureTextWidth(c.name||'', '700 15px "IBM Plex Sans"') + PAD + CHIP_RESERVE;
+  // The geometry icon now occupies its own cell to the LEFT of the name
+  // (matching OMT-G's own notation) instead of a floating chip on the
+  // right — a geo class needs room for that cell + gap before its name,
+  // plus the usual right-side padding, rather than the plain left inset.
+  const nameReserve = c.kind==='geo' ? (CARD_HEAD_H + 10 + 12) : PAD;
+  let maxW = measureTextWidth(c.name||'', '700 15px "IBM Plex Sans"') + nameReserve;
   c.attributes.forEach(a=>{
     const w = measureTextWidth(a.name||'', '13px "IBM Plex Mono"') + PAD;
     if(w>maxW) maxW = w;
@@ -1355,24 +1359,29 @@ function buildNode(c){
     }
   });
   g.appendChild(S('rect',{class:'card-bg', x:0,y:0,width:c.w,height:c.h, rx:9}));
-  g.appendChild(S('text',{class:'cname', x:12, y:22},[c.name]));
-  // geometry chip (top-right) — presence/absence + icon replaces the old text stereotype
+  // OMT-G notation (Figure 2a): "the top left-hand rectangle is used to
+  // indicate the geometry of the representation" — the pictogram lives in
+  // its own cell at the top-LEFT of the class box, separated from the name
+  // by a vertical divider, not a floating chip in the corner.
+  let nameX = 12;
   if(c.kind==='geo' && c.primitive){
-    const chipSize = 20, chx = c.w-11-chipSize, chy = 8;
-    g.appendChild(S('rect',{class:'geo-chip', x:chx, y:chy, width:chipSize, height:chipSize, rx:5}));
+    const iconW = CARD_HEAD_H;
+    g.appendChild(S('line',{class:'card-divider', x1:iconW,y1:0,x2:iconW,y2:CARD_HEAD_H}));
     const glyph = primitiveGlyph(c);
-    glyph.setAttribute('transform','translate('+(chx+chipSize/2)+','+(chy+chipSize/2)+')');
+    glyph.setAttribute('transform','translate('+(iconW/2)+','+(CARD_HEAD_H/2)+')');
     glyph.setAttribute('class','pglyph chip-glyph');
     g.appendChild(glyph);
+    nameX = iconW + 10;
   }
+  g.appendChild(S('text',{class:'cname', x:nameX, y:22},[c.name]));
   g.appendChild(S('line',{class:'card-divider', x1:0,y1:CARD_HEAD_H,x2:c.w,y2:CARD_HEAD_H}));
-  const nameX = 12; // conceptual attributes are just names — no key/required marker slot needed
+  const attrX = 12; // conceptual attributes are just names — no key/required marker slot needed, and always start at the card's own left inset regardless of the header's icon cell
   if(!c.attributes.length){
-    g.appendChild(S('text',{class:'cattr', x:nameX, y:CARD_HEAD_H+CARD_ROW_H-6, style:'fill:var(--muted);font-style:italic;'},['(sem atributos)']));
+    g.appendChild(S('text',{class:'cattr', x:attrX, y:CARD_HEAD_H+CARD_ROW_H-6, style:'fill:var(--muted);font-style:italic;'},['(sem atributos)']));
   } else {
     c.attributes.forEach((a,i)=>{
       const y = CARD_HEAD_H + CARD_ROW_H*(i+1) - 6;
-      g.appendChild(S('text',{class:'cattr', x:nameX, y:y},[a.name]));
+      g.appendChild(S('text',{class:'cattr', x:attrX, y:y},[a.name]));
     });
   }
   // connection handles — one on each side, hidden until hover; drag from one
@@ -1770,21 +1779,19 @@ function buildNetworkParallelPaths(points, hopsPerSegment, gap){
   }
   return {dA, dB};
 }
-/* Which way is "outside" a box from a point sitting exactly on its border —
-   used to push a near-box label away from the box instead of guessing a
-   sign from the segment's orientation alone (that guess is wrong half the
-   time: e.g. a port exiting a box's BOTTOM edge also runs along a
-   horizontal segment, same as a port exiting its TOP edge, but "away from
-   the box" points in opposite directions for the two). Defaults to
-   pushing right if the point isn't recognizably on any border (shouldn't
-   happen for a real port, but keeps this from ever throwing). */
-function outwardNormal(rect, pt){
-  if(!rect) return {x:1,y:0};
-  const eps = 0.75;
-  if(Math.abs(pt.y-rect.y)<eps) return {x:0,y:-1}; // top border
-  if(Math.abs(pt.y-(rect.y+rect.h))<eps) return {x:0,y:1}; // bottom border
-  if(Math.abs(pt.x-rect.x)<eps) return {x:-1,y:0}; // left border
-  return {x:1,y:0}; // right border (also the fallback)
+/* Perpendicular clear-direction for a label sitting near a point on an
+   axis-aligned (orthogonal) segment: always the axis the segment ISN'T
+   running along, so pushing a label along it actually clears the line
+   sideways instead of sliding further along it.
+   A box's own port-outward normal (this used to derive clearDir from
+   which border of the box a point sat on) is exactly PARALLEL to that
+   segment — every orthogonal route leaves a box perpendicular to its
+   border, e.g. straight down from a bottom port — so offsetting "outward"
+   from the box never actually cleared the line, it just slid the label
+   further along the same line (Round D item 2: cardinality sitting right
+   on top of the relationship line). */
+function perpClearDir(dx, dy){
+  return Math.abs(dx) >= Math.abs(dy) ? {x:0,y:-1} : {x:1,y:0};
 }
 function edgeLabelAnchors(points, rectA, rectB){
   const n = points.length;
@@ -1816,7 +1823,7 @@ function edgeLabelAnchors(points, rectA, rectB){
   const midT = midSegLen ? Math.min(Math.max(into/midSegLen, 0), 1) : 0;
   const midSeg = {x: midP1.x+(midP2.x-midP1.x)*midT, y: midP1.y+(midP2.y-midP1.y)*midT};
   const midSegDx = midP2.x-midP1.x, midSegDy = midP2.y-midP1.y;
-  const normMid = Math.abs(midSegDx) >= Math.abs(midSegDy) ? {x:0,y:-1} : {x:1,y:0};
+  const normMid = perpClearDir(midSegDx, midSegDy);
   // Place the "near" label a fixed distance from the box's port, not a fixed
   // *proportion* of the segment — with a long first/last leg (very common in
   // an orthogonal route) a proportional t=0.55 lands the label roughly at the
@@ -1838,9 +1845,9 @@ function edgeLabelAnchors(points, rectA, rectB){
   };
   const nearA = alongPoint(points[0], points[1], NEAR_DIST);
   const nearB = alongPoint(points[n-1], points[n-2], NEAR_DIST);
-  const normA = outwardNormal(rectA, points[0]);
-  const normB = outwardNormal(rectB, points[n-1]);
-  return {mid: midSeg, nearA, nearB, normA, normB, normMid};
+  const normA = perpClearDir(points[1].x-points[0].x, points[1].y-points[0].y);
+  const normB = perpClearDir(points[n-2].x-points[n-1].x, points[n-2].y-points[n-1].y);
+  return {mid: midSeg, nearA, nearB, normA, normB, normMid, midDx: midSegDx, midDy: midSegDy};
 }
 /* Nudges apart any edge/cardinality labels whose (padded) boxes overlap —
    this catches the case port-spreading alone can't: two relationships that
@@ -1879,6 +1886,91 @@ function resolveLabelOverlaps(metas){
   metas.forEach(m=>{
     if(m.dx || m.dy) m.g.setAttribute('transform', 'translate('+m.dx.toFixed(1)+','+m.dy.toFixed(1)+')');
   });
+}
+/* Round D items 4/5/6: an association's optional name must never cross its
+   own line, and (name or not) the relationship carries a small "reading
+   direction" arrow — drawn PARALLEL to the line, not floating free of it —
+   per the user's own reference (OMT-G Figure 21: "corresponds to" runs
+   vertically beside a vertical line, with a small arrow above it). Both
+   sit offset to the same side of the line (normMid — already computed to
+   clear it), stacked along the line's own axis (arrow first, name past it)
+   so they never overlap each other either. The name is rotated -90° to run
+   parallel to a vertical line instead of sitting far sideways off it. */
+function buildAssocNameArrow(labelLayer, labelMetas, mid, normMid, midDx, midDy, r){
+  if(!labelLayer) return;
+  const flen = Math.hypot(midDx, midDy) || 1;
+  const fx = midDx/flen, fy = midDy/flen; // forward = source → target, along this segment
+  const vertical = normMid.x !== 0;
+  const wrap = S('g', {style:'cursor:pointer;',
+    onpointerdown:(e)=>{ e.stopPropagation(); },
+    onclick:(e)=>{ e.stopPropagation(); selectRel(r.id); }});
+  labelLayer.appendChild(wrap); // in the document early so getBBox() below can measure real glyphs
+
+  let t = null, nameHalfCross = 0, nameLen = 0, centerYOffset = 0;
+  const CLEAR_GAP = 3;
+  if(r.name){
+    t = S('text', {class:'edge-card-label', x:0, y:0, 'text-anchor':'middle'}, [r.name]);
+    wrap.appendChild(t);
+    try{
+      const b = t.getBBox();
+      // A vertical-line name is rotated -90° below — after that rotation its
+      // on-screen CROSS-line extent (how far it needs to clear the line by)
+      // is its pre-rotation HEIGHT, not its width (the width becomes the
+      // along-line extent instead). Using width here — as the plain
+      // cardinality/mid labels correctly do for their own, unrotated case —
+      // is exactly what under-cleared this label off the line before this
+      // fix: a short height (~13px) cleared by half its wide "0..*"-style
+      // width looked fine, but a long name like "corresponds to" rotated
+      // upright only needs its (small) height cleared, and clearing by half
+      // of what was now an along-line dimension left it sitting on the line.
+      nameHalfCross = b.height/2;
+      nameLen = b.width;
+      // SVG text's own (x,y) is its BASELINE, sitting near the BOTTOM of its
+      // glyph box (ascent above it is much taller than descent below) — b.y
+      // is measured relative to that baseline, so b.y+b.height/2 is how far
+      // the box's true geometric CENTER sits from the baseline (a several-px
+      // offset, not zero). Rotating -90° around the baseline point instead
+      // of around that true center turns this into a sideways shift after
+      // rotation — enough on its own to slide the "cleared" text right back
+      // onto the line. Recorded here so the final placement can rotate
+      // around the box's real center instead.
+      centerYOffset = b.y + b.height/2;
+    }catch(e){}
+  }
+  // Chevron sits closest to the mid-point along the line's own axis; the
+  // name (if any) sits further out, past the chevron, so neither the line
+  // nor the two annotations ever overlap each other.
+  const crossClear = r.name ? (nameHalfCross+CLEAR_GAP) : 4;
+  const bx = mid.x + normMid.x*crossClear, by = mid.y + normMid.y*crossClear;
+  const ARROW_FWD = 6, ARROW_BACK = 5, ARROW_WING = 3.6, ARROW_GAP_AFTER = 5;
+  const tipX = bx+fx*ARROW_FWD, tipY = by+fy*ARROW_FWD;
+  const backX = bx-fx*ARROW_BACK, backY = by-fy*ARROW_BACK;
+  const leftX = backX-fy*ARROW_WING, leftY = backY+fx*ARROW_WING;
+  const rightX = backX+fy*ARROW_WING, rightY = backY-fx*ARROW_WING;
+  wrap.insertBefore(S('path', {d:'M'+leftX+','+leftY+' L'+tipX+','+tipY+' L'+rightX+','+rightY,
+    style:'fill:none;stroke:var(--canvas-line);stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round;'}), wrap.firstChild);
+  if(t){
+    const nameDist = ARROW_FWD+ARROW_GAP_AFTER+nameLen/2;
+    const nx = bx+fx*nameDist, ny = by+fy*nameDist;
+    if(vertical){
+      // Shift the baseline so the glyph box's true CENTER — not the
+      // baseline — lands at (nx,ny), then rotate around that same point:
+      // now the rotation is symmetric and the measured half-height
+      // clearance above actually holds on screen.
+      t.setAttribute('x', nx); t.setAttribute('y', ny-centerYOffset);
+      t.setAttribute('transform', 'rotate(-90 '+nx+' '+ny+')');
+    } else {
+      t.setAttribute('x', nx); t.setAttribute('y', ny);
+    }
+  }
+  try{
+    const b = wrap.getBBox();
+    const pad = 4;
+    const bxRect = {x:b.x-pad, y:b.y-pad, width:b.width+pad*2, height:b.height+pad*2};
+    const hit = S('rect', {x:bxRect.x, y:bxRect.y, width:bxRect.width, height:bxRect.height, style:'fill:transparent;'});
+    wrap.insertBefore(hit, wrap.firstChild);
+    if(labelMetas) labelMetas.push({g:wrap, b:bxRect, dx:0, dy:0});
+  }catch(e){}
 }
 function buildEdgeDom(route, labelLayer, labelMetas, rects){
   const r = route.r;
@@ -1950,7 +2042,7 @@ function buildEdgeDom(route, labelLayer, labelMetas, rects){
     onclick:(e)=>{ e.stopPropagation(); selectRel(r.id); }});
   g.appendChild(hit);
   const rectA = rects && rects[r.sourceId], rectB = rects && rects[r.targetId];
-  const {mid, nearA, nearB, normA, normB, normMid} = edgeLabelAnchors(points, rectA, rectB);
+  const {mid, nearA, nearB, normA, normB, normMid, midDx, midDy} = edgeLabelAnchors(points, rectA, rectB);
   const CLEAR_GAP = 3;
   const lbl = (x,y,text,clearDir)=>{
     if(!labelLayer) return;
@@ -1989,7 +2081,7 @@ function buildEdgeDom(route, labelLayer, labelMetas, rects){
   if(r.type==='association'){
     lbl(nearA.x, nearA.y, r.cardSource||'1', normA);
     lbl(nearB.x, nearB.y, r.cardTarget||'0..*', normB);
-    if(r.name) lbl(mid.x, mid.y, r.name, normMid);
+    buildAssocNameArrow(labelLayer, labelMetas, mid, normMid, midDx, midDy, r);
   } else if(relFamily(r.type)==='aggregation'){
     lbl(nearA.x, nearA.y, r.cardSource||'1', normA);
     lbl(nearB.x, nearB.y, r.cardTarget||'0..*', normB);
@@ -2098,7 +2190,7 @@ function buildLogicalTableNode(t){
   g.appendChild(S('line',{class:'card-divider', x1:0,y1:CARD_HEAD_H,x2:t.w,y2:CARD_HEAD_H}));
   const nameX = 12 + 15;
   if(!t.columns.length){
-    g.appendChild(S('text',{class:'cattr', x:nameX, y:CARD_HEAD_H+CARD_ROW_H-6, style:'fill:var(--muted);font-style:italic;'},['(sem colunas)']));
+    g.appendChild(S('text',{class:'cattr', x:attrX, y:CARD_HEAD_H+CARD_ROW_H-6, style:'fill:var(--muted);font-style:italic;'},['(sem colunas)']));
   } else {
     t.columns.forEach((col,i)=>{
       const rowY = CARD_HEAD_H + CARD_ROW_H*i;
@@ -2554,6 +2646,11 @@ function renderRelControls(){
 }
 
 /* ---------- cardinality hint (visual explainer for relationship multiplicities) ---------- */
+// Round D item 3: the old hint text ("Cada B se relaciona com N A's") read as
+// backwards to the user even though it followed strict UML multiplicity
+// semantics — replaced with a direct reading of "N instances of A relate to
+// M instances of B" using the cardinalities exactly as printed next to each
+// class, plus the same sentence inverted, so both directions are spelled out.
 function cardDesc(v){
   switch(v){
     case '1': return 'exatamente 1';
@@ -2562,6 +2659,20 @@ function cardDesc(v){
     case '1..*': return '1..* (um ou vários)';
     default: return v;
   }
+}
+function cardCount(v){
+  switch(v){
+    case '1': return '1';
+    case '0..1': return '0 a 1';
+    case '0..*': return '0 ou mais';
+    case '1..*': return '1 ou mais';
+    default: return v;
+  }
+}
+function cardReading(nameFrom, cardFrom, nameTo, cardTo){
+  const wordFrom = cardFrom==='1' ? 'instância' : 'instâncias';
+  const wordTo = cardTo==='1' ? 'instância' : 'instâncias';
+  return `Cada <b>${cardCount(cardFrom)}</b> ${wordFrom} de <b>${escapeXml(nameFrom)}</b> se relaciona com <b>${cardCount(cardTo)}</b> ${wordTo} de <b>${escapeXml(nameTo)}</b>.`;
 }
 function buildCardHint(nameA, cardA, nameB, cardB){
   return E('div',{class:'card-hint'},[
@@ -2575,16 +2686,16 @@ function buildCardHint(nameA, cardA, nameB, cardB){
       E('div',{class:'ch-box'},[nameB])
     ]),
     E('div',{class:'card-hint-text'},[
-      E('div',{class:'ln'},[E('span',{class:'dot'}), E('span',{html:'O número perto de uma classe conta quantas instâncias <b>dela</b> entram na relação, para uma instância do outro lado.'})]),
-      E('div',{class:'ln'},[E('span',{class:'dot'}), E('span',{html:`Cada <b>${escapeXml(nameB)}</b> se relaciona com ${cardDesc(cardA)} ${escapeXml(nameA)}.`})]),
-      E('div',{class:'ln'},[E('span',{class:'dot'}), E('span',{html:`Cada <b>${escapeXml(nameA)}</b> pode se relacionar com <b>${cardDesc(cardB)}</b> ${escapeXml(nameB)}.`})])
+      E('div',{class:'ln'},[E('span',{class:'dot'}), E('span',{html:cardReading(nameA,cardA,nameB,cardB)})]),
+      E('div',{class:'ln'},[E('span',{class:'dot'}), E('span',{html:'Leitura invertida: '+cardReading(nameB,cardB,nameA,cardA)})])
     ])
   ]);
 }
 function buildCardHintMini(labelA, cardA, labelB, cardB){
   return E('div',{class:'card-hint-mini'},[
     E('div',{class:'chm-title'},['Como ler a cardinalidade']),
-    E('div',{html:`O número perto de cada classe conta as instâncias <b>dela</b> por instância do outro lado — ex.: <b>${escapeXml(labelA)}</b> "${cardA}" e <b>${escapeXml(labelB)}</b> "${cardB}".`})
+    E('div',{html:cardReading(labelA,cardA,labelB,cardB)}),
+    E('div',{style:'margin-top:4px;'},[E('span',{html:'Leitura invertida: '+cardReading(labelB,cardB,labelA,cardA)})])
   ]);
 }
 

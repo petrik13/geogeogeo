@@ -588,13 +588,18 @@ const ATTR_TYPES = [
 ];
 const ATTR_TYPE_LABEL = Object.fromEntries(ATTR_TYPES.map(t=>[t.id,t.label]));
 
+/* Geo-object with geometry (Point, Line, Polygon) + geo-object with geometry
+   AND topology (Node, Unidirectional line, Bidirectional line) — exactly the
+   two geo-object specializations in Borges/Davis/Laender's OMT-G paper
+   (Section 2.2.1, Figure 4). No "complex/composto" primitive — that isn't
+   an OMT-G primitive. */
 const GEO_OBJECT_PRIMITIVES = [
   {id:'point', label:'Ponto'},
   {id:'line', label:'Linha'},
   {id:'polygon', label:'Polígono'},
-  {id:'complex', label:'Complexo (composto)'},
-  {id:'node', label:'Nó (rede)'},
-  {id:'arc', label:'Arco (rede)'}
+  {id:'unidirectional', label:'Linha unidirecional (rede)'},
+  {id:'bidirectional', label:'Linha bidirecional (rede)'},
+  {id:'node', label:'Nó (rede)'}
 ];
 const GEO_FIELD_PRIMITIVES = [
   {id:'isoline', label:'Isolinhas'},
@@ -604,32 +609,51 @@ const GEO_FIELD_PRIMITIVES = [
   {id:'partition', label:'Partição planar'}
 ];
 const ALL_PRIMITIVE_LABEL = Object.fromEntries([...GEO_OBJECT_PRIMITIVES, ...GEO_FIELD_PRIMITIVES].map(p=>[p.id,p.label]));
-const COMPLEX_KINDS = [
-  {id:'multipoint', label:'Multiponto'},
-  {id:'multiline', label:'Multilinha'},
-  {id:'multipolygon', label:'Multipolígono'},
-  {id:'collection', label:'Coleção heterogênea'}
-];
-/* 7 predicados espaciais oficiais do OMT-G (Borges, Davis & Laender) */
+/* The 9 official OMT-G spatial relations (Borges/Davis/Laender, Table 2):
+   5 basic (touch, in, cross, overlap, disjoint) + 4 special cases (adjacent
+   to, coincide, contain, near) derived from them. "em frente" (in front of)
+   was dropped — the paper is explicit that directional/ordinal relations
+   like that are NOT part of OMT-G's built-in set, just examples of the kind
+   of extra relation an application can define beyond it. */
 const TOPO_RULES = [
-  {id:'touches', label:'toca (touches)'},
-  {id:'dentro', label:'está dentro de (dentro)'},
-  {id:'disjunto', label:'é disjunto de (disjunto)'},
-  {id:'em_frente', label:'está em frente a (em frente)'},
-  {id:'proximo', label:'está próximo de (próximo)'},
-  {id:'sobrepoe', label:'sobrepõe (sobrepõe)'},
-  {id:'cruza', label:'cruza (cruza)'}
+  {id:'touches', label:'toca (touch)'},
+  {id:'dentro', label:'está dentro de (in)'},
+  {id:'cruza', label:'cruza (cross)'},
+  {id:'sobrepoe', label:'sobrepõe (overlap)'},
+  {id:'disjunto', label:'é disjunto de (disjoint)'},
+  {id:'adjacente', label:'é adjacente a (adjacent to)'},
+  {id:'coincide', label:'coincide com (coincide)'},
+  {id:'contem', label:'contém (contain)'},
+  {id:'proximo', label:'está próximo de (near)'}
 ];
 const TOPO_RULE_LABEL = Object.fromEntries(TOPO_RULES.map(t=>[t.id,t.label]));
-const TOPO_RULE_SHORT = {touches:'toca', dentro:'dentro', disjunto:'disjunto', em_frente:'em frente', proximo:'próximo', sobrepoe:'sobrepõe', cruza:'cruza'};
+const TOPO_RULE_SHORT = {touches:'toca', dentro:'dentro', cruza:'cruza', sobrepoe:'sobrepõe', disjunto:'disjunto', adjacente:'adjacente', coincide:'coincide', contem:'contém', proximo:'próximo'};
 const CARDINALITIES = ['1','0..1','0..*','1..*'];
+/* Exactly the relationship taxonomy in the OMT-G paper: three "core"
+   relation kinds (Section 2.2.2 — simple associations, spatial relations,
+   network relations), plus generalization and aggregation each split into
+   its plain and spatial variant (Sections 2.2.3/2.2.4 — spatial
+   generalization/aggregation require georeferenced classes on both ends and
+   carry their own spatial integrity rules; the plain variants don't). */
 const REL_TYPES = {
-  association:    {label:'Associação simples',               short:'Associação'},
-  generalization: {label:'Generalização / Especialização',    short:'Generalização'},
-  aggregation:    {label:'Agregação (todo–parte)',             short:'Agregação'},
-  network:        {label:'Rede (nó–arco)',                     short:'Rede'},
-  spatial:        {label:'Relação espacial (topológica)',      short:'Relação espacial'}
+  association:           {label:'Associação',                short:'Associação'},
+  spatial:               {label:'Espacial',                  short:'Espacial'},
+  network:               {label:'Rede',                      short:'Rede'},
+  generalizationSimple:  {label:'Generalização simples',     short:'Gen. simples'},
+  generalizationSpatial: {label:'Generalização espacial',    short:'Gen. espacial'},
+  aggregationSimple:     {label:'Agregação simples',         short:'Agr. simples'},
+  aggregationSpatial:    {label:'Agregação espacial',        short:'Agr. espacial'}
 };
+/* Maps a specific relationship type to the "family" that drives shared
+   rendering (edge color, marker choice) — generalizationSimple/Spatial both
+   draw the same triangle notation, aggregationSimple/Spatial both draw the
+   same diamond notation; only the spatial variant adds the dashed line and
+   the geo-only validation rule. */
+function relFamily(type){
+  if(type==='generalizationSimple'||type==='generalizationSpatial') return 'generalization';
+  if(type==='aggregationSimple'||type==='aggregationSpatial') return 'aggregation';
+  return type;
+}
 
 /* ---------- inline icon set (UI chrome, currentColor) ---------- */
 const ICONS = {
@@ -648,11 +672,17 @@ const ICONS = {
   trash: '<svg viewBox="0 0 16 16" fill="none"><path d="M3 5h10M6.5 5V3.5h3V5M4.5 5l.6 8.2a1 1 0 0 0 1 .8h3.8a1 1 0 0 0 1-.8L11.5 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   empty: '<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="14" rx="2" stroke="currentColor" stroke-width="1.3"/><path d="M3 9h18" stroke="currentColor" stroke-width="1.3"/></svg>'
 };
+// generalizationSimple/Spatial and aggregationSimple/Spatial share their
+// family's icon in every list/legend that keys off ICONS[relationship.type]
+ICONS.generalizationSimple = ICONS.generalization;
+ICONS.generalizationSpatial = ICONS.generalization;
+ICONS.aggregationSimple = ICONS.aggregation;
+ICONS.aggregationSpatial = ICONS.aggregation;
 function classIcon(c){
   if(c.kind!=='geo') return ICONS.conventional;
   if(c.geoType==='field') return ICONS.geoField;
   if(c.primitive==='point'||c.primitive==='node') return ICONS.point;
-  if(c.primitive==='line'||c.primitive==='arc') return ICONS.line;
+  if(c.primitive==='line'||c.primitive==='unidirectional'||c.primitive==='bidirectional') return ICONS.line;
   if(c.primitive==='polygon') return ICONS.polygon;
   return ICONS.geoObject;
 }
@@ -666,16 +696,16 @@ function primitiveGlyph(c){
   if(p==='point' || p==='node'){
     g.appendChild(S('circle',{cx:0,cy:0,r:3.4,style:'fill:'+st}));
     if(p==='node') g.appendChild(S('circle',{cx:0,cy:0,r:5.6,style:'fill:none;stroke:'+st+';stroke-width:1'}));
-  } else if(p==='line' || p==='arc'){
+  } else if(p==='line' || p==='unidirectional' || p==='bidirectional'){
     g.appendChild(S('line',{x1:-6,y1:4,x2:6,y2:-4,style:'stroke:'+st+';stroke-width:1.5'}));
     g.appendChild(S('circle',{cx:-6,cy:4,r:1.6,style:'fill:'+st}));
     g.appendChild(S('circle',{cx:6,cy:-4,r:1.6,style:'fill:'+st}));
-    if(p==='arc') g.appendChild(S('path',{d:'M1,-5.6 L6,-4 L3.4,-0.4', style:'fill:none;stroke:'+st+';stroke-width:1.3'}));
+    // unidirectional: one arrowhead (a defined flow direction, e.g. sewage);
+    // bidirectional: an arrowhead at both ends (flow either way, e.g. water/electrical)
+    if(p==='unidirectional' || p==='bidirectional') g.appendChild(S('path',{d:'M1,-5.6 L6,-4 L3.4,-0.4', style:'fill:none;stroke:'+st+';stroke-width:1.3'}));
+    if(p==='bidirectional') g.appendChild(S('path',{d:'M-1,5.6 L-6,4 L-3.4,0.4', style:'fill:none;stroke:'+st+';stroke-width:1.3'}));
   } else if(p==='polygon'){
     g.appendChild(S('path',{d:'M0,-6 L6,-1 L4,6 L-4,6 L-6,-1 Z', style:'fill:'+st+';fill-opacity:.22;stroke:'+st+';stroke-width:1.2'}));
-  } else if(p==='complex'){
-    g.appendChild(S('circle',{cx:-3,cy:2,r:3.2,style:'fill:none;stroke:'+st+';stroke-width:1.2'}));
-    g.appendChild(S('path',{d:'M2,-6 L7,3 L-3,3 Z',style:'fill:none;stroke:'+st+';stroke-width:1.2'}));
   } else if(p==='isoline'){
     g.appendChild(S('path',{d:'M-7,4 Q-3,-5 0,0 Q3,5 7,-4', style:'fill:none;stroke:'+st+';stroke-width:1.1'}));
   } else if(p==='tin'){
@@ -690,7 +720,7 @@ function primitiveGlyph(c){
   return g;
 }
 function topoGlyph(rule){
-  // small reference icons for the 7 official OMT-G spatial predicates (legend only)
+  // small reference icons for the 9 official OMT-G spatial predicates (legend only) — Table 2
   const g = S('g',{class:'topoglyph'});
   const c = 'var(--canvas-ink)';
   const mk = (attrs)=>S('circle', Object.assign({r:5, style:'fill:none;stroke:'+c+';stroke-width:1'}, attrs));
@@ -700,7 +730,9 @@ function topoGlyph(rule){
   else if(rule==='sobrepoe'){ g.appendChild(mk({cx:-3,cy:0})); g.appendChild(mk({cx:3,cy:0})); }
   else if(rule==='cruza'){ g.appendChild(S('path',{d:'M-5,-5 L5,5 M-5,5 L5,-5', style:'stroke:'+c+';stroke-width:1.1'})); }
   else if(rule==='proximo'){ g.appendChild(mk({cx:-4.5,cy:0,r:4})); g.appendChild(mk({cx:4.5,cy:0,r:4})); g.appendChild(S('line',{x1:-0.5,y1:0,x2:0.5,y2:0, style:'stroke:'+c+';stroke-width:1;stroke-dasharray:1.2,1.2'})); }
-  else if(rule==='em_frente'){ g.appendChild(S('line',{x1:-3,y1:-5,x2:-3,y2:5, style:'stroke:'+c+';stroke-width:1.4'})); g.appendChild(S('line',{x1:3,y1:-5,x2:3,y2:5, style:'stroke:'+c+';stroke-width:1.4'})); }
+  else if(rule==='adjacente'){ g.appendChild(S('rect',{x:-8,y:-4,width:7,height:8, style:'fill:none;stroke:'+c+';stroke-width:1'})); g.appendChild(S('rect',{x:1,y:-4,width:7,height:8, style:'fill:none;stroke:'+c+';stroke-width:1'})); }
+  else if(rule==='coincide'){ g.appendChild(mk({cx:0,cy:0,r:6})); g.appendChild(mk({cx:0,cy:0,r:6, style:'fill:none;stroke:'+c+';stroke-width:1;stroke-dasharray:2,2'})); }
+  else if(rule==='contem'){ g.appendChild(mk({cx:0,cy:0,r:7})); g.appendChild(S('circle',{cx:2,cy:1.5,r:1.8,style:'fill:'+c})); }
   return g;
 }
 
@@ -728,8 +760,7 @@ function newClassObj(kind, idx){
     kind,
     geoType: kind==='geo' ? 'object' : null,
     primitive: kind==='geo' ? 'point' : null,
-    complexKind: null,
-    attributes: [{id:uid('a'), name:'id', type:'integer', pk:true, nullable:false}],
+    attributes: [], // conceptual attributes are just names (no type/PK/obrig.) — "Objects may or may not have non-spatial attributes"
     x: 40 + (idx % 4) * 250,
     y: 40 + Math.floor(idx / 4) * 210,
     w: 208, h: 60
@@ -763,10 +794,10 @@ function deleteRel(id){
 function createRelationship(type, sourceId, targetId){
   const base = { id: uid('r'), type, sourceId, targetId, name:'' };
   if(type==='association'){ base.cardSource='1'; base.cardTarget='0..*'; }
-  else if(type==='generalization'){ base.total=false; base.disjoint=true; }
-  else if(type==='aggregation'){ base.cardSource='1'; base.cardTarget='0..*'; base.spatialControl=false; }
+  else if(type==='generalizationSimple' || type==='generalizationSpatial'){ base.total=false; base.disjoint=true; }
+  else if(type==='aggregationSimple' || type==='aggregationSpatial'){ base.cardSource='1'; base.cardTarget='0..*'; }
   else if(type==='network'){ base.directed=false; }
-  else if(type==='spatial'){ base.topoRule='touches'; }
+  else if(type==='spatial'){ base.topoRule='touches'; base.nearDistance=null; }
   state.relationships.push(base);
   selection = {type:'rel', id:base.id};
   return base;
@@ -878,40 +909,33 @@ function evolveToLogical(){
 function sampleModel(){
   const m = emptyModel('Bacia Hidrográfica (exemplo)');
   m.meta.srid = 4674; m.meta.schema='hidrografia'; m.meta.workspaceName='BaciaHidrografica';
-  const municipio = { id:uid('c'), name:'Municipio', kind:'geo', geoType:'object', primitive:'polygon', complexKind:null,
-    attributes:[{id:uid('a'),name:'id',type:'integer',pk:true,nullable:false},{id:uid('a'),name:'nome',type:'text',pk:false,nullable:false},{id:uid('a'),name:'populacao',type:'integer',pk:false,nullable:true}],
-    x:30,y:30 };
-  const bacia = { id:uid('c'), name:'BaciaHidrografica', kind:'geo', geoType:'object', primitive:'polygon', complexKind:null,
-    attributes:[{id:uid('a'),name:'id',type:'integer',pk:true,nullable:false},{id:uid('a'),name:'nome',type:'text',pk:false,nullable:false},{id:uid('a'),name:'area_km2',type:'double',pk:false,nullable:true}],
-    x:360,y:30 };
-  const subBacia = { id:uid('c'), name:'SubBacia', kind:'geo', geoType:'object', primitive:'polygon', complexKind:null,
-    attributes:[{id:uid('a'),name:'id',type:'integer',pk:true,nullable:false},{id:uid('a'),name:'nome',type:'text',pk:false,nullable:false}],
-    x:360,y:250 };
-  const rio = { id:uid('c'), name:'Rio', kind:'geo', geoType:'object', primitive:'line', complexKind:null,
-    attributes:[{id:uid('a'),name:'id',type:'integer',pk:true,nullable:false},{id:uid('a'),name:'nome',type:'text',pk:false,nullable:true},{id:uid('a'),name:'perene',type:'boolean',pk:false,nullable:true}],
-    x:30,y:250 };
-  const trecho = { id:uid('c'), name:'TrechoRio', kind:'geo', geoType:'object', primitive:'arc', complexKind:null,
-    attributes:[{id:uid('a'),name:'id',type:'integer',pk:true,nullable:false},{id:uid('a'),name:'comprimento_m',type:'double',pk:false,nullable:true}],
-    x:30,y:470 };
-  const confluencia = { id:uid('c'), name:'Confluencia', kind:'geo', geoType:'object', primitive:'node', complexKind:null,
-    attributes:[{id:uid('a'),name:'id',type:'integer',pk:true,nullable:false},{id:uid('a'),name:'cota_m',type:'double',pk:false,nullable:true}],
-    x:360,y:470 };
-  const estacao = { id:uid('c'), name:'EstacaoPluviometrica', kind:'geo', geoType:'object', primitive:'point', complexKind:null,
-    attributes:[{id:uid('a'),name:'id',type:'integer',pk:true,nullable:false},{id:uid('a'),name:'codigo',type:'text',pk:false,nullable:false}],
-    x:690,y:30 };
-  const relevo = { id:uid('c'), name:'Relevo', kind:'geo', geoType:'field', primitive:'isoline', complexKind:null,
-    attributes:[{id:uid('a'),name:'id',type:'integer',pk:true,nullable:false},{id:uid('a'),name:'cota_m',type:'double',pk:false,nullable:false}],
-    x:690,y:250 };
-  const responsavel = { id:uid('c'), name:'OrgaoResponsavel', kind:'conventional', geoType:null, primitive:null, complexKind:null,
-    attributes:[{id:uid('a'),name:'id',type:'integer',pk:true,nullable:false},{id:uid('a'),name:'nome',type:'text',pk:false,nullable:false}],
-    x:690,y:470 };
+  const municipio = { id:uid('c'), name:'Município', kind:'geo', geoType:'object', primitive:'polygon',
+    attributes:[{id:uid('a'),name:'nome'},{id:uid('a'),name:'população'}], x:30,y:30 };
+  const bacia = { id:uid('c'), name:'Bacia Hidrográfica', kind:'geo', geoType:'object', primitive:'polygon',
+    attributes:[{id:uid('a'),name:'nome'},{id:uid('a'),name:'área (km²)'}], x:360,y:30 };
+  const subBacia = { id:uid('c'), name:'Sub-bacia', kind:'geo', geoType:'object', primitive:'polygon',
+    attributes:[{id:uid('a'),name:'nome'}], x:360,y:250 };
+  const rio = { id:uid('c'), name:'Rio', kind:'geo', geoType:'object', primitive:'line',
+    attributes:[{id:uid('a'),name:'nome'},{id:uid('a'),name:'perene?'}], x:30,y:250 };
+  const trecho = { id:uid('c'), name:'Trecho de rio', kind:'geo', geoType:'object', primitive:'unidirectional',
+    attributes:[{id:uid('a'),name:'comprimento (m)'}], x:30,y:470 };
+  const confluencia = { id:uid('c'), name:'Confluência', kind:'geo', geoType:'object', primitive:'node',
+    attributes:[{id:uid('a'),name:'cota (m)'}], x:360,y:470 };
+  const estacao = { id:uid('c'), name:'Estação Pluviométrica', kind:'geo', geoType:'object', primitive:'point',
+    attributes:[{id:uid('a'),name:'código'}], x:690,y:30 };
+  const relevo = { id:uid('c'), name:'Relevo', kind:'geo', geoType:'field', primitive:'isoline',
+    attributes:[{id:uid('a'),name:'cota (m)'}], x:690,y:250 };
+  const responsavel = { id:uid('c'), name:'Órgão Responsável', kind:'conventional', geoType:null, primitive:null,
+    attributes:[{id:uid('a'),name:'nome'}], x:690,y:470 };
   [municipio,bacia,subBacia,rio,trecho,confluencia,estacao,relevo,responsavel].forEach((c,i)=>{ c.w=208; c.h=60; m.classes.push(c); });
-  m.relationships.push({ id:uid('r'), type:'aggregation', sourceId:bacia.id, targetId:subBacia.id, name:'', cardSource:'1', cardTarget:'1..*', spatialControl:true });
-  m.relationships.push({ id:uid('r'), type:'generalization', sourceId:trecho.id, targetId:rio.id, name:'', total:true, disjoint:true });
-  m.relationships.push({ id:uid('r'), type:'network', sourceId:confluencia.id, targetId:trecho.id, name:'', directed:true });
+  m.relationships.push({ id:uid('r'), type:'aggregationSpatial', sourceId:bacia.id, targetId:subBacia.id, name:'', cardSource:'1', cardTarget:'1..*' });
+  m.relationships.push({ id:uid('r'), type:'generalizationSpatial', sourceId:trecho.id, targetId:rio.id, name:'', total:true, disjoint:true });
+  m.relationships.push({ id:uid('r'), type:'network', sourceId:confluencia.id, targetId:trecho.id, name:'rede hidrográfica', directed:true });
+  // arc-arc (recursive) network: trechos de rio também se conectam diretamente entre si, sem confluência
+  m.relationships.push({ id:uid('r'), type:'network', sourceId:trecho.id, targetId:trecho.id, name:'continuação de trecho', directed:false });
   m.relationships.push({ id:uid('r'), type:'spatial', sourceId:bacia.id, targetId:municipio.id, name:'', topoRule:'sobrepoe' });
   m.relationships.push({ id:uid('r'), type:'spatial', sourceId:estacao.id, targetId:bacia.id, name:'', topoRule:'dentro' });
-  m.relationships.push({ id:uid('r'), type:'association', sourceId:bacia.id, targetId:responsavel.id, name:'monitorada_por', cardSource:'0..*', cardTarget:'1' });
+  m.relationships.push({ id:uid('r'), type:'association', sourceId:bacia.id, targetId:responsavel.id, name:'monitorada por', cardSource:'0..*', cardTarget:'1' });
   return m;
 }
 
@@ -921,27 +945,38 @@ function computeValidation(){
   const byId = Object.fromEntries(state.classes.map(c=>[c.id,c]));
   const nameCount = {};
   state.classes.forEach(c=>{ nameCount[c.name]=(nameCount[c.name]||0)+1; });
+  const isArc = p=> p==='unidirectional' || p==='bidirectional';
   state.classes.forEach(c=>{
     if(nameCount[c.name]>1) issues.push({sev:'error', ref:{type:'class',id:c.id}, msg:'Nome de classe duplicado: "'+c.name+'"'});
     if(c.kind==='geo' && !c.primitive) issues.push({sev:'error', ref:{type:'class',id:c.id}, msg:'"'+c.name+'" é geográfica mas não tem primitiva definida'});
     if(!c.attributes.length) issues.push({sev:'warning', ref:{type:'class',id:c.id}, msg:'"'+c.name+'" não possui atributos'});
-    if(c.attributes.length && !c.attributes.some(a=>a.pk)) issues.push({sev:'warning', ref:{type:'class',id:c.id}, msg:'"'+c.name+'" não tem chave primária marcada'});
   });
   state.relationships.forEach(r=>{
     const a = byId[r.sourceId], b = byId[r.targetId];
     if(!a || !b) return;
-    if(r.type==='generalization'){
-      if(a.kind!==b.kind || (a.kind==='geo' && a.geoType!==b.geoType)) issues.push({sev:'warning', ref:{type:'rel',id:r.id}, msg:'Especialização "'+a.name+'" → "'+b.name+'": subclasse e superclasse deveriam ter a mesma natureza de representação'});
+    if(relFamily(r.type)==='generalization'){
+      if(r.type==='generalizationSpatial' && (a.kind!=='geo' || b.kind!=='geo')){
+        issues.push({sev:'error', ref:{type:'rel',id:r.id}, msg:'Generalização espacial "'+a.name+'" → "'+b.name+'" exige que ambas as classes sejam geográficas'});
+      } else if(a.kind!==b.kind || (a.kind==='geo' && a.geoType!==b.geoType)){
+        issues.push({sev:'warning', ref:{type:'rel',id:r.id}, msg:'Especialização "'+a.name+'" → "'+b.name+'": subclasse e superclasse deveriam ter a mesma natureza de representação'});
+      }
     }
     if(r.type==='network'){
-      if(a.primitive!=='node') issues.push({sev:'warning', ref:{type:'rel',id:r.id}, msg:'Rede: "'+a.name+'" deveria ter primitiva "Nó"'});
-      if(b.primitive!=='arc') issues.push({sev:'warning', ref:{type:'rel',id:r.id}, msg:'Rede: "'+b.name+'" deveria ter primitiva "Arco"'});
+      // arc-node structure (Nó↔Arco) or, recursively, arc-arc (mesma classe, sem nó) — Tabela 3 do OMT-G
+      if(r.sourceId===r.targetId){
+        if(!isArc(a.primitive)) issues.push({sev:'warning', ref:{type:'rel',id:r.id}, msg:'Rede arco-arco: "'+a.name+'" deveria ter primitiva "Linha unidirecional" ou "Linha bidirecional"'});
+      } else {
+        if(a.primitive!=='node') issues.push({sev:'warning', ref:{type:'rel',id:r.id}, msg:'Rede: "'+a.name+'" deveria ter primitiva "Nó"'});
+        if(!isArc(b.primitive)) issues.push({sev:'warning', ref:{type:'rel',id:r.id}, msg:'Rede: "'+b.name+'" deveria ter primitiva "Linha unidirecional" ou "Linha bidirecional"'});
+      }
     }
     if(r.type==='spatial'){
       if(a.kind!=='geo' || b.kind!=='geo') issues.push({sev:'error', ref:{type:'rel',id:r.id}, msg:'Relação espacial entre "'+a.name+'" e "'+b.name+'" exige que ambas as classes sejam geográficas'});
+      if(r.topoRule==='proximo' && !(r.nearDistance>0)) issues.push({sev:'warning', ref:{type:'rel',id:r.id}, msg:'Relação "próximo" entre "'+a.name+'" e "'+b.name+'" precisa de uma distância definida'});
+      if((r.topoRule==='contem' || r.topoRule==='adjacente') && a.primitive!=='polygon') issues.push({sev:'warning', ref:{type:'rel',id:r.id}, msg:'Relação "'+TOPO_RULE_SHORT[r.topoRule]+'": "'+a.name+'" deveria ser um Polígono'});
     }
-    if(r.type==='aggregation' && r.spatialControl){
-      if(a.kind!=='geo' || b.kind!=='geo') issues.push({sev:'warning', ref:{type:'rel',id:r.id}, msg:'Agregação espacial "'+a.name+'"–"'+b.name+'" com controle topológico deveria envolver classes geográficas'});
+    if(r.type==='aggregationSpatial'){
+      if(a.kind!=='geo' || b.kind!=='geo') issues.push({sev:'error', ref:{type:'rel',id:r.id}, msg:'Agregação espacial "'+a.name+'"–"'+b.name+'" (todo-parte topológico) exige que ambas as classes sejam geográficas'});
     }
   });
   return issues;
@@ -1112,24 +1147,13 @@ function buildNode(c){
     g.appendChild(glyph);
   }
   g.appendChild(S('line',{class:'card-divider', x1:0,y1:CARD_HEAD_H,x2:c.w,y2:CARD_HEAD_H}));
-  const nameX = 12 + 15; // fixed prefix slot so attribute names line up regardless of key/required marker
+  const nameX = 12; // conceptual attributes are just names — no key/required marker slot needed
   if(!c.attributes.length){
     g.appendChild(S('text',{class:'cattr', x:nameX, y:CARD_HEAD_H+CARD_ROW_H-6, style:'fill:var(--muted);font-style:italic;'},['(sem atributos)']));
   } else {
     c.attributes.forEach((a,i)=>{
       const y = CARD_HEAD_H + CARD_ROW_H*(i+1) - 6;
-      if(a.pk){
-        const k = keyGlyph();
-        k.setAttribute('transform','translate('+15+','+(y-3.6)+')');
-        g.appendChild(k);
-      } else if(!a.nullable){
-        g.appendChild(S('text',{class:'attr-required', x:13, y:y},['*']));
-      }
-      const t = S('text',{class:'cattr', x:nameX, y:y});
-      const nameSpan = S('tspan',{class: a.pk ? 'cpk' : ''},[a.name]);
-      const typeSpan = S('tspan',{class:'attype'},[' : '+ATTR_TYPE_LABEL[a.type]]);
-      t.appendChild(nameSpan); t.appendChild(typeSpan);
-      g.appendChild(t);
+      g.appendChild(S('text',{class:'cattr', x:nameX, y:y},[a.name]));
     });
   }
   // connection handles — one on each side, hidden until hover; drag from one
@@ -1165,7 +1189,7 @@ function renderConnDragOverlay(){
   const srcRect = {x:src.x, y:src.y, w:src.w||CARD_W, h:src.h||classHeight(src)};
   const startPt = pointOnSide(srcRect, connDrag.sourceSide, 0);
   layer.appendChild(S('path',{class:'conn-drag-line', d:'M'+startPt.x+','+startPt.y+' L'+connDrag.x+','+connDrag.y}));
-  const target = state.classes.find(cl=> cl.id!==connDrag.sourceId
+  const target = state.classes.find(cl=> (cl.id!==connDrag.sourceId || relMode.type==='network')
     && connDrag.x>=cl.x && connDrag.x<=cl.x+(cl.w||CARD_W) && connDrag.y>=cl.y && connDrag.y<=cl.y+(cl.h||classHeight(cl)));
   if(target){
     const el = document.querySelector('.node-card[data-class-id="'+target.id+'"]');
@@ -1624,7 +1648,7 @@ function resolveLabelOverlaps(metas){
 }
 function buildEdgeDom(route, labelLayer, labelMetas, rects){
   const r = route.r;
-  const g = S('g', {class:'edge '+r.type});
+  const g = S('g', {class:'edge '+relFamily(r.type)});
   const points = route.points;
   const dPlain = buildOrthoPathD(points, null);
   const isSel = selection.type==='rel' && selection.id===r.id;
@@ -1665,17 +1689,19 @@ function buildEdgeDom(route, labelLayer, labelMetas, rects){
     }
   } else {
     const dHopped = buildOrthoPathD(points, route.hops);
-    const extraCls = (r.type==='aggregation' && r.spatialControl) ? ' spatial-agg' : '';
-    const path = S('path', {class:'edge-path '+r.type+extraCls+(isSel?' selected':''), d:dHopped});
-    if(r.type==='generalization'){
+    const fam = relFamily(r.type);
+    const extraCls = (r.type==='aggregationSpatial') ? ' spatial-agg' : '';
+    const path = S('path', {class:'edge-path '+fam+extraCls+(isSel?' selected':''), d:dHopped});
+    if(fam==='generalization'){
       // OMT-G: triangle fill encodes disjoint(hollow)/overlapping(filled); a
-      // dot at the apex encodes total coverage (absent = partial).
+      // dot at the apex encodes total coverage (absent = partial) — the same
+      // notation for both the simple and spatial variants.
       const markerId = 'marker-gen-'+(r.total?'t':'p')+(r.disjoint?'d':'o');
       path.setAttribute('marker-end','url(#'+markerId+')');
     }
-    if(r.type==='aggregation'){
+    if(fam==='aggregation'){
       // OMT-G: diamond is always hollow; spatial aggregation (topological
-      // control) is instead encoded by the dashed line (.spatial-agg above).
+      // whole-part) is instead encoded by the dashed line (.spatial-agg above).
       path.setAttribute('marker-start','url(#marker-diamond)');
     }
     g.appendChild(path);
@@ -1730,11 +1756,12 @@ function buildEdgeDom(route, labelLayer, labelMetas, rects){
     lbl(nearA.x, nearA.y, r.cardSource||'1', normA);
     lbl(nearB.x, nearB.y, r.cardTarget||'0..*', normB);
     if(r.name) lbl(mid.x, mid.y, r.name, normMid);
-  } else if(r.type==='aggregation'){
+  } else if(relFamily(r.type)==='aggregation'){
     lbl(nearA.x, nearA.y, r.cardSource||'1', normA);
     lbl(nearB.x, nearB.y, r.cardTarget||'0..*', normB);
   } else if(r.type==='network'){
-    lbl(mid.x, mid.y, 'rede'+(r.directed?' →':''), normMid);
+    // OMT-G: the network's own name is annotated between the two dashed lines
+    lbl(mid.x, mid.y, (r.name||'rede')+(r.directed?' →':''), normMid);
   } else if(r.type==='spatial'){
     // OMT-G: dashed line + the predicate's name as a «stereotype» on the line.
     lbl(mid.x, mid.y, '«'+(TOPO_RULE_SHORT[r.topoRule]||r.topoRule)+'»', normMid);
@@ -2060,7 +2087,9 @@ function initStageEvents(){
     if(connDrag){
       const p = svgPoint(evt);
       const sourceId = connDrag.sourceId;
-      const target = state.classes.find(cl=> cl.id!==sourceId
+      // self-relationships are only meaningful for "Rede" — an arc-arc network
+      // structure (Table 3 in the OMT-G paper) is explicitly recursive on one class
+      const target = state.classes.find(cl=> (cl.id!==sourceId || relMode.type==='network')
         && p.x>=cl.x && p.x<=cl.x+(cl.w||CARD_W) && p.y>=cl.y && p.y<=cl.y+(cl.h||classHeight(cl)));
       connDrag = null;
       if(target){ createRelationship(relMode.type, sourceId, target.id); touch(); }
@@ -2181,10 +2210,12 @@ function initAddControls(){
    reused by buildRelInspector to name each side in the properties panel. */
 const REL_HINTS = {
   association: ['Arraste do conector (○) da classe de origem até a de destino.', ['Origem','Destino']],
-  generalization: ['Arraste do conector (○) da subclasse até a superclasse.', ['Subclasse','Superclasse']],
-  aggregation: ['Arraste do conector (○) da classe todo até a classe parte.', ['Todo','Parte']],
-  network: ['Arraste do conector (○) da classe Nó até a classe Arco.', ['Nó','Arco']],
-  spatial: ['Arraste do conector (○) da primeira classe geográfica até a segunda.', ['Classe A','Classe B']]
+  spatial: ['Arraste do conector (○) da primeira classe geográfica até a segunda.', ['Classe A','Classe B']],
+  network: ['Arraste do conector (○) da classe Nó até a classe Arco — ou da própria classe Arco até ela mesma, para uma rede arco-arco recursiva.', ['Nó (ou Arco)','Arco']],
+  generalizationSimple: ['Arraste do conector (○) da subclasse até a superclasse.', ['Subclasse','Superclasse']],
+  generalizationSpatial: ['Arraste do conector (○) da subclasse até a superclasse (ambas geográficas).', ['Subclasse','Superclasse']],
+  aggregationSimple: ['Arraste do conector (○) da classe todo até a classe parte.', ['Todo','Parte']],
+  aggregationSpatial: ['Arraste do conector (○) da classe todo até a classe parte (ambas geográficas, todo-parte topológico).', ['Todo','Parte']]
 };
 function renderRelControls(){
   const hint = document.getElementById('relHint');
@@ -2192,7 +2223,7 @@ function renderRelControls(){
   const mini = document.getElementById('relCardHintMini');
   if(mini){
     mini.innerHTML = '';
-    if(relMode.type==='association' || relMode.type==='aggregation'){
+    if(relMode.type==='association' || relFamily(relMode.type)==='aggregation'){
       const ends = REL_HINTS[relMode.type][1];
       mini.appendChild(buildCardHintMini(ends[0], '1', ends[1], '0..*'));
     }
@@ -2260,20 +2291,12 @@ function readout(label, value){
 
 function buildAttrTable(c){
   const table = E('table',{class:'attr-table'});
-  table.appendChild(E('tr',{},[E('th',{},['Nome']),E('th',{},['Tipo']),E('th',{},['PK']),E('th',{},['Obrig.']),E('th',{})]));
+  table.appendChild(E('tr',{},[E('th',{},['Nome']),E('th',{})]));
   c.attributes.forEach(a=>{
     const nameInp = E('input',{type:'text', value:a.name, oninput:(e)=>{ a.name=e.target.value; touch(true); }});
-    const typeSel = E('select',{onchange:(e)=>{ a.type=e.target.value; touch(); }});
-    ATTR_TYPES.forEach(t=>typeSel.appendChild(E('option',{value:t.id, selected:(t.id===a.type)?'':null},[t.label])));
-    const pkChk = E('input',{type:'checkbox', onchange:(e)=>{ a.pk=e.target.checked; if(a.pk) a.nullable=false; touch(); }});
-    if(a.pk) pkChk.checked = true;
-    const reqChk = E('input',{type:'checkbox', onchange:(e)=>{ a.nullable = !e.target.checked; touch(); }});
-    if(!a.nullable) reqChk.checked = true;
     const delBtn = E('button',{class:'del-x', title:'Remover atributo', html:ICONS.trash, onclick:()=>{ c.attributes = c.attributes.filter(x=>x.id!==a.id); touch(); }});
     table.appendChild(E('tr',{},[
-      E('td',{},[nameInp]), E('td',{},[typeSel]),
-      E('td',{style:'text-align:center'},[pkChk]), E('td',{style:'text-align:center'},[reqChk]),
-      E('td',{},[delBtn])
+      E('td',{},[nameInp]), E('td',{},[delBtn])
     ]));
   });
   return table;
@@ -2289,23 +2312,20 @@ function buildClassInspector(c){
   scroll.appendChild(fieldSeg('Tipo', c.kind, [{id:'conventional',label:'Convencional'},{id:'geo',label:'Geográfica'}], v=>{
     c.kind=v;
     if(v==='geo' && !c.geoType){ c.geoType='object'; c.primitive='point'; }
-    if(v==='conventional'){ c.geoType=null; c.primitive=null; c.complexKind=null; }
+    if(v==='conventional'){ c.geoType=null; c.primitive=null; }
     touch();
   }));
   if(c.kind==='geo'){
     scroll.appendChild(fieldSeg('Natureza', c.geoType, [{id:'object',label:'Geo-objeto'},{id:'field',label:'Geo-campo'}], v=>{
-      c.geoType=v; c.primitive = v==='object' ? 'point' : 'isoline'; c.complexKind=null; touch();
+      c.geoType=v; c.primitive = v==='object' ? 'point' : 'isoline'; touch();
     }));
     const prims = c.geoType==='object' ? GEO_OBJECT_PRIMITIVES : GEO_FIELD_PRIMITIVES;
-    scroll.appendChild(fieldSelect('Primitiva geométrica', c.primitive, prims, v=>{ c.primitive=v; if(v!=='complex') c.complexKind=null; touch(); }));
-    if(c.primitive==='complex'){
-      scroll.appendChild(fieldSelect('Composição', c.complexKind||'multipolygon', COMPLEX_KINDS, v=>{ c.complexKind=v; touch(); }));
-    }
+    scroll.appendChild(fieldSelect('Primitiva geométrica', c.primitive, prims, v=>{ c.primitive=v; touch(); }));
   }
   scroll.appendChild(E('hr'));
   scroll.appendChild(E('div',{class:'rail-label'},['Atributos']));
   scroll.appendChild(buildAttrTable(c));
-  scroll.appendChild(E('button',{class:'btn attr-add', onclick:()=>{ c.attributes.push({id:uid('a'),name:'novo_atributo',type:'text',pk:false,nullable:true}); touch(); }},['+ Adicionar atributo']));
+  scroll.appendChild(E('button',{class:'btn attr-add', onclick:()=>{ c.attributes.push({id:uid('a'),name:'novo_atributo'}); touch(); }},['+ Adicionar atributo']));
   root.appendChild(scroll);
   root.appendChild(E('div',{class:'inspector-actions'},[
     E('button',{class:'btn danger ghost', onclick:()=>deleteClass(c.id)},['Excluir classe'])
@@ -2329,20 +2349,26 @@ function buildRelInspector(r){
       fieldSelect('Card. destino', r.cardTarget, CARDINALITIES.map(x=>({id:x,label:x})), v=>{ r.cardTarget=v; touch(); })
     ]));
     scroll.appendChild(buildCardHint(a?a.name:'?', r.cardSource, b?b.name:'?', r.cardTarget));
-  } else if(r.type==='generalization'){
+  } else if(relFamily(r.type)==='generalization'){
     scroll.appendChild(fieldSeg('Cobertura', r.total?'total':'partial', [{id:'total',label:'Total'},{id:'partial',label:'Parcial'}], v=>{ r.total=(v==='total'); touch(); }));
     scroll.appendChild(fieldSeg('Sobreposição', r.disjoint?'disjoint':'overlap', [{id:'disjoint',label:'Disjunta'},{id:'overlap',label:'Sobreposta'}], v=>{ r.disjoint=(v==='disjoint'); touch(); }));
-  } else if(r.type==='aggregation'){
+  } else if(relFamily(r.type)==='aggregation'){
     scroll.appendChild(E('div',{class:'field-row'},[
       fieldSelect('Card. todo', r.cardSource, CARDINALITIES.map(x=>({id:x,label:x})), v=>{ r.cardSource=v; touch(); }),
       fieldSelect('Card. parte', r.cardTarget, CARDINALITIES.map(x=>({id:x,label:x})), v=>{ r.cardTarget=v; touch(); })
     ]));
     scroll.appendChild(buildCardHint(a?a.name:'?', r.cardSource, b?b.name:'?', r.cardTarget));
-    scroll.appendChild(fieldCheck('Agregação espacial (controle topológico)', r.spatialControl, v=>{ r.spatialControl=v; touch(); }));
   } else if(r.type==='network'){
+    if(r.sourceId===r.targetId) scroll.appendChild(E('div',{class:'relhint'},['Estrutura arco-arco (recursiva): esta classe se conecta a si mesma, sem nó intermediário.']));
+    scroll.appendChild(fieldText('Nome da rede (opcional)', r.name||'', v=>{ r.name=v; touch(true); }));
     scroll.appendChild(fieldCheck('Direcionado', r.directed, v=>{ r.directed=v; touch(); }));
   } else if(r.type==='spatial'){
     scroll.appendChild(fieldSelect('Regra topológica', r.topoRule, TOPO_RULES, v=>{ r.topoRule=v; touch(); }));
+    if(r.topoRule==='proximo'){
+      scroll.appendChild(fieldText('Distância (m)', r.nearDistance!=null?String(r.nearDistance):'', v=>{
+        const n = parseFloat(String(v).replace(',','.')); r.nearDistance = isNaN(n) ? null : n; touch(true);
+      }));
+    }
     scroll.appendChild(fieldText('Rótulo (opcional)', r.name||'', v=>{ r.name=v; touch(true); }));
   }
   root.appendChild(scroll);
@@ -2536,11 +2562,13 @@ function pkFieldName(c){
    ============================================================ */
 function relDesc(k){
   return {
-    association: 'Ligação simples entre classes, com cardinalidade em cada extremidade.',
-    generalization: 'Superclasse/subclasse com triângulo junto à superclasse: vazado = disjunta, preenchido = sobreposta; ponto no ápice = total, ausência de ponto = parcial.',
-    aggregation: 'Relação todo–parte com losango vazado no lado do "todo"; linha tracejada indica agregação espacial (controle topológico), linha sólida indica agregação convencional.',
-    network: 'Conecta uma classe Nó a uma classe Arco (ou Arco a Arco), formando um grafo/rede — desenhada como duas linhas tracejadas paralelas.',
-    spatial: 'Relação topológica entre duas classes geográficas, com o predicado do OMT-G («toca», «dentro», «sobrepõe»...) como estereótipo na linha tracejada.'
+    association: 'Ligação estrutural simples entre classes (convencionais ou geográficas), com cardinalidade em cada extremidade.',
+    spatial: 'Relação topológica entre duas classes geográficas, com o predicado do OMT-G («toca», «dentro», «sobrepõe»...) como estereótipo na linha tracejada.',
+    network: 'Conecta uma classe Nó a uma classe Arco — ou uma classe Arco a ela mesma (rede arco-arco recursiva, sem nó) — formando um grafo/rede, desenhada como duas linhas tracejadas paralelas.',
+    generalizationSimple: 'Superclasse/subclasse (quaisquer classes): triângulo vazado = disjunta, preenchido = sobreposta; ponto no ápice = total, ausência de ponto = parcial.',
+    generalizationSpatial: 'Igual à generalização simples, mas exige que superclasse e subclasse sejam geográficas.',
+    aggregationSimple: 'Relação todo–parte com losango vazado no lado do "todo" — entre classes convencionais, geográficas, ou mistas.',
+    aggregationSpatial: 'Agregação todo–parte topológica ("whole-part"): exige que todo e parte sejam geográficos, e que as partes sejam disjuntas ou se toquem, cobrindo exatamente o todo.'
   }[k] || '';
 }
 function renderLegendOnce(){

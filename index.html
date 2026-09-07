@@ -90,6 +90,9 @@
     color:var(--ink);
     font:15px/1.5 "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
     -webkit-font-smoothing:antialiased;
+    overflow:hidden; /* #app now fills the viewport via position:fixed below —
+      nothing should ever need to scroll at the body level; only the panes
+      inside #app (canvas, sidebars) scroll internally. */
   }
   ::selection{ background:var(--accent); color:var(--accent-ink); }
   button, input, select, textarea{ font:inherit; color:inherit; }
@@ -106,8 +109,24 @@
   hr{ border:none; border-top:1px solid var(--border); margin:10px 0; }
 
   /* ============ App shell ============ */
+  /* "O rolamento da barra lateral sumiu... pelo menos na visualização
+     interna do navegador do Claude": #app relied on `height:100vh` to give
+     the whole layout (and, in turn, .rail's own scroll — see its rule) an
+     actual bounded height to size against — without that bound, nothing
+     below ever has a fixed height to fill, so nothing scrolls internally
+     and content just runs past the bottom of the screen with no way back
+     to it. `100vh` is the usual way to say "the viewport's height", but
+     it's computed once by the ENGINE from its own idea of the viewport —
+     a value some in-app preview/webview contexts
+     (rendering this file inside their own frame rather than a normal
+     top-level tab) have been seen to get wrong or simply not recompute on
+     resize. `position:fixed; inset:0` sidesteps that: it anchors directly to
+     the real rendered viewport edges rather than asking for a separate vh
+     computation, so it keeps working in exactly those embedded contexts.
+     `height:100vh` stays alongside it as the widely-supported fallback for
+     any (unlikely) engine that doesn't understand `inset`. */
   #app{
-    height:100vh; display:grid;
+    height:100vh; position:fixed; inset:0; display:grid;
     grid-template-rows:auto 1fr;
     grid-template-columns:1fr;
   }
@@ -170,25 +189,36 @@
 
   .rail{
     background:var(--surface); min-height:0; display:flex; flex-direction:column;
-    overflow:hidden;
+    /* "O rolamento da barra lateral sumiu": the left rail's fixed "Adicionar
+       classe" / "Adicionar relacionamento" panels have grown, across many
+       rounds of adding class/relationship types, to over 1200px combined —
+       taller than most windows (apparently including however Claude's own
+       in-app preview sizes this). This is the ONE scrollbar for the whole
+       rail (left AND right — the properties/help panel on the right still
+       reaches this same rule): whatever doesn't fit just scrolls, rather
+       than the old design where a separate inner scroll area could get
+       squeezed to zero height by its own fixed siblings and vanish with no
+       way back to it (Round J item 1 dropped that inner scroll on the left
+       rail entirely — see the note by .rail-section — so this is now the
+       only one there; the right rail's own .inspector-scroll/.legend-scroll
+       still size themselves via flex within here as before, unaffected). */
+    overflow-y:auto; overflow-x:hidden;
   }
   .rail-left{ border-right:1px solid var(--border); }
   .rail-right{ border-left:1px solid var(--border); }
-  /* #railConceptual/#railLogical are the direct flex children of .rail (the
-     aside), toggled visible/hidden by switchPage() — without making THEM
-     flex containers too, their child .rail-scroll's "flex:1" is inert (flex
-     properties only do anything on an actual flex item of a flex/grid
-     parent), so .rail-scroll silently fell back to sizing by content and
-     just overflowed .rail's bottom edge instead of scrolling internally.
-     :not([hidden]) keeps the browser's native [hidden]→display:none intact
-     for whichever page isn't active (an ID rule would otherwise outrank it). */
-  #railConceptual:not([hidden]), #railLogical:not([hidden]){ display:flex; flex-direction:column; flex:1; min-height:0; }
+  /* Round J item 1 ("não quero que as classes... tenha seu próprio
+     rolamento, deve ser um único rolamento para toda a barra lateral"):
+     #railConceptual/#railLogical used to be flex columns specifically so
+     their .rail-scroll child (Classes+Relacionamentos / Tabelas+Validação)
+     could take "flex:1" and scroll INTERNALLY, separately from the
+     "Adicionar classe"/"Adicionar relacionamento" panels above it — which is
+     exactly the second, nested scrollbar the user doesn't want. .rail-left
+     now has exactly one scrollbar (.rail's own overflow-y:auto, below) for
+     everything — add-panels and lists together, in normal document flow —
+     so these two are back to being plain blocks; the :not([hidden]) split
+     is gone with them since a plain block already just follows the
+     browser's native [hidden]→display:none for whichever page isn't active. */
   .rail-section{ padding:12px 14px; border-bottom:1px solid var(--border); }
-  /* One shared scrollbar for the whole group (Classes/Relacionamentos on the
-     Conceitual page, Tabelas/Validação on the Lógica page) — a separate
-     scrollbar per section was tried and reverted (2nd round, item 6: "cada
-     um ter sua barra de rolamento" read as ugly). */
-  .rail-scroll{ flex:1; overflow-y:auto; min-height:0; display:flex; flex-direction:column; }
   .rail-label{
     font-size:13px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted);
     margin-bottom:9px; display:flex; align-items:center; justify-content:space-between; gap:8px;
@@ -429,6 +459,7 @@
     </div>
     <div class="spacer"></div>
     <div class="btnrow">
+      <button class="btn ghost" id="btnValidate" title="Lembrete: ainda falta implementar a validação do modelo">✓ Validação</button>
       <button class="btn ghost" id="btnSample" title="Carregar modelo de exemplo">Exemplo</button>
       <button class="btn ghost" id="btnNew" title="Novo modelo em branco">Novo</button>
       <button class="btn ghost" id="btnOpen" title="Abrir modelo (.json)">Abrir</button>
@@ -1736,7 +1767,23 @@ function separateOverlappingMiddleSegments(routes){
     }
     if(cluster.length<2) return;
     const n = cluster.length;
-    cluster.forEach((c,k)=>{
+    // Round I item 2 ("seria melhor elas não se cruzarem, pq não precisa"):
+    // shifting each overlapping middle segment apart by a plain discovery-
+    // order lane (0,1,2...) is exactly what turned several relationships
+    // between the SAME two classes into a staircase of NEW crossings — each
+    // route's shifted middle segment now sits at a different height than
+    // the others, so it slices straight through whichever neighbor hasn't
+    // bent yet at that height. Sorting by how far the span itself already
+    // reaches (its own start coordinate, descending) instead of arbitrary
+    // discovery order nests the bends like telescoping brackets: the route
+    // whose span starts furthest along gets the shallowest lane (bends
+    // before any other route has moved off its own straight leg), and the
+    // route reaching least far gets the deepest lane (bends only after
+    // every other route already diverged out of its way) — eliminating the
+    // new crossings entirely for the common case (same class pair, ports
+    // spread in matching order on both ends), which is exactly this one.
+    const sorted = cluster.slice().sort((a,b)=> b.lo-a.lo);
+    sorted.forEach((c,k)=>{
       const lane = k-(n-1)/2;
       const pts = routes[c.idx].points;
       if(c.horiz){
@@ -1858,28 +1905,31 @@ function edgeLabelAnchors(points, rectA, rectB){
   const normB = perpClearDir(points[n-2].x-points[n-1].x, points[n-2].y-points[n-1].y);
   return {mid: midSeg, nearA, nearB, normA, normB, normMid, midDx: midSegDx, midDy: midSegDy};
 }
-/* Round E items 3/4: pick which segment of a (possibly multi-bend) route
-   carries the association's optional name + reading-direction arrow.
-   edgeLabelAnchors' own `mid` (50% of total path length) is right for the
-   cardinality labels — but for a route with a short jog somewhere along a
-   longer run, that 50% point can land ON the jog instead of the long
-   straight stretch that actually has room for a name — the name then gets
-   the jog's (often vertical, cramped) orientation instead of the route's
-   real, roomy segment, and can end up mis-rotated relative to what the
-   line looks like at a glance ("O texto ali não se adequa ainda"). This
-   scans EVERY segment (an earlier version excluded the first/last legs on
-   the theory that those already carry the near-box cardinality labels —
-   but a route's short connecting jog is exactly as likely to sit in the
-   MIDDLE, e.g. a long-horizontal / short-vertical / long-horizontal
-   "Z" jog around an obstacle, where excluding the ends left only that
-   short middle jog as the sole candidate, picking precisely the wrong
-   segment) and simply prefers the longest one, with a bias toward a
+/* Round E items 3/4, revised in Round J: rank every segment of a (possibly
+   multi-bend) route as a candidate for the association's optional name +
+   reading-direction arrow. edgeLabelAnchors' own `mid` (50% of total path
+   length) is right for the cardinality labels — but for a route with a
+   short jog somewhere along a longer run, that 50% point can land ON the
+   jog instead of the long straight stretch that actually has room for a
+   name — the name then gets the jog's (often vertical, cramped) orientation
+   instead of the route's real, roomy segment, and can end up mis-rotated
+   relative to what the line looks like at a glance ("O texto ali não se
+   adequa ainda"). This ranks EVERY segment (an earlier version excluded the
+   first/last legs on the theory that those already carry the near-box
+   cardinality labels — but a route's short connecting jog is exactly as
+   likely to sit in the MIDDLE, e.g. a long-horizontal / short-vertical /
+   long-horizontal "Z" jog around an obstacle, where excluding the ends left
+   only that short middle jog as the sole candidate, picking precisely the
+   wrong segment), preferring the longest one with a bias toward a
    horizontal segment when one is close enough in length to the true
-   longest ("com preferência para um horizontal"). The near-box cardinality
+   longest ("com preferência para um horizontal") — but as an ORDERING now,
+   not a single forced pick: pickLabelSpot (near buildAssocNameArrow) tries
+   this preferred segment first and only moves down the list if every spot
+   on it turns out to be crowded (Round J item 2). The near-box cardinality
    labels sit only NEAR_DIST (20px) from their box, so a name centered on
    even a first/last segment's own midpoint is normally far past them —
    and resolveLabelOverlaps is the backstop for the rare case it isn't. */
-function bestLabelSegment(points){
+function labelCandidateSegments(points){
   const n = points.length;
   const segs = [];
   for(let i=0;i<n-1;i++){
@@ -1888,31 +1938,68 @@ function bestLabelSegment(points){
     segs.push({p1, p2, dx, dy, len: Math.hypot(dx,dy), horiz: Math.abs(dx)>=Math.abs(dy)});
   }
   const bestOverall = segs.reduce((a,b)=> b.len>a.len ? b : a);
-  const bestHoriz = segs.filter(s=>s.horiz).reduce((a,b)=> (!a||b.len>a.len) ? b : a, null);
   const HORIZ_BIAS = 0.6; // a horizontal run wins unless it's under 60% of the longest segment's length
-  const chosen = (bestHoriz && bestHoriz.len >= bestOverall.len*HORIZ_BIAS) ? bestHoriz : bestOverall;
-  return {
-    mid: {x:(chosen.p1.x+chosen.p2.x)/2, y:(chosen.p1.y+chosen.p2.y)/2},
-    norm: perpClearDir(chosen.dx, chosen.dy),
-    dx: chosen.dx, dy: chosen.dy
-  };
+  // Same preference the old single-choice version used (a horizontal run
+  // wins unless much shorter than the true longest segment) — kept as an
+  // ORDERING now rather than an outright pick, so pickLabelSpot (below)
+  // still tries the natural/expected segment first and only moves on to a
+  // less-preferred one if every spot on the preferred one is crowded.
+  return segs.slice().sort((a,b)=>{
+    const scoreA = (a.horiz && a.len>=bestOverall.len*HORIZ_BIAS) ? 1000+a.len : a.len;
+    const scoreB = (b.horiz && b.len>=bestOverall.len*HORIZ_BIAS) ? 1000+b.len : b.len;
+    return scoreB-scoreA;
+  });
+}
+/* Several candidate points along one segment, center first (the exact spot
+   the old single-choice version always used, so an uncrowded diagram looks
+   unchanged) and then spreading outward, clear of the segment's own corners
+   where a label would sit awkwardly close to the route's bend. */
+function labelCandidatePoints(seg){
+  const T_STEPS = [0.5, 0.32, 0.68, 0.18, 0.82];
+  return T_STEPS.map(t=>({
+    mid: {x:seg.p1.x+seg.dx*t, y:seg.p1.y+seg.dy*t},
+    norm: perpClearDir(seg.dx, seg.dy),
+    dx: seg.dx, dy: seg.dy
+  }));
+}
+/* Total overlap AREA between a padded label box and a list of (also
+   padded) line segments — used to compare candidate spots, so "a little
+   overlap in a small corner" reliably scores better than "overlap along
+   the whole label", not just a yes/no. */
+function boxOverlapWithSegs(box, segs){
+  if(!segs || !segs.length) return 0;
+  const MARGIN = 3;
+  const bx1=box.x, by1=box.y, bx2=box.x+box.width, by2=box.y+box.height;
+  let total = 0;
+  for(const seg of segs){
+    const sx1=Math.min(seg.x1,seg.x2)-MARGIN, sx2=Math.max(seg.x1,seg.x2)+MARGIN;
+    const sy1=Math.min(seg.y1,seg.y2)-MARGIN, sy2=Math.max(seg.y1,seg.y2)+MARGIN;
+    const ox = Math.min(bx2,sx2)-Math.max(bx1,sx1);
+    const oy = Math.min(by2,sy2)-Math.max(by1,sy1);
+    if(ox>0 && oy>0) total += ox*oy;
+  }
+  return total;
 }
 /* Round F item 1: "as flechas estão ainda passando por cima dos
-   relacionamentos" — a label (cardinality, or the name+arrow group) was only
-   ever kept clear of its OWN relationship's line. In a diagram with several
-   near-parallel relationships stacked close together (the very common case
-   of multiple associations between the same two classes, or just several
-   routes whose middle segments happen to run close by), a label correctly
-   cleared of its own line can still land right on top of a NEIGHBORING
-   relationship's line a few px away — the per-edge clearance math has no
-   way to know about lines it doesn't own. This runs across every OTHER
-   segment of the whole diagram (not just each edge's own) and pushes any
-   label that still overlaps one further away, in whichever direction it's
-   already offset to (so a label already placed above its own line keeps
-   moving up, never flips to the far side of the line it's clearing). */
+   relacionamentos" — a cardinality label (the small "1"/"0..*" near a box)
+   was only ever kept clear of its OWN relationship's line. In a diagram
+   with several near-parallel relationships stacked close together, a label
+   correctly cleared of its own line can still land right on top of a
+   NEIGHBORING relationship's line a few px away — the per-edge clearance
+   math has no way to know about lines it doesn't own. This runs across
+   every OTHER segment of the whole diagram (not just each edge's own) and
+   pushes any label that still overlaps one further away, in whichever
+   direction it's already offset to (so a label already placed above its
+   own line keeps moving up, never flips to the far side of the line it's
+   clearing).
+   Round J: name/predicate labels (the ones with a reading-direction arrow)
+   no longer go through this — see the note above pickLabelSpot for why
+   pushing a label after the fact turned out to be the wrong tool for that
+   case. Only cardinality-kind metas are ever passed in here now. */
 function avoidEdgeCrossings(metas, allSegments){
   if(!metas || !metas.length || !allSegments || !allSegments.length) return;
   const MARGIN = 3; // a rendered line is only ~1.5px wide; pad its hit-zone a little past the exact stroke
+  const MAX_PUSH = 34;
   for(let pass=0; pass<6; pass++){
     let moved = false;
     metas.forEach(m=>{
@@ -1923,17 +2010,18 @@ function avoidEdgeCrossings(metas, allSegments){
         const ox = Math.min(bx2,sx2) - Math.max(bx1,sx1);
         const oy = Math.min(by2,sy2) - Math.max(by1,sy1);
         if(ox>0 && oy>0){
-          moved = true;
           if(seg.horiz){
             // push vertically, staying on whichever side the label is
             // already closer to so it never leaps across the line itself
             const segY = (sy1+sy2)/2, labelCy = (by1+by2)/2;
             const dir = labelCy<=segY ? -1 : 1;
-            m.dy += dir*(oy/2+0.5);
+            const next = m.dy + dir*(oy/2+0.5);
+            if(Math.abs(next)<=MAX_PUSH){ m.dy = next; moved = true; }
           } else {
             const segX = (sx1+sx2)/2, labelCx = (bx1+bx2)/2;
             const dir = labelCx<=segX ? -1 : 1;
-            m.dx += dir*(ox/2+0.5);
+            const next = m.dx + dir*(ox/2+0.5);
+            if(Math.abs(next)<=MAX_PUSH){ m.dx = next; moved = true; }
           }
         }
       });
@@ -1987,18 +2075,29 @@ function resolveLabelOverlaps(metas){
    sit offset to the same side of the line (normMid — already computed to
    clear it), stacked along the line's own axis (arrow first, name past it)
    so they never overlap each other either. The name is rotated -90° to run
-   parallel to a vertical line instead of sitting far sideways off it. */
-function buildAssocNameArrow(labelLayer, labelMetas, mid, normMid, midDx, midDy, r){
+   parallel to a vertical line instead of sitting far sideways off it.
+   Round J item 2: "não gostei" the leader-line fix, and "ainda prefiro que
+   o texto ache outro lugar mais vazio para se colocar. Se não tiver como,
+   tudo bem" — back to placing the label directly beside its own line (no
+   connector), but instead of always the segment's plain center point, this
+   now actively SEARCHES for a spot with no (or the least) overlap with any
+   OTHER relationship's lines before falling back to the old default
+   unchanged. labelCandidateSegments ranks the route's segments in the same
+   preferred order as before; for each, applyCandidate renders the arrow+
+   text there and measures the real box, and the search keeps whichever
+   candidate overlaps least — stopping as soon as one is fully clear. If
+   NONE are, it keeps the very first (most natural) candidate exactly as
+   the old single-choice version would have — leaving it for the user to
+   rearrange the classes themselves, per their own instruction, rather than
+   forcing any further correction. */
+function buildAssocNameArrow(labelLayer, labelMetas, points, r, otherSegs){
   if(!labelLayer) return;
-  const flen = Math.hypot(midDx, midDy) || 1;
-  const fx = midDx/flen, fy = midDy/flen; // forward = source → target, along this segment
-  const vertical = normMid.x !== 0;
   const wrap = S('g', {style:'cursor:pointer;',
     onpointerdown:(e)=>{ e.stopPropagation(); },
     onclick:(e)=>{ e.stopPropagation(); selectRel(r.id); }});
   labelLayer.appendChild(wrap); // in the document early so getBBox() below can measure real glyphs
 
-  let t = null, nameHalfCross = 0, nameLen = 0, centerYOffset = 0;
+  let t = null, nameHalfCross = 0, centerYOffset = 0;
   // Round E item 1 ("a flecha tem que ficar mais afastada"): how far the
   // line itself must stay from the NEAREST point of the arrow or name —
   // not just from their center points.
@@ -2019,7 +2118,6 @@ function buildAssocNameArrow(labelLayer, labelMetas, mid, normMid, midDx, midDy,
       // upright only needs its (small) height cleared, and clearing by half
       // of what was now an along-line dimension left it sitting on the line.
       nameHalfCross = b.height/2;
-      nameLen = b.width;
       // SVG text's own (x,y) is its BASELINE, sitting near the BOTTOM of its
       // glyph box (ascent above it is much taller than descent below) — b.y
       // is measured relative to that baseline, so b.y+b.height/2 is how far
@@ -2032,53 +2130,80 @@ function buildAssocNameArrow(labelLayer, labelMetas, mid, normMid, midDx, midDy,
       centerYOffset = b.y + b.height/2;
     }catch(e){}
   }
-  // The arrow (closest to the mid-point along the line's own axis) and the
-  // name (if any, sitting further out past the arrow) both sit at the SAME
-  // perpendicular offset from the line — so that offset has to clear the
-  // line by MIN_GAP past the arrowhead's own wingspan, PLUS the name's own
-  // half-height when there is one (Round F item 2 — "se tiver texto, empurra
-  // a flecha para distante": a name reserves its own share of clearance on
-  // top of the arrow's, rather than just whichever of the two needs more —
-  // so adding a name always pushes the whole arrow+name group further from
-  // the line, never leaves it at the same distance a bare arrow would use).
+  // Round G item 1 ("na vertical, não está empilhando horizontalmente"):
+  // the arrow and name always stack along the PERPENDICULAR axis (normMid)
+  // — never along the segment itself — regardless of whether the line
+  // runs horizontally or vertically. For a horizontal line that's a
+  // vertical stack (arrow above, name below, both above the line); for a
+  // vertical line it's a horizontal stack (arrow further sideways, name
+  // closer in, both beside the line) — the same rule in both orientations,
+  // rather than special-casing the vertical line to stack along its own
+  // axis instead. The name always sits CLOSER to the line than the arrow
+  // (between the arrow and the line, never beside it), so the order moving
+  // away from the line is always: line, then name, then arrow.
   const ARROW_LEN = 18, ARROW_HEAD = 6, ARROW_WING = 3, ARROW_GAP_AFTER = 6;
-  const crossClear = MIN_GAP + ARROW_WING + (r.name ? nameHalfCross : 0);
-  const bx = mid.x + normMid.x*crossClear, by = mid.y + normMid.y*crossClear;
-  // A real arrow — a visible shaft plus an open head at the tip — instead of
-  // a bare chevron that reads as just a "<"/">" glyph floating in space
-  // (Round E item 2 — "tem que ser flecha mesmo").
-  const tailX = bx-fx*ARROW_LEN/2, tailY = by-fy*ARROW_LEN/2;
-  const tipX = bx+fx*ARROW_LEN/2, tipY = by+fy*ARROW_LEN/2;
-  const headBackX = tipX-fx*ARROW_HEAD, headBackY = tipY-fy*ARROW_HEAD;
-  const leftX = headBackX-fy*ARROW_WING, leftY = headBackY+fx*ARROW_WING;
-  const rightX = headBackX+fy*ARROW_WING, rightY = headBackY-fx*ARROW_WING;
-  wrap.insertBefore(S('path', {d:'M'+tailX+','+tailY+' L'+tipX+','+tipY+
-    ' M'+leftX+','+leftY+' L'+tipX+','+tipY+' L'+rightX+','+rightY,
-    style:'fill:none;stroke:var(--canvas-line);stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round;'}), wrap.firstChild);
-  if(t){
-    const nameDist = ARROW_LEN/2+ARROW_GAP_AFTER+nameLen/2;
-    const nx = bx+fx*nameDist, ny = by+fy*nameDist;
-    if(vertical){
-      // Shift the baseline so the glyph box's true CENTER — not the
-      // baseline — lands at (nx,ny), then rotate around that same point:
-      // now the rotation is symmetric and the measured half-height
-      // clearance above actually holds on screen.
+  const textClear = r.name ? (MIN_GAP + nameHalfCross) : 0;
+  const arrowClear = r.name ? (textClear + nameHalfCross + ARROW_GAP_AFTER + ARROW_WING) : (MIN_GAP + ARROW_WING);
+
+  const arrowPath = S('path', {style:'fill:none;stroke:var(--canvas-line);stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round;'});
+  wrap.insertBefore(arrowPath, wrap.firstChild);
+  // Renders the arrow+text at one candidate spot and returns its measured
+  // (padded) bounding box — reused both to search for the least-crowded
+  // candidate and, at the end, to commit to whichever one wins.
+  function applyCandidate(cand){
+    const mid = cand.mid, normMid = cand.norm, midDx = cand.dx, midDy = cand.dy;
+    const flen = Math.hypot(midDx, midDy) || 1;
+    const fx = midDx/flen, fy = midDy/flen; // forward = source → target, along this segment
+    const vertical = normMid.x !== 0;
+    const bx = mid.x + normMid.x*arrowClear, by = mid.y + normMid.y*arrowClear;
+    // A real arrow — a visible shaft plus an open head at the tip — instead
+    // of a bare chevron that reads as just a "<"/">" glyph floating in
+    // space (Round E item 2 — "tem que ser flecha mesmo"). Its shaft still
+    // runs ALONG the segment (fx,fy) — only its position (bx,by), not its
+    // shape, moves with each candidate.
+    const tailX = bx-fx*ARROW_LEN/2, tailY = by-fy*ARROW_LEN/2;
+    const tipX = bx+fx*ARROW_LEN/2, tipY = by+fy*ARROW_LEN/2;
+    const headBackX = tipX-fx*ARROW_HEAD, headBackY = tipY-fy*ARROW_HEAD;
+    const leftX = headBackX-fy*ARROW_WING, leftY = headBackY+fx*ARROW_WING;
+    const rightX = headBackX+fy*ARROW_WING, rightY = headBackY-fx*ARROW_WING;
+    arrowPath.setAttribute('d', 'M'+tailX+','+tailY+' L'+tipX+','+tipY+
+      ' M'+leftX+','+leftY+' L'+tipX+','+tipY+' L'+rightX+','+rightY);
+    if(t){
+      // Sits at its own, smaller perpendicular offset (textClear) — same
+      // baseline-to-true-center correction either way; only a vertical
+      // line additionally rotates the name -90° so it still reads
+      // parallel to it.
+      const nx = mid.x + normMid.x*textClear, ny = mid.y + normMid.y*textClear;
       t.setAttribute('x', nx); t.setAttribute('y', ny-centerYOffset);
-      t.setAttribute('transform', 'rotate(-90 '+nx+' '+ny+')');
-    } else {
-      t.setAttribute('x', nx); t.setAttribute('y', ny);
+      t.setAttribute('transform', vertical ? ('rotate(-90 '+nx+' '+ny+')') : '');
+    }
+    let b;
+    try{ b = wrap.getBBox(); }catch(e){ b = {x:mid.x, y:mid.y, width:0, height:0}; }
+    const pad = 4;
+    return {x:b.x-pad, y:b.y-pad, width:b.width+pad*2, height:b.height+pad*2};
+  }
+
+  const segs = labelCandidateSegments(points);
+  let bestCand = null, bestOverlap = Infinity;
+  search:
+  for(const seg of segs){
+    for(const cand of labelCandidatePoints(seg)){
+      const box = applyCandidate(cand);
+      const overlap = boxOverlapWithSegs(box, otherSegs);
+      if(overlap < bestOverlap){
+        bestOverlap = overlap; bestCand = cand;
+        if(overlap<=0) break search; // fully clear — good enough, stop searching
+      }
     }
   }
+  const finalBox = applyCandidate(bestCand);
   try{
-    const b = wrap.getBBox();
-    const pad = 4;
-    const bxRect = {x:b.x-pad, y:b.y-pad, width:b.width+pad*2, height:b.height+pad*2};
-    const hit = S('rect', {x:bxRect.x, y:bxRect.y, width:bxRect.width, height:bxRect.height, style:'fill:transparent;'});
+    const hit = S('rect', {x:finalBox.x, y:finalBox.y, width:finalBox.width, height:finalBox.height, style:'fill:transparent;'});
     wrap.insertBefore(hit, wrap.firstChild);
-    if(labelMetas) labelMetas.push({g:wrap, b:bxRect, dx:0, dy:0});
+    if(labelMetas) labelMetas.push({g:wrap, b:finalBox, dx:0, dy:0, kind:'name'});
   }catch(e){}
 }
-function buildEdgeDom(route, labelLayer, labelMetas, rects){
+function buildEdgeDom(route, labelLayer, labelMetas, rects, otherSegs){
   const r = route.r;
   const g = S('g', {class:'edge '+relFamily(r.type)});
   const points = route.points;
@@ -2181,17 +2306,19 @@ function buildEdgeDom(route, labelLayer, labelMetas, rects){
       const bx = {x:b.x-pad, y:b.y-pad, width:b.width+pad*2, height:b.height+pad*2};
       const hit = S('rect', {x:bx.x, y:bx.y, width:bx.width, height:bx.height, style:'fill:transparent;'});
       wrap.insertBefore(hit, t);
-      if(labelMetas) labelMetas.push({g:wrap, b:bx, dx:0, dy:0});
+      if(labelMetas) labelMetas.push({g:wrap, b:bx, dx:0, dy:0, kind:'card'});
     }catch(e){}
   };
   if(r.type==='association'){
     lbl(nearA.x, nearA.y, r.cardSource||'1', normA);
     lbl(nearB.x, nearB.y, r.cardTarget||'0..*', normB);
-    // Round E items 3/4: the name+arrow use the route's own longest
-    // (horizontal-biased) segment, not the generic 50%-of-path-length `mid`
-    // — see bestLabelSegment for why.
-    const bestSeg = bestLabelSegment(points);
-    buildAssocNameArrow(labelLayer, labelMetas, bestSeg.mid, bestSeg.norm, bestSeg.dx, bestSeg.dy, r);
+    // Round K: instead of picking one fixed spot up front, the name+arrow
+    // actively searches several candidate positions along the route (see
+    // labelCandidateSegments/labelCandidatePoints) and lands on whichever is
+    // least overlapped by every OTHER relationship's line (otherSegs) —
+    // falling back to its best-effort default when nothing is fully clear,
+    // per the user's explicit "se não tiver como, tudo bem" instruction.
+    buildAssocNameArrow(labelLayer, labelMetas, points, r, otherSegs);
   } else if(relFamily(r.type)==='aggregation'){
     lbl(nearA.x, nearA.y, r.cardSource||'1', normA);
     lbl(nearB.x, nearB.y, r.cardTarget||'0..*', normB);
@@ -2199,8 +2326,19 @@ function buildEdgeDom(route, labelLayer, labelMetas, rects){
     // OMT-G: the network's own name is annotated between the two dashed lines
     lbl(mid.x, mid.y, (r.name||'rede')+(r.directed?' →':''), normMid);
   } else if(r.type==='spatial'){
-    // OMT-G: dashed line + the predicate's name as a «stereotype» on the line.
-    lbl(mid.x, mid.y, '«'+(TOPO_RULE_SHORT[r.topoRule]||r.topoRule)+'»', normMid);
+    // OMT-G: dashed line + the topological predicate's name on the line —
+    // plain text (no «guillemets», capitalized) rather than UML stereotype
+    // notation. Round I item 1: shares buildAssocNameArrow with association
+    // — same active candidate search, same rotation-to-match-the-line
+    // treatment (the predicate's name runs parallel to a vertical line
+    // instead of sitting sideways across it), and the same reading-direction
+    // arrow. The predicate always has a name to show (unlike association's
+    // optional one), so this is really "always call it as if r.name were
+    // set" — a shallow clone carries the capitalized predicate text as
+    // `name` without touching the relationship's own stored data.
+    const raw = TOPO_RULE_SHORT[r.topoRule]||r.topoRule;
+    const rWithLabel = Object.assign({}, r, {name: raw.charAt(0).toUpperCase()+raw.slice(1)});
+    buildAssocNameArrow(labelLayer, labelMetas, points, rWithLabel, otherSegs);
   }
   // generalization has no floating label anymore — the triangle itself
   // (fill + apex dot) encodes total/partial and disjoint/overlapping.
@@ -2240,8 +2378,26 @@ function renderConceptualCanvas(){
     route.hops = route.segs.map(()=>[]);
   });
 
+  // every relationship's own segments, flattened — computed here (rather
+  // than after Phase 3) so each route's label search in buildEdgeDom can be
+  // checked against every OTHER relationship's line as it looks for a clear
+  // spot to land on.
+  const allSegs = [];
+  routes.forEach(route=>{ if(route && route.segs) allSegs.push(...route.segs); });
+
   // Phase 2: detect crossings — a horizontal segment "hops" over any vertical
   // segment of another edge that crosses it in its interior (UML jump-over).
+  // Round I item 2 ("a voltinha... não está acontecendo"): EPS's margin
+  // (kept away from a segment's own corner, so a hop is never drawn right on
+  // top of a bend) happens to equal LANE_GAP — the exact spacing
+  // separateOverlappingMiddleSegments uses between parallel routes above.
+  // For routes separated by exactly that spacing, the crossing point lands
+  // exactly AT the margin boundary, and a strict > / < there silently
+  // dropped it (this is fixed independently of the lane-nesting change
+  // above — that change removes most of these crossings, but any that
+  // remain still need their hop). >= / <= still keep a hop off a segment's
+  // true endpoint (ox=0 there is excluded, same as before) while no longer
+  // losing an exact-margin coincidence like this one.
   const EPS = HOP_R + 3;
   for(let i=0;i<routes.length;i++){
     const ri = routes[i];
@@ -2256,7 +2412,7 @@ function renderConceptualCanvas(){
         rj.segs.forEach(segV=>{
           if(segV.horiz) return;
           const vx = segV.x1, vy1 = Math.min(segV.y1,segV.y2), vy2 = Math.max(segV.y1,segV.y2);
-          if(vx>hx1+EPS && vx<hx2-EPS && hy>vy1+EPS && hy<vy2-EPS){
+          if(vx>=hx1+EPS && vx<=hx2-EPS && hy>=vy1+EPS && hy<=vy2-EPS){
             ri.hops[hi].push(vx);
           }
         });
@@ -2266,15 +2422,17 @@ function renderConceptualCanvas(){
 
   // Phase 3: build DOM
   const labelMetas = [];
-  routes.forEach(route=>{ if(route) edgeLayer.appendChild(buildEdgeDom(route, labelLayer, labelMetas, rects)); });
-  // every relationship's own segments, flattened — a label only ever gets
-  // checked against its OWN line as it's placed, so this is what catches it
-  // landing on a *different*, nearby relationship's line instead (Round F
-  // item 1). Must run before resolveLabelOverlaps so overlaps between two
-  // labels are resolved starting from positions already clear of every line.
-  const allSegs = [];
-  routes.forEach(route=>{ if(route && route.segs) allSegs.push(...route.segs); });
-  avoidEdgeCrossings(labelMetas, allSegs);
+  routes.forEach(route=>{
+    if(!route) return;
+    const otherSegs = allSegs.filter(s=> route.segs.indexOf(s)===-1);
+    edgeLayer.appendChild(buildEdgeDom(route, labelLayer, labelMetas, rects, otherSegs));
+  });
+  // Cardinality labels ("1", "0..*") still use the reactive push-off-the-line
+  // approach — they sit right at a port, with no room to search for a clear
+  // spot. Name/predicate labels (kind:'name') already ran their own active
+  // search inside buildAssocNameArrow, so they're excluded here to avoid a
+  // second, uncoordinated correction landing them somewhere unrelated.
+  avoidEdgeCrossings(labelMetas.filter(m=>m.kind==='card'), allSegs);
   resolveLabelOverlaps(labelMetas);
   state.classes.forEach(c=> nodeLayer.appendChild(buildNode(c)) );
 }
@@ -2787,10 +2945,22 @@ function cardCount(v){
     default: return v;
   }
 }
-function cardReading(nameFrom, cardFrom, nameTo, cardTo){
-  const wordFrom = cardFrom==='1' ? 'instância' : 'instâncias';
+// UML's own convention (per Fowler's "Multiplicity Not Cardinality" and every
+// standard class-diagram tutorial): the multiplicity written NEAR a class
+// says how many instances of THAT class associate with ONE instance of the
+// class at the OTHER end — e.g. Customer 1 —— 0..* Order reads as "each
+// ORDER has exactly 1 customer" (the "1" sits by Customer but counts
+// customers per order) and "each CUSTOMER has 0..* orders" (the "0..*" sits
+// by Order but counts orders per customer). So the class being iterated
+// ("cada instância de X") is always a plain, uncounted single instance —
+// putting a number in front of it never makes sense, and reads as nonsense
+// at the "0" boundary ("cada 0 instâncias" — there's nothing to have one of,
+// of a set with none). The earlier template put cardFrom there anyway; this
+// drops it and keeps only cardTo, the multiplicity that actually belongs in
+// this sentence (the one nearer the OTHER class, counting its instances).
+function cardReading(nameFrom, nameTo, cardTo){
   const wordTo = cardTo==='1' ? 'instância' : 'instâncias';
-  return `Cada <b>${cardCount(cardFrom)}</b> ${wordFrom} de <b>${escapeXml(nameFrom)}</b> se relaciona com <b>${cardCount(cardTo)}</b> ${wordTo} de <b>${escapeXml(nameTo)}</b>.`;
+  return `Cada instância de <b>${escapeXml(nameFrom)}</b> se relaciona com <b>${cardCount(cardTo)}</b> ${wordTo} de <b>${escapeXml(nameTo)}</b>.`;
 }
 function buildCardHint(nameA, cardA, nameB, cardB){
   return E('div',{class:'card-hint'},[
@@ -2804,16 +2974,16 @@ function buildCardHint(nameA, cardA, nameB, cardB){
       E('div',{class:'ch-box'},[nameB])
     ]),
     E('div',{class:'card-hint-text'},[
-      E('div',{class:'ln'},[E('span',{class:'dot'}), E('span',{html:cardReading(nameA,cardA,nameB,cardB)})]),
-      E('div',{class:'ln'},[E('span',{class:'dot'}), E('span',{html:'Leitura invertida: '+cardReading(nameB,cardB,nameA,cardA)})])
+      E('div',{class:'ln'},[E('span',{class:'dot'}), E('span',{html:cardReading(nameA,nameB,cardB)})]),
+      E('div',{class:'ln'},[E('span',{class:'dot'}), E('span',{html:'Leitura invertida: '+cardReading(nameB,nameA,cardA)})])
     ])
   ]);
 }
 function buildCardHintMini(labelA, cardA, labelB, cardB){
   return E('div',{class:'card-hint-mini'},[
     E('div',{class:'chm-title'},['Como ler a cardinalidade']),
-    E('div',{html:cardReading(labelA,cardA,labelB,cardB)}),
-    E('div',{style:'margin-top:4px;'},[E('span',{html:'Leitura invertida: '+cardReading(labelB,cardB,labelA,cardA)})])
+    E('div',{html:cardReading(labelA,labelB,cardB)}),
+    E('div',{style:'margin-top:4px;'},[E('span',{html:'Leitura invertida: '+cardReading(labelB,labelA,cardA)})])
   ]);
 }
 
@@ -2942,13 +3112,12 @@ function buildRelInspector(r){
     scroll.appendChild(fieldText('Nome da rede (opcional)', r.name||'', v=>{ r.name=v; touch(true); }));
     scroll.appendChild(fieldCheck('Direcionado', r.directed, v=>{ r.directed=v; touch(); }));
   } else if(r.type==='spatial'){
+    // "Distância (m)" (para a regra "próximo") e o rótulo livre foram
+    // retirados daqui a pedido do usuário: a distância é uma configuração do
+    // modelo LÓGICO (ainda não é a fase em que estamos mexendo), e o rótulo
+    // exibido na linha já é sempre o nome da própria regra topológica — não
+    // há mais um texto separado e editável para sobrepor a ele.
     scroll.appendChild(fieldSelect('Regra topológica', r.topoRule, TOPO_RULES, v=>{ r.topoRule=v; touch(); }));
-    if(r.topoRule==='proximo'){
-      scroll.appendChild(fieldText('Distância (m)', r.nearDistance!=null?String(r.nearDistance):'', v=>{
-        const n = parseFloat(String(v).replace(',','.')); r.nearDistance = isNaN(n) ? null : n; touch(true);
-      }));
-    }
-    scroll.appendChild(fieldText('Rótulo (opcional)', r.name||'', v=>{ r.name=v; touch(true); }));
   }
   root.appendChild(scroll);
   root.appendChild(E('div',{class:'inspector-actions'},[
@@ -3151,7 +3320,7 @@ function pkFieldName(c){
 function relDesc(k){
   return {
     association: 'Ligação estrutural simples entre classes (convencionais ou geográficas), com cardinalidade em cada extremidade.',
-    spatial: 'Relação topológica entre duas classes geográficas, com o predicado do OMT-G («toca», «dentro», «sobrepõe»...) como estereótipo na linha tracejada.',
+    spatial: 'Relação topológica entre duas classes geográficas, com o predicado do OMT-G (Toca, Dentro, Sobrepõe...) escrito na linha tracejada.',
     network: 'Conecta uma classe Nó a uma classe Arco — ou uma classe Arco a ela mesma (rede arco-arco recursiva, sem nó) — formando um grafo/rede, desenhada como duas linhas tracejadas paralelas.',
     generalizationSimple: 'Superclasse/subclasse (quaisquer classes): triângulo vazado = disjunta, preenchido = sobreposta; ponto no ápice = total, ausência de ponto = parcial.',
     generalizationSpatial: 'Igual à generalização simples, mas exige que superclasse e subclasse sejam geográficas.',
@@ -3570,6 +3739,12 @@ function initExportMenu(){
 
 function initTopbar(){
   document.getElementById('modelName').addEventListener('input', (e)=>{ state.meta.name = e.target.value; scheduleAutosave(); });
+
+  // Placeholder button (item 5, this round): just a visible reminder that a
+  // real model-validation feature is still pending — not implemented yet.
+  document.getElementById('btnValidate').addEventListener('click', ()=>{
+    toast('Validação do modelo ainda não implementada — isto é só um lembrete.');
+  });
 
   document.getElementById('btnSample').addEventListener('click', (e)=>{
     const run = ()=>loadModel(sampleModel());

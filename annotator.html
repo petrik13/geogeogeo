@@ -1,5 +1,5 @@
-<title>GeoGeoGeo</title>
-<meta name="description" content="Editor visual de modelos OMT-G com exportação para Geodatabase (ArcGIS ou GDAL puro, com relationship classes), GeoPackage e PostGIS.">
+<title>GeoGeoGeo — Revisão visual</title>
+<meta name="description" content="Anotador de problemas visuais em diagramas OMT-G: aponte ou arraste para sugerir onde um rótulo/linha deveria ficar.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -382,6 +382,30 @@
   .panel{ display:none; flex:1; min-height:0; flex-direction:column; }
   .panel.active{ display:flex; }
 
+  /* ============ Anotador de revisão ============ */
+  .annot-hide-editing{ display:none !important; }
+  #annotHintBox .relhint{ font-size:12.5px; line-height:1.5; }
+  .annot-empty{ padding:16px; color:var(--muted); font-size:13px; line-height:1.5; }
+  .annot-list{ flex:1; min-height:0; overflow:auto; padding:8px; }
+  .annot-item{ border:1px solid var(--border); border-radius:8px; padding:9px 10px; margin-bottom:8px; background:var(--surface); font-size:12.5px; }
+  .annot-item .annot-head{ display:flex; align-items:center; justify-content:space-between; gap:6px; margin-bottom:4px; }
+  .annot-item .annot-badge{ display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%; background:var(--accent); color:var(--accent-ink); font-size:11px; font-weight:700; flex:none; }
+  .annot-item .annot-kind{ font-weight:600; color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.03em; }
+  .annot-item .annot-note{ white-space:pre-wrap; color:var(--ink); margin:4px 0; }
+  .annot-item .annot-del{ border:none; background:transparent; color:var(--muted); cursor:pointer; font-size:15px; line-height:1; padding:0 2px; }
+  .annot-item .annot-del:hover{ color:#c0392b; }
+  .annot-footer{ border-top:1px solid var(--border); padding:9px; display:flex; flex-direction:column; gap:6px; }
+  .annot-footer .btn{ width:100%; justify-content:center; }
+  .annot-count-pill{ background:var(--accent-soft); color:var(--accent); border-radius:999px; padding:1px 8px; font-size:11px; font-weight:700; }
+  .annot-pin-num{ font:700 11px/1 "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif; fill:#fff; }
+  .annot-popup{
+    position:fixed; z-index:80; background:var(--surface); border:1px solid var(--border); border-radius:10px;
+    box-shadow:var(--shadow); padding:10px; width:260px; display:flex; flex-direction:column; gap:6px;
+  }
+  .annot-popup textarea{ width:100%; min-height:60px; resize:vertical; font:13px/1.4 "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif; }
+  .annot-popup .annot-popup-row{ display:flex; gap:6px; justify-content:flex-end; }
+  .annot-popup .annot-popup-title{ font-size:12px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.03em; }
+
   .field{ margin-bottom:11px; }
   .field label{ display:block; font-size:13px; font-weight:600; color:var(--muted); margin-bottom:4px; text-transform:uppercase; letter-spacing:.04em;}
   .field input, .field select, .field textarea{ width:100%; }
@@ -447,7 +471,8 @@
       <div class="mark">🧭</div>
       <div class="name">GeoGeoGeo<small>Modelagem geográfica</small></div>
     </div>
-    <input id="modelName" class="model-name" type="text" value="Novo modelo" aria-label="Nome do modelo">
+    <input id="modelName" class="model-name" type="text" value="Novo modelo" aria-label="Nome do modelo" readonly>
+    <select id="reviewModelSelect" class="btn ghost" style="max-width:260px;font-weight:600;" title="Escolha o cenário de revisão"></select>
     <div class="pagetabs" id="pageTabs">
       <button class="pagetab active" id="pageTabConceptual" data-page="conceptual">Conceitual</button>
       <button class="pagetab" id="pageTabLogical" data-page="logical">Lógica</button>
@@ -460,9 +485,9 @@
     <div class="spacer"></div>
     <div class="btnrow">
       <button class="btn ghost" id="btnValidate" title="Lembrete: ainda falta implementar a validação do modelo">✓ Validação</button>
-      <button class="btn ghost" id="btnSample" title="Carregar modelo de exemplo">Exemplo</button>
-      <button class="btn ghost" id="btnNew" title="Novo modelo em branco">Novo</button>
-      <button class="btn ghost" id="btnOpen" title="Abrir modelo (.json)">Abrir</button>
+      <button class="btn ghost annot-hide-editing" id="btnSample" title="Carregar modelo de exemplo">Exemplo</button>
+      <button class="btn ghost annot-hide-editing" id="btnNew" title="Novo modelo em branco">Novo</button>
+      <button class="btn ghost annot-hide-editing" id="btnOpen" title="Abrir modelo (.json)">Abrir</button>
       <input type="file" id="fileOpen" accept="application/json" class="sr-only">
       <div class="dl-menu-wrap">
         <button class="btn" id="btnExport" title="Exportar o diagrama ou o modelo">Exportar para ▾</button>
@@ -478,15 +503,19 @@
   <div class="layout">
     <aside class="rail rail-left">
       <div id="railConceptual">
-        <div class="rail-section">
+        <div class="rail-section annot-hide-editing">
           <div class="rail-label">Adicionar classe</div>
           <div class="addgrid" id="addClassGrid"></div>
         </div>
-        <div class="rail-section">
+        <div class="rail-section annot-hide-editing">
           <div class="rail-label">Adicionar relacionamento</div>
           <div class="addgrid" id="relTypeGrid"></div>
           <div class="relhint" id="relHint">Escolha o tipo e arraste a partir do conector (○) na borda de uma classe até outra.</div>
           <div id="relCardHintMini"></div>
+        </div>
+        <div class="rail-section" id="annotHintBox">
+          <div class="rail-label">Como anotar</div>
+          <div class="relhint"><strong>Clique</strong> num ponto do diagrama para apontar um problema.<br><strong>Clique e arraste</strong> de onde está para onde acha que deveria ficar.<br>Veja e exporte suas marcações na aba <strong>Anotações</strong>, à direita.</div>
         </div>
         <div class="rail-scroll">
           <div class="rail-section">
@@ -529,6 +558,8 @@
         <g id="labelLayer"></g>
         <g id="connDragLayer"></g>
         <g id="marqueeLayer"></g>
+        <g id="annotationLayer"></g>
+        <rect id="annotCatcher" x="-100000" y="-100000" width="200000" height="200000" style="fill:transparent;pointer-events:all;cursor:crosshair;"></rect>
       </svg>
       <div class="stage-badge" id="stageBadge">100%</div>
       <div class="stage-toolbar">
@@ -542,10 +573,12 @@
 
     <aside class="rail rail-right">
       <div class="tabs">
-        <div class="tab active" data-tab="prop">Propriedades</div>
+        <div class="tab" data-tab="prop">Propriedades</div>
+        <div class="tab active" data-tab="annot">Anotações</div>
         <div class="tab" data-tab="legend">Ajuda</div>
       </div>
-      <div class="panel active" id="panelProp"></div>
+      <div class="panel" id="panelProp"></div>
+      <div class="panel active" id="panelAnnot"></div>
       <div class="panel" id="panelLegend"></div>
     </aside>
   </div>
@@ -4042,4 +4075,410 @@ function boot(){
 }
 boot();
 
+</script>
+<script>
+
+/* ================================================================
+   Anotador de revisão visual — carrega vários cenários de exemplo
+   (só associação, espacial e rede, a pedido do Pétrik) usando o MESMO
+   motor de layout do editor principal (loadModel/renderCanvas/etc.,
+   definidos acima), e sobrepõe uma camada de anotação: clique aponta
+   um problema, clique-e-arraste sugere uma posição melhor. Nada disto
+   entra no modelo em si — fica só num painel/JSON à parte, para eu
+   ler depois e ajustar as regras de layout no app.js.
+   ================================================================ */
+
+function mkClass(name, kind, geoType, primitive, attrNames, x, y){
+  return {
+    id: uid('c'), name, kind,
+    geoType: kind==='geo' ? (geoType||'object') : null,
+    primitive: kind==='geo' ? (primitive||'point') : null,
+    attributes: (attrNames||[]).map(n=>({id:uid('a'), name:n})),
+    x, y, w:208, h:60
+  };
+}
+function mkRel(type, sourceId, targetId, extra){
+  return Object.assign({ id: uid('r'), type, sourceId, targetId, name:'' }, extra||{});
+}
+
+const REVIEW_MODELS = [
+  { id:'self-net-short', label:'Rede — auto-relac. (nome curto)', build:function(){
+    const m = emptyModel('Rede — auto-relacionamento (nome curto)');
+    const trecho = mkClass('Trecho de Via', 'geo','object','unidirectional', ['extensão (m)'], 60, 240);
+    const cruz = mkClass('Cruzamento', 'geo','object','node', ['código'], 400, 60);
+    m.classes.push(trecho, cruz);
+    m.relationships.push(mkRel('network', trecho.id, trecho.id, {name:'Rede'}));
+    m.relationships.push(mkRel('network', trecho.id, cruz.id, {name:'via'}));
+    return m;
+  }},
+  { id:'self-net-long', label:'Rede — auto-relac. (nome longo)', build:function(){
+    const m = emptyModel('Rede — auto-relacionamento (nome longo)');
+    const rio = mkClass('Rio', 'geo','object','line', ['nome','perene?'], 30, 250);
+    const trecho = mkClass('Trecho de rio', 'geo','object','unidirectional', ['comprimento (m)'], 30, 470);
+    const confluencia = mkClass('Confluência', 'geo','object','node', ['cota (m)'], 360, 470);
+    m.classes.push(rio, trecho, confluencia);
+    m.relationships.push(mkRel('network', confluencia.id, trecho.id, {name:'rede hidrográfica'}));
+    m.relationships.push(mkRel('network', trecho.id, trecho.id, {name:'continuação de trecho'}));
+    return m;
+  }},
+  { id:'net-two-classes', label:'Rede entre classes + associação cruzando', build:function(){
+    const m = emptyModel('Rede entre classes + associação cruzando');
+    const torre1 = mkClass('Torre', 'geo','object','node', ['código'], 40, 40);
+    const linha = mkClass('Trecho de Linha', 'geo','object','unidirectional', ['tensão (kV)'], 380, 40);
+    const torre2 = mkClass('Torre', 'geo','object','node', ['código'], 720, 40);
+    const municipio = mkClass('Município', 'geo','object','polygon', ['nome'], 380, 280);
+    m.classes.push(torre1, linha, torre2, municipio);
+    m.relationships.push(mkRel('network', torre1.id, linha.id, {name:'circuito A'}));
+    m.relationships.push(mkRel('network', linha.id, torre2.id, {name:'circuito B'}));
+    m.relationships.push(mkRel('association', torre1.id, municipio.id, {name:'instalada em', cardSource:'1', cardTarget:'0..*'}));
+    return m;
+  }},
+  { id:'assoc-basic', label:'Associação simples', build:function(){
+    const m = emptyModel('Associação simples');
+    const proprietario = mkClass('Proprietário', 'conventional', null, null, ['nome'], 60, 80);
+    const imovel = mkClass('Imóvel', 'geo','object','polygon', ['matrícula','área (ha)'], 420, 80);
+    m.classes.push(proprietario, imovel);
+    m.relationships.push(mkRel('association', proprietario.id, imovel.id, {name:'possui', cardSource:'1', cardTarget:'0..*'}));
+    return m;
+  }},
+  { id:'assoc-cluster', label:'Associações cruzando (cluster)', build:function(){
+    const m = emptyModel('Associações cruzando (cluster)');
+    const processo = mkClass('Processo', 'conventional', null, null, ['número'], 60, 40);
+    const imovel = mkClass('Imóvel', 'geo','object','polygon', ['matrícula'], 420, 40);
+    const documento = mkClass('Documento', 'conventional', null, null, ['tipo'], 60, 300);
+    const municipio = mkClass('Município', 'geo','object','polygon', ['nome'], 420, 300);
+    m.classes.push(processo, imovel, documento, municipio);
+    m.relationships.push(mkRel('association', processo.id, imovel.id, {name:'instrui', cardSource:'1', cardTarget:'1..*'}));
+    m.relationships.push(mkRel('association', processo.id, documento.id, {name:'contém', cardSource:'1', cardTarget:'0..*'}));
+    m.relationships.push(mkRel('association', imovel.id, municipio.id, {name:'localizado em', cardSource:'0..*', cardTarget:'1'}));
+    m.relationships.push(mkRel('association', documento.id, municipio.id, {name:'referencia', cardSource:'0..*', cardTarget:'0..*'}));
+    return m;
+  }},
+  { id:'spatial-cluster', label:'Relações espaciais (cluster)', build:function(){
+    const m = emptyModel('Relações espaciais (cluster)');
+    const imovel = mkClass('Imóvel', 'geo','object','polygon', ['matrícula'], 60, 40);
+    const app_ = mkClass('Área de Preservação', 'geo','object','polygon', ['nome'], 420, 40);
+    const municipio = mkClass('Município', 'geo','object','polygon', ['nome'], 60, 300);
+    const rodovia = mkClass('Rodovia', 'geo','object','line', ['código'], 420, 300);
+    m.classes.push(imovel, app_, municipio, rodovia);
+    m.relationships.push(mkRel('spatial', imovel.id, app_.id, {topoRule:'sobrepoe'}));
+    m.relationships.push(mkRel('spatial', imovel.id, municipio.id, {topoRule:'dentro'}));
+    m.relationships.push(mkRel('spatial', rodovia.id, imovel.id, {topoRule:'cruza'}));
+    return m;
+  }},
+  { id:'bagunca-geral', label:'🗲 Bagunça geral (rede + espacial + associação)', build:function(){
+    const m = emptyModel('Bagunça geral (rede + espacial + associação)');
+    const processo = mkClass('Processo', 'conventional', null, null, ['número'], 40, 40);
+    const imovel = mkClass('Imóvel', 'geo','object','polygon', ['matrícula'], 320, 40);
+    const app_ = mkClass('Área de Preservação', 'geo','object','polygon', ['nome'], 600, 40);
+    const municipio = mkClass('Município', 'geo','object','polygon', ['nome'], 40, 260);
+    const documento = mkClass('Documento', 'conventional', null, null, ['tipo'], 320, 260);
+    const trechoCerca = mkClass('Trecho de Cerca', 'geo','object','unidirectional', ['extensão (m)'], 600, 260);
+    const poste = mkClass('Poste', 'geo','object','node', ['código'], 320, 460);
+    m.classes.push(processo, imovel, app_, municipio, documento, trechoCerca, poste);
+    m.relationships.push(mkRel('association', processo.id, imovel.id, {name:'instrui', cardSource:'1', cardTarget:'1..*'}));
+    m.relationships.push(mkRel('association', processo.id, documento.id, {name:'contém', cardSource:'1', cardTarget:'0..*'}));
+    m.relationships.push(mkRel('spatial', imovel.id, app_.id, {topoRule:'sobrepoe'}));
+    m.relationships.push(mkRel('spatial', imovel.id, municipio.id, {topoRule:'dentro'}));
+    m.relationships.push(mkRel('spatial', app_.id, municipio.id, {topoRule:'adjacente'}));
+    m.relationships.push(mkRel('network', trechoCerca.id, poste.id, {name:'cercamento'}));
+    m.relationships.push(mkRel('network', trechoCerca.id, trechoCerca.id, {name:'continuação de cercamento'}));
+    m.relationships.push(mkRel('association', documento.id, municipio.id, {name:'referencia', cardSource:'0..*', cardTarget:'0..*'}));
+    return m;
+  }},
+  { id:'rede-mesh', label:'🗲 Rede muito conectada (malha de postes)', build:function(){
+    const m = emptyModel('Rede muito conectada (malha de postes)');
+    const p1 = mkClass('Poste', 'geo','object','node', ['código'], 60, 60);
+    const p2 = mkClass('Poste', 'geo','object','node', ['código'], 420, 60);
+    const p3 = mkClass('Poste', 'geo','object','node', ['código'], 60, 320);
+    const p4 = mkClass('Poste', 'geo','object','node', ['código'], 420, 320);
+    m.classes.push(p1, p2, p3, p4);
+    m.relationships.push(mkRel('network', p1.id, p2.id, {name:'circuito 1'}));
+    m.relationships.push(mkRel('network', p2.id, p4.id, {name:'circuito 2'}));
+    m.relationships.push(mkRel('network', p4.id, p3.id, {name:'circuito 3'}));
+    m.relationships.push(mkRel('network', p3.id, p1.id, {name:'circuito 4'}));
+    m.relationships.push(mkRel('network', p1.id, p4.id, {name:'circuito diagonal'}));
+    return m;
+  }},
+  { id:'espacial-lotado', label:'🗲 Espacial lotado (cluster denso)', build:function(){
+    const m = emptyModel('Espacial lotado (cluster denso)');
+    const imovel = mkClass('Imóvel', 'geo','object','polygon', ['matrícula'], 40, 40);
+    const app_ = mkClass('Área de Preservação', 'geo','object','polygon', ['nome'], 300, 40);
+    const reserva = mkClass('Reserva Legal', 'geo','object','polygon', ['nome'], 560, 40);
+    const municipio = mkClass('Município', 'geo','object','polygon', ['nome'], 40, 260);
+    const unidade = mkClass('Unidade de Conservação', 'geo','object','polygon', ['nome'], 300, 260);
+    const curso = mkClass('Curso D’água', 'geo','object','line', ['nome'], 560, 260);
+    m.classes.push(imovel, app_, reserva, municipio, unidade, curso);
+    m.relationships.push(mkRel('spatial', imovel.id, app_.id, {topoRule:'sobrepoe'}));
+    m.relationships.push(mkRel('spatial', imovel.id, reserva.id, {topoRule:'adjacente'}));
+    m.relationships.push(mkRel('spatial', imovel.id, municipio.id, {topoRule:'dentro'}));
+    m.relationships.push(mkRel('spatial', app_.id, unidade.id, {topoRule:'sobrepoe'}));
+    m.relationships.push(mkRel('spatial', reserva.id, unidade.id, {topoRule:'adjacente'}));
+    m.relationships.push(mkRel('spatial', municipio.id, curso.id, {topoRule:'cruza'}));
+    m.relationships.push(mkRel('spatial', curso.id, imovel.id, {topoRule:'cruza'}));
+    return m;
+  }}
+];
+
+let currentModelId = null;
+let flags = [];
+let dragState = null;
+let currentPopupCleanup = null;
+const DRAG_THRESHOLD = 5;
+
+function svgPointFromEvent(evt){
+  const svg = document.getElementById('canvasSvg');
+  const pt = svg.createSVGPoint();
+  pt.x = evt.clientX; pt.y = evt.clientY;
+  const ctm = svg.getScreenCTM();
+  if(!ctm) return {x:0, y:0};
+  const p = pt.matrixTransform(ctm.inverse());
+  return {x:p.x, y:p.y};
+}
+
+function ensureAnnotMarker(){
+  if(document.getElementById('annotArrowHead')) return;
+  const defs = document.getElementById('svgDefs');
+  if(!defs) return;
+  const marker = S('marker', {id:'annotArrowHead', viewBox:'0 0 10 10', refX:'8', refY:'5', markerWidth:'7', markerHeight:'7', orient:'auto-start-reverse'});
+  marker.appendChild(S('path', {d:'M0,0 L10,5 L0,10 Z', fill:'#e0782a'}));
+  defs.appendChild(marker);
+}
+
+function closeAnnotPopup(){
+  if(currentPopupCleanup) currentPopupCleanup();
+  currentPopupCleanup = null;
+}
+
+function openAnnotPopup(clientX, clientY, onSave){
+  closeAnnotPopup();
+  const wrap = document.createElement('div');
+  wrap.className = 'annot-popup';
+  const left = Math.min(Math.max(8, clientX+10), window.innerWidth-280);
+  const top = Math.min(Math.max(8, clientY+10), window.innerHeight-170);
+  wrap.style.left = left+'px'; wrap.style.top = top+'px';
+  const title = document.createElement('div');
+  title.className = 'annot-popup-title';
+  title.textContent = 'Anotar problema';
+  wrap.appendChild(title);
+  const ta = document.createElement('textarea');
+  ta.placeholder = 'O que está errado aqui? (opcional)';
+  wrap.appendChild(ta);
+  const row = document.createElement('div');
+  row.className = 'annot-popup-row';
+  const cancel = document.createElement('button'); cancel.className='btn ghost'; cancel.type='button'; cancel.textContent='Cancelar';
+  const save = document.createElement('button'); save.className='btn primary'; save.type='button'; save.textContent='Salvar';
+  row.appendChild(cancel); row.appendChild(save);
+  wrap.appendChild(row);
+  document.body.appendChild(wrap);
+  ta.focus();
+  function cleanup(){ wrap.remove(); document.removeEventListener('keydown', onKey, true); }
+  function onKey(e){
+    if(e.key==='Escape'){ e.stopPropagation(); cleanup(); }
+    else if(e.key==='Enter' && (e.metaKey||e.ctrlKey)){ onSave(ta.value.trim()); cleanup(); }
+  }
+  cancel.addEventListener('click', cleanup);
+  save.addEventListener('click', ()=>{ onSave(ta.value.trim()); cleanup(); });
+  document.addEventListener('keydown', onKey, true);
+  currentPopupCleanup = cleanup;
+}
+
+function addFlag(partial){
+  const entry = REVIEW_MODELS.find(m=>m.id===currentModelId);
+  const f = Object.assign({
+    id: uid('f'), modelId: currentModelId, modelLabel: entry ? entry.label : '', ts: Date.now()
+  }, partial);
+  flags.push(f);
+  renderAnnotations();
+  renderAnnotList();
+}
+
+function renderAnnotations(){
+  const layer = document.getElementById('annotationLayer');
+  if(!layer) return;
+  layer.innerHTML = '';
+  const list = flags.filter(f=>f.modelId===currentModelId);
+  list.forEach((f, i)=>{
+    const num = String(i+1);
+    if(f.kind==='point'){
+      layer.appendChild(S('circle', {cx:f.x, cy:f.y, r:9, fill:'#e0782a', stroke:'#fff', 'stroke-width':1.5}));
+      layer.appendChild(S('text', {x:f.x, y:f.y+4, 'text-anchor':'middle', class:'annot-pin-num'}, [num]));
+    } else {
+      layer.appendChild(S('line', {x1:f.x, y1:f.y, x2:f.x2, y2:f.y2, stroke:'#e0782a', 'stroke-width':2, 'stroke-dasharray':'5,4', 'marker-end':'url(#annotArrowHead)'}));
+      layer.appendChild(S('circle', {cx:f.x, cy:f.y, r:5, fill:'#fff', stroke:'#e0782a', 'stroke-width':2}));
+      layer.appendChild(S('circle', {cx:f.x2, cy:f.y2, r:9, fill:'#e0782a', stroke:'#fff', 'stroke-width':1.5}));
+      layer.appendChild(S('text', {x:f.x2, y:f.y2+4, 'text-anchor':'middle', class:'annot-pin-num'}, [num]));
+    }
+  });
+}
+
+function exportFlags(){
+  const payload = { exportedAt: new Date().toISOString(), tool:'GeoGeoGeo — revisão visual', flags };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'geogeogeo-anotacoes.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 4000);
+}
+
+function importFlagsFromFile(file){
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      const data = JSON.parse(reader.result);
+      const arr = Array.isArray(data) ? data : (data.flags||[]);
+      let added = 0;
+      arr.forEach(f=>{ if(f && f.id && !flags.some(x=>x.id===f.id)){ flags.push(f); added++; } });
+      renderAnnotations(); renderAnnotList();
+      toast(added+' marcação(ões) importada(s).');
+    }catch(err){ toast('Não foi possível importar: '+err.message, true); }
+  };
+  reader.readAsText(file);
+}
+
+function renderAnnotList(){
+  const panel = document.getElementById('panelAnnot');
+  if(!panel) return;
+  panel.innerHTML = '';
+
+  const listWrap = document.createElement('div');
+  listWrap.className = 'annot-list';
+  const list = flags.filter(f=>f.modelId===currentModelId);
+  if(!list.length){
+    const empty = document.createElement('div');
+    empty.className = 'annot-empty';
+    empty.innerHTML = 'Nenhuma marcação neste cenário ainda.<br><br>Clique no diagrama para apontar um problema, ou clique-e-arraste de onde está para onde acha que deveria ficar.';
+    listWrap.appendChild(empty);
+  } else {
+    list.forEach((f,i)=>{
+      const item = document.createElement('div'); item.className = 'annot-item';
+      const head = document.createElement('div'); head.className = 'annot-head';
+      const left = document.createElement('div'); left.style.display='flex'; left.style.alignItems='center'; left.style.gap='6px';
+      const badge = document.createElement('span'); badge.className='annot-badge'; badge.textContent=String(i+1);
+      const kind = document.createElement('span'); kind.className='annot-kind'; kind.textContent = f.kind==='point' ? 'ponto' : 'sugestão de posição';
+      left.appendChild(badge); left.appendChild(kind);
+      const del = document.createElement('button'); del.className='annot-del'; del.title='Remover'; del.textContent='×';
+      del.addEventListener('click', ()=>{ flags = flags.filter(x=>x.id!==f.id); renderAnnotations(); renderAnnotList(); });
+      head.appendChild(left); head.appendChild(del);
+      item.appendChild(head);
+      const note = document.createElement('div'); note.className = 'annot-note';
+      if(f.note){ note.textContent = f.note; } else { note.style.opacity='.6'; note.textContent = '(sem nota)'; }
+      item.appendChild(note);
+      listWrap.appendChild(item);
+    });
+  }
+  panel.appendChild(listWrap);
+
+  const footer = document.createElement('div'); footer.className = 'annot-footer';
+  const info = document.createElement('div');
+  info.style.cssText = 'font-size:12px;color:var(--muted);';
+  info.innerHTML = 'Neste cenário: <span class="annot-count-pill">'+list.length+'</span> &nbsp; Total: <span class="annot-count-pill">'+flags.length+'</span>';
+  footer.appendChild(info);
+
+  const exportBtn = document.createElement('button');
+  exportBtn.className = 'btn primary'; exportBtn.type='button'; exportBtn.textContent = 'Exportar tudo (JSON)';
+  exportBtn.addEventListener('click', exportFlags);
+  footer.appendChild(exportBtn);
+
+  const importLabel = document.createElement('label');
+  importLabel.className = 'btn ghost'; importLabel.style.textAlign='center'; importLabel.textContent='Importar JSON…';
+  const importInput = document.createElement('input');
+  importInput.type='file'; importInput.accept='application/json'; importInput.className='sr-only';
+  importInput.addEventListener('change', (e)=>{
+    const file = e.target.files[0];
+    if(file) importFlagsFromFile(file);
+    e.target.value = '';
+  });
+  importLabel.appendChild(importInput);
+  footer.appendChild(importLabel);
+
+  if(flags.length){
+    const clearBtn = document.createElement('button');
+    clearBtn.className='btn ghost'; clearBtn.type='button'; clearBtn.textContent='Limpar tudo';
+    clearBtn.addEventListener('click', ()=>{
+      if(clearBtn.dataset.armed==='1'){ flags = []; renderAnnotations(); renderAnnotList(); return; }
+      clearBtn.dataset.armed='1'; clearBtn.textContent='Confirmar?';
+      setTimeout(()=>{ if(clearBtn.dataset.armed==='1'){ clearBtn.dataset.armed='0'; clearBtn.textContent='Limpar tudo'; } }, 2500);
+    });
+    footer.appendChild(clearBtn);
+  }
+  panel.appendChild(footer);
+}
+
+function loadReviewModel(id){
+  const entry = REVIEW_MODELS.find(m=>m.id===id);
+  if(!entry) return;
+  closeAnnotPopup();
+  currentModelId = id;
+  loadModel(entry.build());
+  ensureAnnotMarker();
+  renderAnnotations();
+  renderAnnotList();
+}
+
+/* ---------- wiring ---------- */
+(function initAnnotator(){
+  const sel = document.getElementById('reviewModelSelect');
+  REVIEW_MODELS.forEach(m=>{
+    const opt = document.createElement('option');
+    opt.value = m.id; opt.textContent = m.label;
+    sel.appendChild(opt);
+  });
+  sel.addEventListener('change', ()=> loadReviewModel(sel.value));
+
+  // keep the new "Anotações" tab's panel in sync with the right-rail tab
+  // switcher, which only knows about 'prop'/'legend' natively.
+  const _origSwitchRightTab = switchRightTab;
+  switchRightTab = function(tabId){
+    _origSwitchRightTab(tabId);
+    const p = document.getElementById('panelAnnot');
+    if(p) p.classList.toggle('active', tabId==='annot');
+  };
+
+  const catcher = document.getElementById('annotCatcher');
+  catcher.addEventListener('mousedown', (e)=>{
+    if(e.button!==0) return;
+    e.preventDefault();
+    dragState = { startClient:{x:e.clientX,y:e.clientY}, startSvg: svgPointFromEvent(e), moved:false, lineEl:null };
+    window.addEventListener('mousemove', onCatcherMove);
+    window.addEventListener('mouseup', onCatcherUp);
+  });
+
+  function onCatcherMove(e){
+    if(!dragState) return;
+    const dx = e.clientX-dragState.startClient.x, dy = e.clientY-dragState.startClient.y;
+    if(!dragState.moved && Math.hypot(dx,dy) > DRAG_THRESHOLD){
+      dragState.moved = true;
+      dragState.lineEl = S('line', {x1:dragState.startSvg.x, y1:dragState.startSvg.y, x2:dragState.startSvg.x, y2:dragState.startSvg.y,
+        stroke:'#e0782a', 'stroke-width':2, 'stroke-dasharray':'5,4'});
+      document.getElementById('annotationLayer').appendChild(dragState.lineEl);
+    }
+    if(dragState.moved){
+      const cur = svgPointFromEvent(e);
+      dragState.curSvg = cur;
+      dragState.lineEl.setAttribute('x2', cur.x);
+      dragState.lineEl.setAttribute('y2', cur.y);
+    }
+  }
+
+  function onCatcherUp(e){
+    window.removeEventListener('mousemove', onCatcherMove);
+    window.removeEventListener('mouseup', onCatcherUp);
+    if(!dragState) return;
+    const ds = dragState; dragState = null;
+    if(ds.lineEl) ds.lineEl.remove();
+    if(ds.moved){
+      openAnnotPopup(e.clientX, e.clientY, (note)=>{
+        addFlag({kind:'move', x:ds.startSvg.x, y:ds.startSvg.y, x2:ds.curSvg.x, y2:ds.curSvg.y, note});
+      });
+    } else {
+      openAnnotPopup(e.clientX, e.clientY, (note)=>{
+        addFlag({kind:'point', x:ds.startSvg.x, y:ds.startSvg.y, note});
+      });
+    }
+  }
+
+  loadReviewModel(REVIEW_MODELS[0].id);
+})();
 </script>

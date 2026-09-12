@@ -333,6 +333,30 @@
     background:var(--accent); color:var(--accent-ink); font-size:12.5px; font-weight:500;
     padding:7px 14px; border-radius:999px; box-shadow:var(--shadow); display:none; align-items:center; gap:8px;
   }
+  /* janela flutuante do botão "Validação", por cima do canvas */
+  .validation-panel{
+    position:absolute; top:12px; right:12px; z-index:6; width:380px; max-width:calc(100% - 24px);
+    max-height:calc(100% - 24px); display:flex; flex-direction:column;
+    background:var(--surface); border:1px solid var(--canvas-toolbar-border); border-radius:12px;
+    box-shadow:var(--shadow); overflow:hidden;
+  }
+  .validation-head{
+    display:flex; align-items:center; justify-content:space-between; gap:8px; flex:none;
+    padding:10px 12px; border-bottom:1px solid var(--canvas-card-border);
+  }
+  .validation-title{ font-size:13.5px; font-weight:600; display:flex; align-items:center; gap:7px; }
+  .validation-title .count{ font-weight:500; color:var(--muted); font-size:12px; }
+  .validation-body{ overflow-y:auto; padding:8px 10px 12px; }
+  .vgroup-head{
+    font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.04em;
+    color:var(--muted); padding:10px 4px 4px;
+  }
+  .vgroup-head:first-child{ padding-top:2px; }
+  .vitem .tag{
+    display:inline-block; font-size:10.5px; font-family:"IBM Plex Mono"; font-weight:600;
+    color:var(--muted); border:1px solid var(--canvas-card-border); border-radius:4px;
+    padding:0 4px; margin-right:6px; vertical-align:1px;
+  }
   .relmode-banner.show{ display:flex; }
   .relmode-banner button{ background:rgba(0,0,0,.18); border:none; color:inherit; border-radius:999px; width:18px;height:18px; font-size:13px; display:flex; align-items:center; justify-content:center;}
 
@@ -468,7 +492,7 @@
     </div>
     <div class="spacer"></div>
     <div class="btnrow">
-      <button class="btn ghost" id="btnValidate" title="Lembrete: ainda falta implementar a validação do modelo">✓ Validação</button>
+      <button class="btn ghost" id="btnValidate" title="Verificar o modelo conceitual (desenho + regras do OMT-G)">✓ Validação</button>
       <button class="btn ghost" id="btnSample" title="Carregar modelo de exemplo">Exemplo</button>
       <button class="btn ghost" id="btnNew" title="Novo modelo em branco">Novo</button>
       <button class="btn ghost" id="btnOpen" title="Abrir modelo (.json)">Abrir</button>
@@ -545,6 +569,13 @@
         <button id="zoomOut" title="Diminuir zoom">−</button>
         <button id="zoomReset" title="Ajustar à tela">⤢</button>
         <button id="zoomIn" title="Aumentar zoom">+</button>
+      </div>
+      <div class="validation-panel" id="validationPanel" hidden>
+        <div class="validation-head">
+          <div class="validation-title">Validação <span class="count" id="validationCount"></span></div>
+          <button class="btn ghost icon-only" id="btnCloseValidation" title="Fechar">✕</button>
+        </div>
+        <div class="validation-body" id="validationBody"></div>
       </div>
     </div>
 
@@ -724,8 +755,11 @@ const REL_TYPES = {
   spatial:                     {label:'Espacial',                   short:'Espacial'},
   network:                     {label:'Rede',                       short:'Rede'},
   generalization:               {label:'Generalização',              short:'Generalização'},
-  cartographicGeneralization:  {label:'Generalização Cartográfica', short:'Gen. Cartográfica'},
-  aggregation:                  {label:'Agregação',                  short:'Agregação'}
+  // Round Q item 6: Agregação now listed BEFORE Generalização Cartográfica in
+  // the "Adicionar Relacionamento" sidebar (and the legend, which shares this
+  // same key order) — object key order is iteration order in every consumer.
+  aggregation:                  {label:'Agregação',                  short:'Agregação'},
+  cartographicGeneralization:  {label:'Generalização Cartográfica', short:'Gen. Cartográfica'}
 };
 /* Every specific relationship type is its own "family" now (no more
    plain/spatial split anywhere) — kept as a function rather than inlining
@@ -759,11 +793,44 @@ const ICONS = {
   // (the side opposite the apex), same as the standard UML/OMT-G
   // generalization arrow.
   generalization: '<svg viewBox="0 0 16 16" fill="none"><line x1="2" y1="13" x2="8.76" y2="7.24" stroke="currentColor" stroke-width="1.4"/><path d="M13,3 L11.21,9.69 L6.31,4.79 Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>',
-  // Round P item 10/12: dashed line (like Espacial) ending in a small
+  // Round P item 10/12: dashed lines (like Espacial) meeting at a small
   // square instead of a filled/hollow circle — the cartographic-
   // generalization notation, unrelated to the triangle above.
-  cartographicGeneralization: '<svg viewBox="0 0 16 16" fill="none"><line x1="2" y1="13" x2="9.5" y2="5.5" stroke="currentColor" stroke-width="1.3" stroke-dasharray="2,1.6"/><rect x="9" y="3" width="4.4" height="4.4" stroke="currentColor" stroke-width="1.2"/></svg>',
-  aggregation: '<svg viewBox="0 0 16 16" fill="none"><line x1="6" y1="10" x2="13" y2="3" stroke="currentColor" stroke-width="1.4"/><path d="M2 10 4.4 7.6 6.8 10 4.4 12.4Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>',
+  // Round S item 4 ("quero que seja um quadrado no meio de 3 segmentos de
+  // linha"): the actual canvas symbol is a square sitting where several
+  // dashed lines converge (one per detailed class, one continuing to the
+  // generalized class) — this single-line-to-a-corner-square icon didn't
+  // match that at all.
+  // Round S item 1(a/b) ("as linhas devem ser perpendiculares... no eixo
+  // horizontal fica duas linhas com a mesma direção horizontal e no eixo
+  // vertical fica uma linha na vertical"): the first redraw used two
+  // diagonal lines, which wasn't what either the canvas symbol or the user
+  // actually wanted — a real merged group's trunk looks like a "T": two
+  // segments collinear along one axis (here, horizontal — standing in for
+  // one subclass's line passing straight through toward the generalized
+  // class) crossed by one segment perpendicular to them (vertical —
+  // standing in for another subclass's line joining from a different row).
+  // One straight horizontal dashed line plus one vertical dashed line
+  // meeting at 90°, with the square at their crossing.
+  // Round S item 1 (next round — "o quadrado do desenho está vazado, não
+  // deve estar... da cor do fundo mas sem desenhar as linhas por baixo
+  // dele"): the rect had no fill (inherited the svg root's fill="none"), so
+  // the two dashed lines showed straight through it instead of stopping at
+  // its edges like the real canvas symbol does. Filled with var(--surface)
+  // — the sidebar panel's own background — painted on top of the lines (the
+  // rect is the last child), so it visually blocks them instead of trying
+  // to look transparent/theme-matched via a hardcoded color that would be
+  // wrong in dark mode.
+  cartographicGeneralization: '<svg viewBox="0 0 16 16" fill="none"><line x1="1.5" y1="8" x2="14.5" y2="8" stroke="currentColor" stroke-width="1.2" stroke-dasharray="1.6,1.3"/><line x1="8" y1="1.5" x2="8" y2="8" stroke="currentColor" stroke-width="1.2" stroke-dasharray="1.6,1.3"/><rect x="6.4" y="6.4" width="3.2" height="3.2" style="fill:var(--surface);stroke:currentColor;stroke-width:1.1"/></svg>',
+  // Round Q item 4: matches the canvas diamond's real (non-square) kite
+  // proportions now — previously equal-diagonal, so it looked like a square.
+  // Round R item 4: the kite's long axis (touching vertex → far vertex) now
+  // runs ALONG the same diagonal as the connecting line (previously the kite
+  // was flat/horizontal while the line was diagonal, so the two looked
+  // unrelated) — and the kite sits at the upper-right end of the line
+  // (touching vertex at (12.5,3.5)) with the line trailing down to the
+  // lower-left, instead of the reverse.
+  aggregation: '<svg viewBox="0 0 16 16" fill="none"><line x1="7.6" y1="8.5" x2="3" y2="13" stroke="currentColor" stroke-width="1.4"/><path d="M12.5 3.5 11.6 7.5 7.6 8.5 8.5 4.4Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>',
   network: '<svg viewBox="0 0 16 16" fill="none"><circle cx="3" cy="12" r="1.8" stroke="currentColor" stroke-width="1.2"/><circle cx="13" cy="4" r="1.8" stroke="currentColor" stroke-width="1.2"/><line x1="4.6" y1="10.6" x2="11.4" y2="5.4" stroke="currentColor" stroke-width="1.3" stroke-dasharray="1,2.3"/></svg>',
   spatial: '<svg viewBox="0 0 16 16" fill="none"><circle cx="6" cy="8" r="4.2" stroke="currentColor" stroke-width="1.2"/><circle cx="10.5" cy="8" r="4.2" stroke="currentColor" stroke-width="1.2"/></svg>',
   trash: '<svg viewBox="0 0 16 16" fill="none"><path d="M3 5h10M6.5 5V3.5h3V5M4.5 5l.6 8.2a1 1 0 0 0 1 .8h3.8a1 1 0 0 0 1-.8L11.5 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
@@ -1112,8 +1179,14 @@ function deleteRel(id){
 // the plain default — they all describe one shared structure, so a freshly-
 // dragged sibling should already match the group it's joining rather than
 // reset it. `fallback` supplies the values used when no sibling exists yet.
-function inheritedMergeFields(type, targetId, fields, fallback){
-  const sib = state.relationships.find(o=> o.targetId===targetId && o.type===type);
+function inheritedMergeFields(type, targetId, fields, fallback, excludeId){
+  // Round Q item 3: only inherit from a sibling that's still actually merged
+  // (no manual dstAnchor) — a separated one no longer represents "the
+  // group"'s shared values. `excludeId` (Round S item 2/6) lets a
+  // relationship that's rejoining the group look for values from an actual
+  // OTHER sibling rather than matching itself (its own dstAnchor may have
+  // just been cleared, right before this runs).
+  const sib = state.relationships.find(o=> o.targetId===targetId && o.type===type && !o.dstAnchor && o.id!==excludeId);
   const out = {};
   fields.forEach(f=> out[f] = sib ? sib[f] : fallback[f]);
   return out;
@@ -1133,7 +1206,9 @@ function createRelationship(type, sourceId, targetId){
     // Round P item 7: aggregation is always a plain pairwise class-to-class
     // relationship (never merges into a shared group like generalization
     // does) — item 6's "Simples"/"Espacial" is just a property now.
-    base.cardSource='1'; base.cardTarget='0..*'; base.spatial=false;
+    // Round Q item 5: aggregation has no cardinality — it's a fixed
+    // whole/part structure, not a configurable N:M like association.
+    base.spatial=false;
   }
   else if(type==='network'){ base.name='Rede'; }
   else if(type==='spatial'){ base.topoRule='touches'; base.nearDistance=null; }
@@ -1151,8 +1226,16 @@ function createRelationship(type, sourceId, targetId){
 // always showing the value that was just edited, no matter which sibling the
 // user actually touched.
 function syncMergeGroupSiblings(r, fields){
+  // Round Q item 3 ("quando duas generalizações são separadas... continuam
+  // compartilhando as propriedades, não faz sentido... só deve compartilhar
+  // quando estão juntas"): a relationship that's been manually pulled away
+  // (dstAnchor set) is no longer part of the shared-point group, so editing
+  // it shouldn't push its values onto the others, and it shouldn't have
+  // someone else's edits pushed onto IT either.
+  if(r.dstAnchor) return;
   state.relationships.forEach(o=>{
     if(o===r || o.targetId!==r.targetId || o.type!==r.type) return;
+    if(o.dstAnchor) return;
     fields.forEach(f=> o[f]=r[f]);
   });
 }
@@ -1316,7 +1399,7 @@ function sampleModel(){
   const responsavel = { id:uid('c'), name:'Órgão Responsável', kind:'conventional', geoType:null, primitive:null,
     attributes:[{id:uid('a'),name:'nome'}], x:690,y:470 };
   [municipio,bacia,subBacia,rio,trecho,confluencia,estacao,relevo,responsavel].forEach((c,i)=>{ c.w=208; c.h=60; m.classes.push(c); });
-  m.relationships.push({ id:uid('r'), type:'aggregation', sourceId:bacia.id, targetId:subBacia.id, name:'', cardSource:'1', cardTarget:'1..*', spatial:true });
+  m.relationships.push({ id:uid('r'), type:'aggregation', sourceId:bacia.id, targetId:subBacia.id, name:'', spatial:true });
   m.relationships.push({ id:uid('r'), type:'generalization', sourceId:trecho.id, targetId:rio.id, name:'', total:true, disjoint:true });
   m.relationships.push({ id:uid('r'), type:'network', sourceId:confluencia.id, targetId:trecho.id, name:'rede hidrográfica' });
   // arc-arc (recursive) network: trechos de rio também se conectam diretamente entre si, sem confluência
@@ -1338,6 +1421,7 @@ function touch(skipInspector){
   renderTableList();
   renderValidationLogical();
   renderCanvas();
+  renderValidationPanel(); // no-op while the "Validação" floating panel is closed
   if(!skipInspector) renderInspector();
   scheduleAutosave();
 }
@@ -1434,6 +1518,256 @@ function renderValidationLogical(){
   });
 }
 
+/* ---------- Conceitual: motor de validação ("Validação", botão na topbar) --
+   Duas categorias, mostradas na janela flutuante (ver renderValidationPanel):
+     - "geometry": qualidade do desenho no canvas — legibilidade do diagrama,
+       NÃO é regra do OMT-G em si (itens 1-5 do pedido do usuário).
+     - "semantic": regras do próprio OMT-G (Borges/Davis/Laender) — itens 6-8
+       do pedido + o catálogo em omtg_regras_validacao.md. Cada issue carrega
+       um "tier" (FORMAL/ESTRUTURAL/INFERÊNCIA, a mesma taxonomia do
+       catálogo) só como transparência de quão literal a regra é.
+   Fora do escopo de propósito (não verificável num diagrama conceitual, sem
+   dados/instâncias reais): contagem de nós/arcos (NET-002/003 em sua forma
+   literal — a versão possível no nível de diagrama, "rede entre dois Nós
+   sem Arco", está incluída), cobertura geométrica whole/part (SAG-*),
+   consistência interna de geo-campo (GF-*), distância do "near" (o campo
+   nearDistance não é editável nesta página — fica para o modelo lógico). */
+const PRIMITIVE_DIM = {point:'POINT', node:'POINT', line:'LINE', unidirectional:'LINE', bidirectional:'LINE', polygon:'POLYGON'};
+const NETWORK_PRIMITIVES = new Set(['node','unidirectional','bidirectional']);
+function isGeoObjectClass(c){ return !!c && c.kind==='geo' && c.geoType==='object'; }
+function classDim(c){ return c ? (PRIMITIVE_DIM[c.primitive]||null) : null; }
+
+function rectsOverlapArea(a,b){
+  const ox = Math.min(a.x+a.w,b.x+b.w) - Math.max(a.x,b.x);
+  const oy = Math.min(a.y+a.h,b.y+b.h) - Math.max(a.y,b.y);
+  return (ox>0 && oy>0) ? ox*oy : 0;
+}
+function rectGap(a,b){
+  const dx = Math.max(a.x-(b.x+b.w), b.x-(a.x+a.w), 0);
+  const dy = Math.max(a.y-(b.y+b.h), b.y-(a.y+a.h), 0);
+  if(dx===0 && dy===0) return 0; // sobrepostas ou encostando
+  return Math.hypot(dx,dy);
+}
+// quanto (em px, no eixo transversal) um segmento ortogonal entra de fato
+// DENTRO do interior de um retângulo — 0 se só toca a borda ou não alcança,
+// no mesmo espírito EPS já usado para detectar os "pulinhos" de cruzamento.
+function segRectPenetration(seg, rect){
+  const EPS = 0.5;
+  if(seg.horiz){
+    const y=seg.y1, x1=Math.min(seg.x1,seg.x2), x2=Math.max(seg.x1,seg.x2);
+    if(y<=rect.y+EPS || y>=rect.y+rect.h-EPS) return 0;
+    const ox = Math.min(x2,rect.x+rect.w)-Math.max(x1,rect.x);
+    return ox>EPS ? ox : 0;
+  }
+  const x=seg.x1, y1=Math.min(seg.y1,seg.y2), y2=Math.max(seg.y1,seg.y2);
+  if(x<=rect.x+EPS || x>=rect.x+rect.w-EPS) return 0;
+  const oy = Math.min(y2,rect.y+rect.h)-Math.max(y1,rect.y);
+  return oy>EPS ? oy : 0;
+}
+function orthSegCross(a,b){
+  if(a.horiz===b.horiz) return false;
+  const h=a.horiz?a:b, v=a.horiz?b:a;
+  const hy=h.y1, hx1=Math.min(h.x1,h.x2), hx2=Math.max(h.x1,h.x2);
+  const vx=v.x1, vy1=Math.min(v.y1,v.y2), vy2=Math.max(v.y1,v.y2);
+  const EPS=0.5;
+  return vx>hx1+EPS && vx<hx2-EPS && hy>vy1+EPS && hy<vy2-EPS;
+}
+// null quando os segmentos não são do mesmo eixo ou não têm trecho em comum
+// relevante; senão a distância perpendicular entre as duas retas paralelas.
+function orthSegParallelGap(a,b){
+  if(a.horiz!==b.horiz) return null;
+  if(a.horiz){
+    const ax1=Math.min(a.x1,a.x2), ax2=Math.max(a.x1,a.x2);
+    const bx1=Math.min(b.x1,b.x2), bx2=Math.max(b.x1,b.x2);
+    if(Math.min(ax2,bx2)-Math.max(ax1,bx1) <= 4) return null;
+    return Math.abs(a.y1-b.y1);
+  }
+  const ay1=Math.min(a.y1,a.y2), ay2=Math.max(a.y1,a.y2);
+  const by1=Math.min(b.y1,b.y2), by2=Math.max(b.y1,b.y2);
+  if(Math.min(ay2,by2)-Math.max(ay1,by1) <= 4) return null;
+  return Math.abs(a.x1-b.x1);
+}
+
+function computeConceptualValidation(){
+  const issues = [];
+  const add = (severity, tier, category, ruleId, message, classIds, relIds)=>{
+    issues.push({severity, tier, category, ruleId, message, classIds:classIds||[], relIds:relIds||[]});
+  };
+  const {rects, routes} = computeConceptualLayout();
+  const classes = state.classes;
+  const relLabel = r => r.name || (REL_TYPES[r.type]||{}).label || r.type;
+
+  /* ---- 1. Qualidade do desenho (itens 1-5) ---- */
+  const CLOSE_GAP = 16, NEAR_GAP = 4;
+  for(let i=0;i<classes.length;i++){
+    for(let j=i+1;j<classes.length;j++){
+      const a=classes[i], b=classes[j], ra=rects[a.id], rb=rects[b.id];
+      if(!ra||!rb) continue;
+      if(rectsOverlapArea(ra,rb)>0){
+        add('error','DESENHO','geometry','G-003','Classes sobrepostas: "'+a.name+'" e "'+b.name+'".', [a.id,b.id]);
+      } else {
+        const gap = rectGap(ra,rb);
+        if(gap>0 && gap<CLOSE_GAP){
+          add('warning','DESENHO','geometry','G-004','Classes muito próximas: "'+a.name+'" e "'+b.name+'" — deixe mais espaço entre elas.', [a.id,b.id]);
+        }
+      }
+    }
+  }
+  routes.forEach((route,idx)=>{
+    if(!route) return;
+    const r = state.relationships[idx];
+    // item 2: linha passando por cima de uma classe que ela não conecta
+    classes.forEach(c=>{
+      if(c.id===r.sourceId || c.id===r.targetId) return;
+      const rect = rects[c.id];
+      if(!rect) return;
+      if(route.segs.some(seg=> segRectPenetration(seg, rect) > 2)){
+        add('warning','DESENHO','geometry','G-002','O relacionamento "'+relLabel(r)+'" passa por cima da classe "'+c.name+'".', [c.id], [r.id]);
+      }
+    });
+    // item 5: o próprio relacionamento cruzando ou coincidindo com seu traçado
+    outer: for(let i=0;i<route.segs.length;i++){
+      for(let j=i+2;j<route.segs.length;j++){
+        const a=route.segs[i], b=route.segs[j];
+        const gap = orthSegParallelGap(a,b);
+        if(orthSegCross(a,b) || (gap!==null && gap<NEAR_GAP)){
+          add('warning','DESENHO','geometry','G-005','O relacionamento "'+relLabel(r)+'" cruza ou coincide com o seu próprio traçado.', [], [r.id]);
+          break outer;
+        }
+      }
+    }
+  });
+  // item 1: segmentos de relacionamentos DIFERENTES muito próximos/coincidentes
+  outerPairs: for(let i=0;i<routes.length;i++){
+    const ri = routes[i];
+    if(!ri) continue;
+    for(let j=i+1;j<routes.length;j++){
+      const rj = routes[j];
+      if(!rj) continue;
+      for(const sa of ri.segs){
+        for(const sb of rj.segs){
+          const g = orthSegParallelGap(sa,sb);
+          if(g!==null && g<NEAR_GAP){
+            const a=state.relationships[i], b=state.relationships[j];
+            add('warning','DESENHO','geometry','G-001','As linhas de "'+relLabel(a)+'" e "'+relLabel(b)+'" ficam quase coincidentes em um trecho — afaste-as.', [], [a.id,b.id]);
+            continue outerPairs;
+          }
+        }
+      }
+    }
+  }
+
+  /* ---- 2. Regras OMT-G (itens 6-8 + catálogo) ---- */
+  state.relationships.forEach(r=>{
+    const a = classes.find(c=>c.id===r.sourceId), b = classes.find(c=>c.id===r.targetId);
+    if(!a||!b) return;
+
+    if(r.type==='spatial'){
+      if(a.kind!=='geo' || b.kind!=='geo'){
+        add('error','ESTRUTURAL','semantic','E001','Relação espacial exige classes georreferenciadas: "'+a.name+'" ↔ "'+b.name+'".', [a.id,b.id], [r.id]);
+      } else if(!isGeoObjectClass(a) || !isGeoObjectClass(b)){
+        const which = !isGeoObjectClass(a) ? a.name : b.name;
+        add('warning','INFERÊNCIA','semantic','SP-*','As relações espaciais da Tabela 2 do artigo são definidas entre geo-objetos — "'+which+'" é um geo-campo.', [a.id,b.id], [r.id]);
+      } else {
+        const da=classDim(a), db=classDim(b), rule=r.topoRule;
+        const badOverlap = da==='POINT'||db==='POINT'|| (da==='LINE'&&db==='POLYGON') || (da==='POLYGON'&&db==='LINE');
+        if(rule==='touches' && (da==='POINT'||db==='POINT')){
+          add('error','FORMAL','semantic','SP-001','"Toca" (touch) não é definida quando um dos lados é um Ponto.', [a.id,b.id], [r.id]);
+        } else if(rule==='cruza' && !(da==='LINE' && (db==='LINE'||db==='POLYGON'))){
+          add('error','FORMAL','semantic','SP-003','"Cruza" (cross) exige que a origem seja Linha e o destino Linha ou Polígono.', [a.id,b.id], [r.id]);
+        } else if(rule==='sobrepoe' && badOverlap){
+          add('error','FORMAL','semantic','SP-004','"Sobrepõe" (overlap) só é definida entre Linha↔Linha ou Polígono↔Polígono.', [a.id,b.id], [r.id]);
+        } else if(rule==='adjacente' && !(da==='POLYGON' && (db==='LINE'||db==='POLYGON'))){
+          add('error','FORMAL','semantic','SP-006','"Adjacente a" exige que a origem seja Polígono e o destino Linha ou Polígono.', [a.id,b.id], [r.id]);
+        } else if(rule==='contem' && da!=='POLYGON'){
+          add('error','FORMAL','semantic','SP-008','"Contém" (contain) exige que a origem seja um Polígono.', [a.id,b.id], [r.id]);
+        }
+      }
+    } else if(r.type==='network'){
+      if(!NETWORK_PRIMITIVES.has(a.primitive) || !NETWORK_PRIMITIVES.has(b.primitive)){
+        add('error','ESTRUTURAL','semantic','E002','Relação de rede exige classes de rede (Nó, Linha uni/bidirecional): "'+a.name+'" ↔ "'+b.name+'".', [a.id,b.id], [r.id]);
+      } else if(a.primitive==='node' && b.primitive==='node'){
+        add('warning','INFERÊNCIA','semantic','NET-002/003','Rede entre dois Nós sem nenhum Arco entre eles — o padrão do OMT-G é Nó↔Arco ou Arco↔Arco (recursivo).', [a.id,b.id], [r.id]);
+      }
+    } else if(r.type==='aggregation'){
+      if(a.kind==='geo' && b.kind==='geo' && !r.spatial){
+        add('error','FORMAL','semantic','E012','Agregação entre duas classes georreferenciadas deve ser marcada como "Espacial".', [a.id,b.id], [r.id]);
+      }
+    }
+  });
+  // item 8: auto-relacionamento só é previsto no OMT-G para arco-arco (rede recursiva)
+  state.relationships.forEach(r=>{
+    if(r.sourceId!==r.targetId) return;
+    const a = classes.find(c=>c.id===r.sourceId);
+    if(!a) return;
+    if(a.primitive!=='unidirectional' && a.primitive!=='bidirectional'){
+      add('error','ESTRUTURAL','semantic','NET-003/004','Auto-relacionamento só é previsto no OMT-G para redes arco-arco (linha uni/bidirecional recursiva) — "'+a.name+'" não é desse tipo.', [a.id], [r.id]);
+    }
+  });
+
+  return issues;
+}
+const VALIDATION_GROUPS = [
+  {key:'geometry', label:'Qualidade do desenho'},
+  {key:'semantic', label:'Regras do OMT-G'}
+];
+function renderValidationPanel(){
+  const panel = document.getElementById('validationPanel');
+  if(!panel || panel.hidden) return;
+  const body = document.getElementById('validationBody');
+  const countEl = document.getElementById('validationCount');
+  const issues = computeConceptualValidation();
+  countEl.textContent = issues.length ? String(issues.length) : '';
+  body.innerHTML = '';
+  if(!issues.length){
+    body.appendChild(E('div',{class:'vgood'},['✓ Nenhum problema encontrado']));
+    return;
+  }
+  VALIDATION_GROUPS.forEach(g=>{
+    const items = issues.filter(is=>is.category===g.key);
+    if(!items.length) return;
+    body.appendChild(E('div',{class:'vgroup-head'},[g.label+' ('+items.length+')']));
+    items.forEach(is=>{
+      const row = E('div',{
+        class:'vitem '+is.severity,
+        onclick:()=>{
+          if(is.relIds.length) revealConceptual('rel', is.relIds[0]);
+          else if(is.classIds.length) revealConceptual('class', is.classIds[0]);
+        }
+      },[
+        E('span',{class:'dot'}),
+        E('div',{class:'msg'},[E('span',{class:'tag'},[is.ruleId]), is.message])
+      ]);
+      body.appendChild(row);
+    });
+  });
+}
+// clicar num item da janela de validação: troca para a página Conceitual (se
+// necessário), seleciona o elemento e centraliza a vista nele sem mudar o
+// zoom atual.
+function revealConceptual(kind, id){
+  if(activePage!=='conceptual') switchPage('conceptual');
+  let cx, cy;
+  if(kind==='class'){
+    const c = state.classes.find(x=>x.id===id);
+    if(!c) return;
+    selection = {type:'class', id}; multiSelect = new Set();
+    cx = c.x+(c.w||CARD_W)/2; cy = c.y+(c.h||60)/2;
+  } else {
+    const r = state.relationships.find(x=>x.id===id);
+    if(!r) return;
+    selection = {type:'rel', id};
+    const a = state.classes.find(x=>x.id===r.sourceId), b = state.classes.find(x=>x.id===r.targetId);
+    if(!a||!b) return;
+    cx = ((a.x+(a.w||CARD_W)/2)+(b.x+(b.w||CARD_W)/2))/2;
+    cy = ((a.y+(a.h||60)/2)+(b.y+(b.h||60)/2))/2;
+  }
+  switchRightTab('prop');
+  view.x = cx - view.w/2; view.y = cy - view.h/2;
+  applyViewBox();
+  touch();
+}
+
 /* ---------- canvas rendering ---------- */
 const CARD_HEAD_H = 34;
 const CARD_ROW_H = 19;
@@ -1443,6 +1777,9 @@ function classHeight(c){
 }
 const CARD_W = 208;
 const CARD_W_MAX = 560; // safety cap so one absurdly long name can't blow up the whole layout
+// Round T item 0: half of .card-bg's default stroke-width (1.25/2) — see the
+// comment at the class-card rect in buildClassCard for why this exists.
+const CARD_BORDER_INSET = 0.625;
 let _measureCtx = null;
 function measureTextWidth(text, font){
   if(!_measureCtx) _measureCtx = document.createElement('canvas').getContext('2d');
@@ -1525,7 +1862,19 @@ function buildNode(c){
       try{ evt.currentTarget.setPointerCapture(evt.pointerId); }catch(e){}
     }
   });
-  g.appendChild(S('rect',{class:'card-bg', x:0,y:0,width:c.w,height:c.h, rx:9}));
+  // Round T item 0: the card border (stroke-width 1.25, .card-bg CSS) used to
+  // be drawn on the rect's exact logical edge (0,0,c.w,c.h) with a CENTERED
+  // stroke — which straddles that edge, painting half the stroke-width
+  // (0.625) OUTSIDE the logical rect that ports/routes are computed against
+  // (rects[c.id] in renderConceptualCanvas). Since nodeLayer paints after
+  // edgeLayer (on top), that extra sliver always covered the last ~0.6px of
+  // any connector tip aimed exactly at the border, no matter how precisely
+  // the generalization triangle's marker refX was calibrated (see genMarker)
+  // — a fixed refX number could never fully compensate for paint that
+  // physically extends past the boundary the tip is aimed at. Fix at the
+  // root: inset the rect by half the border's stroke-width so the border's
+  // OUTER edge lands exactly on the logical boundary instead of past it.
+  g.appendChild(S('rect',{class:'card-bg', x:CARD_BORDER_INSET,y:CARD_BORDER_INSET,width:c.w-2*CARD_BORDER_INSET,height:c.h-2*CARD_BORDER_INSET, rx:9}));
   // OMT-G notation (Figure 2a): "the top left-hand rectangle is used to
   // indicate the geometry of the representation" — the pictogram lives in
   // its own cell at the top-LEFT of the class box, separated from the name
@@ -2791,8 +3140,15 @@ function resolveLabelOverlaps(metas){
    the old single-choice version would have — leaving it for the user to
    rearrange the classes themselves, per their own instruction, rather than
    forcing any further correction. */
-function buildAssocNameArrow(labelLayer, labelMetas, points, r, otherSegs){
+function buildAssocNameArrow(labelLayer, labelMetas, points, r, otherSegs, opts){
   if(!labelLayer) return;
+  // Round S item 1 ("não tem a flechinha... é só este rótulo mesmo"):
+  // cartographic generalization's "Forma"/"Escala" borrows this function's
+  // off-line placement + least-overlap search, but unlike association/
+  // spatial it isn't a directional predicate — passing {arrow:false} keeps
+  // everything else (clearance, search, vertical rotation) and just leaves
+  // out the little reading-direction arrow.
+  const showArrow = !opts || opts.arrow!==false;
   const wrap = S('g', {style:'cursor:pointer;',
     onpointerdown:(e)=>{ e.stopPropagation(); },
     onclick:(e)=>{ e.stopPropagation(); selectRel(r.id); }});
@@ -2846,8 +3202,8 @@ function buildAssocNameArrow(labelLayer, labelMetas, points, r, otherSegs){
   const textClear = r.name ? (MIN_GAP + nameHalfCross) : 0;
   const arrowClear = r.name ? (textClear + nameHalfCross + ARROW_GAP_AFTER + ARROW_WING) : (MIN_GAP + ARROW_WING);
 
-  const arrowPath = S('path', {style:'fill:none;stroke:var(--canvas-line);stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round;'});
-  wrap.insertBefore(arrowPath, wrap.firstChild);
+  const arrowPath = showArrow ? S('path', {style:'fill:none;stroke:var(--canvas-line);stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round;'}) : null;
+  if(arrowPath) wrap.insertBefore(arrowPath, wrap.firstChild);
   // Renders the arrow+text at one candidate spot and returns its measured
   // (padded) bounding box — reused both to search for the least-crowded
   // candidate and, at the end, to commit to whichever one wins.
@@ -2856,19 +3212,21 @@ function buildAssocNameArrow(labelLayer, labelMetas, points, r, otherSegs){
     const flen = Math.hypot(midDx, midDy) || 1;
     const fx = midDx/flen, fy = midDy/flen; // forward = source → target, along this segment
     const vertical = normMid.x !== 0;
-    const bx = mid.x + normMid.x*arrowClear, by = mid.y + normMid.y*arrowClear;
-    // A real arrow — a visible shaft plus an open head at the tip — instead
-    // of a bare chevron that reads as just a "<"/">" glyph floating in
-    // space (Round E item 2 — "tem que ser flecha mesmo"). Its shaft still
-    // runs ALONG the segment (fx,fy) — only its position (bx,by), not its
-    // shape, moves with each candidate.
-    const tailX = bx-fx*ARROW_LEN/2, tailY = by-fy*ARROW_LEN/2;
-    const tipX = bx+fx*ARROW_LEN/2, tipY = by+fy*ARROW_LEN/2;
-    const headBackX = tipX-fx*ARROW_HEAD, headBackY = tipY-fy*ARROW_HEAD;
-    const leftX = headBackX-fy*ARROW_WING, leftY = headBackY+fx*ARROW_WING;
-    const rightX = headBackX+fy*ARROW_WING, rightY = headBackY-fx*ARROW_WING;
-    arrowPath.setAttribute('d', 'M'+tailX+','+tailY+' L'+tipX+','+tipY+
-      ' M'+leftX+','+leftY+' L'+tipX+','+tipY+' L'+rightX+','+rightY);
+    if(showArrow){
+      const bx = mid.x + normMid.x*arrowClear, by = mid.y + normMid.y*arrowClear;
+      // A real arrow — a visible shaft plus an open head at the tip — instead
+      // of a bare chevron that reads as just a "<"/">" glyph floating in
+      // space (Round E item 2 — "tem que ser flecha mesmo"). Its shaft still
+      // runs ALONG the segment (fx,fy) — only its position (bx,by), not its
+      // shape, moves with each candidate.
+      const tailX = bx-fx*ARROW_LEN/2, tailY = by-fy*ARROW_LEN/2;
+      const tipX = bx+fx*ARROW_LEN/2, tipY = by+fy*ARROW_LEN/2;
+      const headBackX = tipX-fx*ARROW_HEAD, headBackY = tipY-fy*ARROW_HEAD;
+      const leftX = headBackX-fy*ARROW_WING, leftY = headBackY+fx*ARROW_WING;
+      const rightX = headBackX+fy*ARROW_WING, rightY = headBackY-fx*ARROW_WING;
+      arrowPath.setAttribute('d', 'M'+tailX+','+tailY+' L'+tipX+','+tipY+
+        ' M'+leftX+','+leftY+' L'+tipX+','+tipY+' L'+rightX+','+rightY);
+    }
     if(t){
       // Sits at its own, smaller perpendicular offset (textClear) — same
       // baseline-to-true-center correction either way; only a vertical
@@ -2965,31 +3323,88 @@ function lastLegDir(points){
 }
 function appendGenTotalDot(labelLayer, points){
   const {x:end, dx, dy} = lastLegDir(points);
-  const OFFSET = 2.4, R = 2.8; // past the apex, deliberately overlapping the class
+  // Round R item 1 ("o centro do circulo pode ser o mesmo que o centro da
+  // ponta do triângulo"): OFFSET=0 — the dot's center now sits exactly on
+  // the path endpoint (the same point the triangle tip's refX/refY marks),
+  // instead of being pushed further out past the apex.
+  const OFFSET = 0, R = 3.6;
   labelLayer.appendChild(S('circle', {
     cx: end.x+dx*OFFSET, cy: end.y+dy*OFFSET, r: R,
     style:'fill:var(--edge-generalization)'
   }));
 }
-function appendCartGenSquare(labelLayer, points, disjoint){
-  const {x:end} = lastLegDir(points);
+/* Round R item 3: total length of a polyline, used to phase-align dashed
+   MERGE_FAMILIES members (see buildEdgeDom) so their common trailing
+   segment renders with matching dash phase instead of visually merging
+   into a solid line. */
+function polylineLength(points){
+  let len = 0;
+  for(let i=0;i<points.length-1;i++){
+    len += Math.hypot(points[i+1].x-points[i].x, points[i+1].y-points[i].y);
+  }
+  return len;
+}
+function appendCartGenSquare(labelLayer, points, disjoint, merged){
+  // Round Q item 7 ("a posição dele fica na conexão dos relacionamentos e
+  // não na classe"): the OMT-G notation itself describes this square as
+  // connecting the superclass to its subclasses — a small hub sitting ON
+  // the connecting line, not straddling the target class's border.
+  // Round R item 5 (confirmed with the user via their annotated screenshot
+  // before implementing, per their explicit request): "a conexão entre os
+  // relacionamentos" turned out to mean something more specific than
+  // "somewhere back along the line" — it's the point where a merged group's
+  // individual lines actually join the shared trunk that runs into the
+  // superclass, i.e. the trunk's far elbow, not a fixed distance back from
+  // the border. alignGeneralizationApproach gives every aligned member of a
+  // 2+ merged group an identical 4-point route
+  // [ownPort, ownBend, trunkJunction, sharedPt] — points[length-2] is
+  // exactly that trunk junction, the same coordinate for every member, so
+  // the square lands right where the group's lines visually meet. A solo
+  // (non-merged) relationship has no such junction to speak of, so it keeps
+  // the previous behavior: pulled back off the border along the last leg
+  // (clamped to half that leg's length, so it never overshoots onto a very
+  // short segment).
+  let cx, cy;
+  if(merged && points.length>=4){
+    const j = points[points.length-2];
+    cx = j.x; cy = j.y;
+  } else {
+    const end = points[points.length-1];
+    const prev = points.length>1 ? points[points.length-2] : {x:end.x, y:end.y-1};
+    let dx = end.x-prev.x, dy = end.y-prev.y;
+    const legLen = Math.hypot(dx,dy) || 1;
+    dx/=legLen; dy/=legLen;
+    const BACK = Math.min(24, legLen*0.5);
+    cx = end.x - dx*BACK; cy = end.y - dy*BACK;
+  }
   const HALF = 6; // square is axis-aligned and rotation doesn't matter (90°-symmetric)
   labelLayer.appendChild(S('rect', {
-    x: end.x-HALF, y: end.y-HALF, width: HALF*2, height: HALF*2,
-    style:'fill:'+(disjoint?'var(--canvas-bg)':'var(--edge-cartgen)')+';stroke:var(--edge-cartgen);stroke-width:1.5'
+    x: cx-HALF, y: cy-HALF, width: HALF*2, height: HALF*2,
+    // Round Q item 8: filled white/black (never the reddish edge-cartgen
+    // line color) with a black outline — the line itself can stay colored.
+    style:'fill:'+(disjoint?'#fff':'#000')+';stroke:#000;stroke-width:1.5'
   }));
 }
-function buildEdgeDom(route, labelLayer, labelMetas, rects, otherSegs, genGroupSuppress){
+function buildEdgeDom(route, labelLayer, labelMetas, rects, otherSegs, genGroupSuppress, genGroupMerged){
   const r = route.r;
   const g = S('g', {class:'edge '+relFamily(r.type)});
-  const points = route.points;
-  const dPlain = buildOrthoPathD(points, null);
-  const isSel = selection.type==='rel' && selection.id===r.id;
   // Round O item 10 / Round P item 17: within a merged MERGE_FAMILIES group,
   // only the carrier draws the shared marker — and (item 16) only it draws
   // the group's label, so a group of several converging lines shows the
   // marker/label exactly once instead of once per member.
   const suppressed = !!(genGroupSuppress && genGroupSuppress.has(r.id));
+  let points = route.points;
+  // Round Q item 9 used to truncate a suppressed member's final segment
+  // here to avoid stacked dash phases reading as a solid line — but that
+  // assumed every merged member always has the same clean trunk-tail
+  // structure, which isn't guaranteed (routeEdge can leave a member with
+  // extra obstacle-avoidance bends), and truncating those cut off real,
+  // non-redundant geometry — the "corta o relacionamento" regression from
+  // Round R item 3. Reverted: every member now draws its FULL route, and
+  // the dash-phase mismatch is fixed below instead, without removing any
+  // drawn content.
+  const dPlain = buildOrthoPathD(points, null);
+  const isSel = selection.type==='rel' && selection.id===r.id;
 
   if(r.type==='network'){
     // OMT-G notation: network (arc-node/arc-arc) relationships are drawn as
@@ -3010,6 +3425,24 @@ function buildEdgeDom(route, labelLayer, labelMetas, rects, otherSegs, genGroupS
     // 'aggregation' type (r.spatial), not a separate type string.
     const extraCls = (r.type==='aggregation' && r.spatial) ? ' spatial-agg' : '';
     const path = S('path', {class:'edge-path '+fam+extraCls+(isSel?' selected':''), d:dHopped});
+    if(MERGE_FAMILIES.has(fam)){
+      // Round R item 3: when 2+ members of a merged group (generalization /
+      // cartographicGeneralization) share the same trailing segment into the
+      // common point, each one's dash pattern otherwise starts counting from
+      // ITS OWN path start — so by the time they reach that shared segment
+      // their dash phases rarely line up, and several out-of-phase dashed
+      // strokes stacked on the exact same pixels read as one solid line
+      // (cartographicGeneralization's dashed line only — generalization's
+      // solid line is unaffected by dash phase, so this is a no-op there).
+      // Anchoring stroke-dashoffset to each member's OWN full path length
+      // forces dash phase to 0 at its endpoint for every member; since the
+      // shared trailing segment is geometrically identical across the group,
+      // matching phase at the shared endpoint keeps them matched along the
+      // whole shared segment (phase only depends on distance from that
+      // endpoint, not on how long each member's approach leg is) — so the
+      // dashes overlap cleanly instead of alternating into a false solid line.
+      path.style.strokeDashoffset = String(-polylineLength(points));
+    }
     if(fam==='generalization' && !suppressed){
       // OMT-G: triangle fill encodes disjoint(hollow)/overlapping(filled).
       // Round O item 10: when 2+ generalizations converge on the same
@@ -3030,13 +3463,14 @@ function buildEdgeDom(route, labelLayer, labelMetas, rects, otherSegs, genGroupS
       if(r.total) appendGenTotalDot(labelLayer, points);
     }
     if(fam==='cartographicGeneralization' && !suppressed){
-      // Round P item 17: a small square at the shared point — outline
-      // (white) when disjoint, solid when overlapping. Same one-carrier-per-
-      // group suppression as generalization's marker above. It's centered
-      // ON the connection point (so it straddles the class border) — same
-      // occlusion problem as the dot above, so it's drawn straight into
-      // labelLayer too, never as a real SVG marker.
-      appendCartGenSquare(labelLayer, points, r.disjoint);
+      // Round P item 17: a small square — outline (white) when disjoint,
+      // solid when overlapping. Same one-carrier-per-group suppression as
+      // generalization's marker above. Same occlusion problem as the dot
+      // above (see Round P), so it's drawn straight into labelLayer too,
+      // never as a real SVG marker. Round R item 5: position confirmed with
+      // the user via their annotated screenshot — see appendCartGenSquare.
+      const merged = !!(genGroupMerged && genGroupMerged.has(r.id));
+      appendCartGenSquare(labelLayer, points, r.disjoint, merged);
     }
     if(fam==='aggregation'){
       // OMT-G: diamond is always hollow; spatial aggregation (topological
@@ -3101,9 +3535,6 @@ function buildEdgeDom(route, labelLayer, labelMetas, rects, otherSegs, genGroupS
     // falling back to its best-effort default when nothing is fully clear,
     // per the user's explicit "se não tiver como, tudo bem" instruction.
     buildAssocNameArrow(labelLayer, labelMetas, points, r, otherSegs);
-  } else if(relFamily(r.type)==='aggregation'){
-    lbl(nearA.x, nearA.y, r.cardSource||'1', normA);
-    lbl(nearB.x, nearB.y, r.cardTarget||'0..*', normB);
   } else if(r.type==='network'){
     // OMT-G: the network's own name is annotated INSIDE the two dashed
     // lines (Round L item 2) — mandatory, defaulting to "Rede" (item 1) —
@@ -3125,15 +3556,26 @@ function buildEdgeDom(route, labelLayer, labelMetas, rects, otherSegs, genGroupS
     const rWithLabel = Object.assign({}, r, {name: raw.charAt(0).toUpperCase()+raw.slice(1)});
     buildAssocNameArrow(labelLayer, labelMetas, points, rWithLabel, otherSegs);
   } else if(r.type==='cartographicGeneralization' && !suppressed){
-    // Round P item 16: the label is just "Forma" or "Escala", plain text
-    // centered on the line with no reading-direction arrow — same active
-    // least-overlap search as network's name, reused via buildNetworkNameLabel
-    // (a shallow clone carries the label as `name` without touching r itself).
-    // Only the carrier (same one drawing the shared marker) shows it — a
-    // group of several converging lines each printing their own "Forma" was
-    // cluttered and redundant; one label per group reads far cleaner.
+    // Round P item 16: the label is just "Forma" or "Escala" — a shallow
+    // clone carries the label as `name` without touching r itself. Only the
+    // carrier (same one drawing the shared marker) shows it — a group of
+    // several converging lines each printing their own "Forma" was cluttered
+    // and redundant; one label per group reads far cleaner.
+    // Round S item 5 ("a palavra Forma e a palavra Escala aparecem sobre a
+    // linha... quero que siga a regra de todos os outros rótulos"): this
+    // used to share buildNetworkNameLabel with network's own name — but that
+    // function's zero perpendicular offset only makes sense for network's
+    // own double parallel-line notation (the label sits IN the gap between
+    // the two lines, so there's nothing to clear). Cartographic
+    // generalization is a single dashed line like spatial, so it now shares
+    // spatial's buildAssocNameArrow instead — the same off-line clearance +
+    // least-overlap search every other line-single relationship label
+    // already uses. Round S item 1 ("não tem a flechinha... é só este
+    // rótulo mesmo"): unlike association/spatial, this isn't a directional
+    // predicate, so {arrow:false} keeps the placement/search but leaves out
+    // the reading-direction arrow.
     const rWithLabel = Object.assign({}, r, {name: r.kind==='scale' ? 'Escala' : 'Forma'});
-    buildNetworkNameLabel(labelLayer, labelMetas, points, rWithLabel, otherSegs);
+    buildAssocNameArrow(labelLayer, labelMetas, points, rWithLabel, otherSegs, {arrow:false});
   }
   // generalization has no floating label anymore — the triangle itself
   // (fill + apex dot) encodes total/partial and disjoint/overlapping.
@@ -3146,11 +3588,12 @@ function renderCanvas(){
   if(activePage==='logical') renderLogicalCanvas();
   else renderConceptualCanvas();
 }
-function renderConceptualCanvas(){
-  const nodeLayer = document.getElementById('nodeLayer');
-  const edgeLayer = document.getElementById('edgeLayer');
-  const labelLayer = document.getElementById('labelLayer');
-  nodeLayer.innerHTML = ''; edgeLayer.innerHTML = ''; if(labelLayer) labelLayer.innerHTML = '';
+// Round T (validação): the routing pipeline used to live inline inside
+// renderConceptualCanvas only — factored out here so computeConceptualValidation
+// (the "Validar" feature) can reuse the exact same rects/routes the canvas
+// actually draws, instead of re-deriving a slightly different approximation
+// of the geometry that could disagree with what the user sees on screen.
+function computeConceptualLayout(){
   const rects = {};
   state.classes.forEach(c=>{ c.w = classWidth(c); c.h = classHeight(c); rects[c.id] = {x:c.x,y:c.y,w:c.w,h:c.h}; });
 
@@ -3168,12 +3611,20 @@ function renderConceptualCanvas(){
   separatePortAdjacentSegments(routes, rects);
   alignGeneralizationApproach(routes, rects);
 
-  // finalize segments/hop buckets from the (possibly lane-separated) points
+  // finalize segments from the (possibly lane-separated) points
   routes.forEach(route=>{
     if(!route) return;
     route.segs = segmentsOf(route.points);
-    route.hops = route.segs.map(()=>[]);
   });
+  return {rects, routes};
+}
+function renderConceptualCanvas(){
+  const nodeLayer = document.getElementById('nodeLayer');
+  const edgeLayer = document.getElementById('edgeLayer');
+  const labelLayer = document.getElementById('labelLayer');
+  nodeLayer.innerHTML = ''; edgeLayer.innerHTML = ''; if(labelLayer) labelLayer.innerHTML = '';
+  const {rects, routes} = computeConceptualLayout();
+  routes.forEach(route=>{ if(route) route.hops = route.segs.map(()=>[]); });
 
   // every relationship's own segments, flattened — computed here (rather
   // than after Phase 3) so each route's label search in buildEdgeDom can be
@@ -3223,6 +3674,13 @@ function renderConceptualCanvas(){
   // border point (assignPorts) with a bare line, so the group reads as one
   // shared marker rather than several stacked on top of each other.
   const genGroupSuppress = new Set();
+  // Round R item 5: which relationships actually belong to a real 2+ merged
+  // group (as opposed to a solo relationship whose route just happens to
+  // have several points) — used by the cartgen square to know whether it
+  // can trust points[length-2] as the shared trunk junction (see
+  // appendCartGenSquare) rather than falling back to its old near-the-
+  // border placement.
+  const genGroupMerged = new Set();
   {
     const byTarget = {};
     state.relationships.forEach(r=>{
@@ -3239,6 +3697,7 @@ function renderConceptualCanvas(){
       // earlier-drawn carrier's marker would get visually painted over by
       // the plain (marker-less) lines of the siblings drawn after it.
       list.slice(0,-1).forEach(r=> genGroupSuppress.add(r.id));
+      list.forEach(r=> genGroupMerged.add(r.id));
     });
   }
 
@@ -3247,7 +3706,7 @@ function renderConceptualCanvas(){
   routes.forEach(route=>{
     if(!route) return;
     const otherSegs = allSegs.filter(s=> route.segs.indexOf(s)===-1);
-    edgeLayer.appendChild(buildEdgeDom(route, labelLayer, labelMetas, rects, otherSegs, genGroupSuppress));
+    edgeLayer.appendChild(buildEdgeDom(route, labelLayer, labelMetas, rects, otherSegs, genGroupSuppress, genGroupMerged));
   });
   // Cardinality labels ("1", "0..*") still use the reactive push-off-the-line
   // approach — they sit right at a port, with no room to search for a clear
@@ -3334,7 +3793,10 @@ function buildLogicalTableNode(t){
       try{ evt.currentTarget.setPointerCapture(evt.pointerId); }catch(e){}
     }
   });
-  g.appendChild(S('rect',{class:'card-bg', x:0,y:0,width:t.w,height:h, rx:9}));
+  // Round T item 0: same border-inset fix as the conceptual class card, kept
+  // consistent between both pages (see the long comment at the class-card
+  // rect above).
+  g.appendChild(S('rect',{class:'card-bg', x:CARD_BORDER_INSET,y:CARD_BORDER_INSET,width:t.w-2*CARD_BORDER_INSET,height:h-2*CARD_BORDER_INSET, rx:9}));
   g.appendChild(S('text',{class:'cname', x:12, y:22},[t.name]));
   g.appendChild(S('line',{class:'card-divider', x1:0,y1:CARD_HEAD_H,x2:t.w,y2:CARD_HEAD_H}));
   const nameX = 12 + 15;
@@ -3470,8 +3932,22 @@ function initDefs(){
   // drawn separately, straight into labelLayer (the topmost layer), in
   // buildEdgeDom below, so it actually renders on top of the class.
   function genMarker(id, filled){
-    return S('marker',{id:id, viewBox:'0 0 20 20', refX:20, refY:10, markerWidth:20, markerHeight:20, markerUnits:'userSpaceOnUse', orient:'auto'},[
-      S('path',{d:'M1,1 L20,10 L1,19 Z', style:'fill:'+(filled?'var(--edge-generalization)':'var(--canvas-bg)')+';stroke:var(--edge-generalization);stroke-width:1.5;stroke-linejoin:round'})
+    // Round Q item 2: the tip vertex is inset by half the stroke width
+    // (0.75, for stroke-width:1.5) from refX, on the theory that a sharp
+    // vertex stroked with stroke-linejoin:round bulges OUTWARD by exactly
+    // strokeWidth/2 along the direction it already faces.
+    // Round R item 2 ("ainda não bate exatamente... deslocar a seta um
+    // pouco"): that theory got the MAGNITUDE right relatively but the still-
+    // measured gap (confirmed by pixel-scanning actual rendered screenshots,
+    // both with the target class hidden — ruling out any z-order occlusion —
+    // and across several zoom levels and both horizontal/vertical routes)
+    // showed the visible ink landing ~2 user-units short of refX=20, not
+    // exactly on it. Empirically recalibrated refX down to 18 (verified via
+    // the same pixel-scan method to land the visible tip within ~1px of the
+    // class border in every tested case) rather than continuing to guess at
+    // the exact sub-pixel rendering behavior of the round join analytically.
+    return S('marker',{id:id, viewBox:'0 0 20 20', refX:18, refY:10, markerWidth:20, markerHeight:20, markerUnits:'userSpaceOnUse', orient:'auto'},[
+      S('path',{d:'M1,1 L19.25,10 L1,19 Z', style:'fill:'+(filled?'var(--edge-generalization)':'var(--canvas-bg)')+';stroke:var(--edge-generalization);stroke-width:1.5;stroke-linejoin:round'})
     ]);
   }
   defs.appendChild(genMarker('marker-gen-d', false)); // disjunta (hollow)
@@ -3482,8 +3958,16 @@ function initDefs(){
   // (it had the same latent grow-on-selection bug as the old triangle,
   // fixed for generalization back in Round O item 9, just never revisited
   // for the diamond until now).
+  // Round Q item 4 ("você não fez um losango, fez um quadrado"): equal
+  // diagonals (19 wide, 18 tall) made this read as a square rotated 45°,
+  // indistinguishable from an actual square — a real losango/kite needs
+  // unequal diagonals. Flattened to 12 tall (top/bottom vertices pulled in
+  // to y=4/16) against the same ~19-wide span, and — same fix as the
+  // triangle's tip above — the touching left vertex is inset by half the
+  // stroke width (1.75 instead of 1) so its round-join bulge lands exactly
+  // on refX (the whole class's border) instead of poking past it.
   defs.appendChild(S('marker',{id:'marker-diamond', viewBox:'0 0 21 20', refX:1, refY:10, markerWidth:21, markerHeight:20, markerUnits:'userSpaceOnUse', orient:'auto'},[
-    S('path',{d:'M1,10 L10.5,1 L20,10 L10.5,19 Z', style:'fill:var(--canvas-bg);stroke:var(--edge-aggregation);stroke-width:1.5;stroke-linejoin:round'})
+    S('path',{d:'M1.75,10 L10.5,4 L20,10 L10.5,16 Z', style:'fill:var(--canvas-bg);stroke:var(--edge-aggregation);stroke-width:1.5;stroke-linejoin:round'})
   ]));
   // Round P item 17: cartographic generalization's connection-point mark — a
   // small square straddling the shared point (same centered-on-the-exact-
@@ -3733,6 +4217,24 @@ function initStageEvents(){
           const SNAP_DIST = 26;
           if(!(autoPt && Math.hypot(autoPt.x-manualPt.x, autoPt.y-manualPt.y)<=SNAP_DIST)){
             rDrag.dstAnchor = manualAnchor; // too far — keep the manual placement
+          } else {
+            // Round S item 2/6 ("quando junta novamente no canvas parece
+            // ok, mas na configuração dos fundidos, ela está diferente
+            // ainda" — reported for both generalization and cartographic
+            // generalization): clearing dstAnchor above makes this
+            // relationship COUNT as merged again (inheritedMergeFields/
+            // syncMergeGroupSiblings's gate is just !dstAnchor), but its own
+            // total/disjoint (or kind/disjoint) fields still hold whatever
+            // they were set to while it sat separated — nothing pulls the
+            // rest of the group's current shared values onto it at the
+            // moment it rejoins, only on the NEXT edit to any member. Adopt
+            // the group's current values right here, the same inherit rule
+            // createRelationship uses for a brand new sibling.
+            if(rDrag.type==='generalization'){
+              Object.assign(rDrag, inheritedMergeFields(rDrag.type, rDrag.targetId, ['total','disjoint'], {total:rDrag.total, disjoint:rDrag.disjoint}, rDrag.id));
+            } else if(rDrag.type==='cartographicGeneralization'){
+              Object.assign(rDrag, inheritedMergeFields(rDrag.type, rDrag.targetId, ['kind','disjoint'], {kind:rDrag.kind, disjoint:rDrag.disjoint}, rDrag.id));
+            }
           }
         }
       }
@@ -3879,7 +4381,13 @@ function renderRelControls(){
   const mini = document.getElementById('relCardHintMini');
   if(mini){
     mini.innerHTML = '';
-    if(relMode.type==='association' || relFamily(relMode.type)==='aggregation'){
+    // Round S item 2 ("dentro de agregação, tem uma explicação de
+    // cardinalidade, pode tirar, não tem cardinalidade em Agregação"):
+    // aggregation lost its cardinality fields back in Round Q item 5 (it's
+    // always a fixed whole/part structure, 1 todo to many partes) but this
+    // "como ler a cardinalidade" mini-hint in the sidebar kept showing for
+    // it anyway — only association actually has configurable cardinality.
+    if(relMode.type==='association'){
       const ends = REL_HINTS[relMode.type][1];
       mini.appendChild(buildCardHintMini(ends[0], '1', ends[1], '0..*'));
     }
@@ -4099,12 +4607,10 @@ function buildRelInspector(r){
     scroll.appendChild(fieldSeg('Tipo', r.kind==='scale'?'scale':'shape', [{id:'shape',label:'Forma'},{id:'scale',label:'Escala'}], v=>{ r.kind=v; syncMergeGroupSiblings(r,['kind','disjoint']); touch(); }));
     scroll.appendChild(fieldSeg('Elementos de Restrição', r.disjoint?'disjoint':'overlap', [{id:'overlap',label:'Sobreposto'},{id:'disjoint',label:'Disjunto'}], v=>{ r.disjoint=(v==='disjoint'); syncMergeGroupSiblings(r,['kind','disjoint']); touch(); }));
   } else if(relFamily(r.type)==='aggregation'){
+    // Round Q item 5: aggregation has no cardinality field — it's always a
+    // fixed whole/part structure (1 whole to many parts), not a configurable
+    // N:M like association.
     scroll.appendChild(fieldSeg('Tipo', r.spatial?'espacial':'simples', [{id:'simples',label:'Simples'},{id:'espacial',label:'Espacial'}], v=>{ r.spatial=(v==='espacial'); touch(); }));
-    scroll.appendChild(E('div',{class:'field-row'},[
-      fieldSelect('Card. todo', r.cardSource, CARDINALITIES.map(x=>({id:x,label:x})), v=>{ r.cardSource=v; touch(); }),
-      fieldSelect('Card. parte', r.cardTarget, CARDINALITIES.map(x=>({id:x,label:x})), v=>{ r.cardTarget=v; touch(); })
-    ]));
-    scroll.appendChild(buildCardHint(a?a.name:'?', r.cardSource, b?b.name:'?', r.cardTarget));
   } else if(r.type==='network'){
     if(r.sourceId===r.targetId) scroll.appendChild(E('div',{class:'relhint'},['Estrutura arco-arco (recursiva): esta classe se conecta a si mesma, sem nó intermediário.']));
     // Round L item 1: network relationships don't have direction — no more
@@ -4285,7 +4791,9 @@ function computeExportFields(c){
     }
     if(r.type==='aggregation' && r.targetId===c.id){
       const whole = state.classes.find(x=>x.id===r.sourceId);
-      if(whole) fields.push({name: sqlIdent(whole.name)+'_id', type:'integer', pk:false, nullable:(r.cardTarget==='0..*'||r.cardTarget==='0..1'), fkTable: sqlIdent(whole.name), fkClassId: whole.id, fkNote:'agregação todo-parte'+(r.spatial?' (espacial: com controle topológico)':'')});
+      // Round Q item 5: aggregation has no cardinality to derive nullability
+      // from any more — a part is always required to belong to its whole.
+      if(whole) fields.push({name: sqlIdent(whole.name)+'_id', type:'integer', pk:false, nullable:false, fkTable: sqlIdent(whole.name), fkClassId: whole.id, fkNote:'agregação todo-parte'+(r.spatial?' (espacial: com controle topológico)':'')});
     }
     if(r.type==='network' && r.targetId===c.id){
       const node = state.classes.find(x=>x.id===r.sourceId);
@@ -4764,10 +5272,13 @@ function initExportMenu(){
 function initTopbar(){
   document.getElementById('modelName').addEventListener('input', (e)=>{ state.meta.name = e.target.value; scheduleAutosave(); });
 
-  // Placeholder button (item 5, this round): just a visible reminder that a
-  // real model-validation feature is still pending — not implemented yet.
   document.getElementById('btnValidate').addEventListener('click', ()=>{
-    toast('Validação do modelo ainda não implementada — isto é só um lembrete.');
+    const panel = document.getElementById('validationPanel');
+    panel.hidden = !panel.hidden;
+    if(!panel.hidden) renderValidationPanel();
+  });
+  document.getElementById('btnCloseValidation').addEventListener('click', ()=>{
+    document.getElementById('validationPanel').hidden = true;
   });
 
   document.getElementById('btnSample').addEventListener('click', (e)=>{

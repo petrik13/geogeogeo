@@ -159,7 +159,6 @@
   .btn.primary:hover{ filter:brightness(1.06); }
   .btn.ghost{ background:transparent; border-color:transparent; }
   .btn.ghost:hover{ background:var(--surface-2); }
-  .btn.ghost.active{ background:var(--accent-soft); border-color:var(--accent); color:var(--ink); }
   /* Round N item 3 ("No anotador o fundo das opções está branco"): a native
      <select>'s closed control picks up .btn's own background, but its
      dropdown POPUP list ignores that and falls back to the browser's default
@@ -510,23 +509,22 @@
     </div>
     <input id="modelName" class="model-name" type="text" value="Novo modelo" aria-label="Nome do modelo" readonly>
     <select id="reviewModelSelect" class="btn ghost" style="max-width:260px;font-weight:600;" title="Escolha o cenário de revisão"></select>
-    <!-- Round U items 2/3/4/5/6/16: same reorg as index.html, kept in sync
-         (see the long comment there) — Exemplo/Evoluir removed entirely,
-         Novo/Abrir moved first, Desfazer/Refazer + Validação before as
-         Conceitual/Lógica. annot-hide-editing kept on Novo/Abrir as before. -->
-    <div class="btnrow">
-      <button class="btn ghost annot-hide-editing" id="btnNew" title="Novo modelo em branco">Novo</button>
-      <button class="btn ghost annot-hide-editing" id="btnOpen" title="Abrir modelo (.json)">Abrir</button>
-      <input type="file" id="fileOpen" accept="application/json" class="sr-only">
+    <div class="pagetabs" id="pageTabs">
+      <button class="pagetab active" id="pageTabConceptual" data-page="conceptual">Conceitual</button>
+      <button class="pagetab" id="pageTabLogical" data-page="logical">Lógica</button>
     </div>
+    <button class="btn" id="btnEvolve" title="Gerar/atualizar o modelo lógico a partir do conceitual">Evoluir para o lógico →</button>
     <div class="btnrow">
       <button class="btn ghost icon-only" id="btnUndo" title="Desfazer (Ctrl+Z)" disabled>↶</button>
       <button class="btn ghost icon-only" id="btnRedo" title="Refazer (Ctrl+Shift+Z)" disabled>↷</button>
     </div>
-    <button class="btn ghost" id="btnValidate" title="Verificar o modelo (desenho + regras do OMT-G)">✓ Validação</button>
     <div class="spacer"></div>
     <div class="btnrow">
-      <button class="btn ghost" id="btnGrid" title="Mostrar/ocultar grade">Grid</button>
+      <button class="btn ghost" id="btnValidate" title="Verificar o modelo conceitual (desenho + regras do OMT-G)">✓ Validação</button>
+      <button class="btn ghost annot-hide-editing" id="btnSample" title="Carregar modelo de exemplo">Exemplo</button>
+      <button class="btn ghost annot-hide-editing" id="btnNew" title="Novo modelo em branco">Novo</button>
+      <button class="btn ghost annot-hide-editing" id="btnOpen" title="Abrir modelo (.json)">Abrir</button>
+      <input type="file" id="fileOpen" accept="application/json" class="sr-only">
       <div class="dl-menu-wrap">
         <button class="btn" id="btnExport" title="Exportar o diagrama ou o modelo">Exportar para ▾</button>
         <div class="dl-menu" id="exportMenu" hidden>
@@ -563,6 +561,23 @@
           <div class="rail-section">
             <div class="rail-label">Relacionamentos <span class="count" id="countRels">0</span></div>
             <div id="relList"></div>
+          </div>
+        </div>
+      </div>
+      <div id="railLogical" hidden>
+        <div class="rail-section">
+          <div class="rail-label">Modelo lógico</div>
+          <button class="btn" id="btnAddTable" style="width:100%">+ Nova tabela</button>
+          <div class="relhint">Arraste de uma coluna FK (●) até a PK de outra tabela para ligar — ou marque "FK" nas propriedades da coluna e escolha lá a tabela/PK.</div>
+        </div>
+        <div class="rail-scroll">
+          <div class="rail-section">
+            <div class="rail-label">Tabelas <span class="count" id="countTables">0</span></div>
+            <div id="tableList"></div>
+          </div>
+          <div class="rail-section grow">
+            <div class="rail-label">Validação <span class="count" id="countIssuesLogical">0</span></div>
+            <div id="validationListLogical"></div>
           </div>
         </div>
       </div>
@@ -717,24 +732,20 @@ const ATTR_TYPE_LABEL = Object.fromEntries(ATTR_TYPES.map(t=>[t.id,t.label]));
    two geo-object specializations in Borges/Davis/Laender's OMT-G paper
    (Section 2.2.1, Figure 4). No "complex/composto" primitive — that isn't
    an OMT-G primitive. */
-// Round U item 7: each primitive's "hint" is shown as the drag button's
-// hover title (native tooltip) in the "Adicionar classe" rail — a short,
-// OMT-G-consistent explanation of that geometric primitive, not just a
-// generic "arraste para adicionar" repeated on every button.
 const GEO_OBJECT_PRIMITIVES = [
-  {id:'point', label:'Ponto', short:'Ponto', hint:'Geo-objeto com geometria de ponto — elemento discreto localizado (ex.: poço, sede, marco).'},
-  {id:'line', label:'Linha', short:'Linha', hint:'Geo-objeto com geometria de linha, sem topologia de rede (ex.: divisa, trilha).'},
-  {id:'polygon', label:'Polígono', short:'Polígono', hint:'Geo-objeto com geometria de área (ex.: lote, talhão, município).'},
-  {id:'unidirectional', label:'Linha unidirecional (rede)', short:'Linha unid.', hint:'Geo-objeto de rede: linha com topologia orientada em um único sentido (ex.: trecho de rio, via de mão única).'},
-  {id:'bidirectional', label:'Linha bidirecional (rede)', short:'Linha bidir.', hint:'Geo-objeto de rede: linha com topologia nos dois sentidos (ex.: rodovia de mão dupla).'},
-  {id:'node', label:'Nó (rede)', short:'Nó', hint:'Geo-objeto de rede: ponto com topologia, conectando arcos da rede (ex.: cruzamento, estação).'}
+  {id:'point', label:'Ponto', short:'Ponto'},
+  {id:'line', label:'Linha', short:'Linha'},
+  {id:'polygon', label:'Polígono', short:'Polígono'},
+  {id:'unidirectional', label:'Linha unidirecional (rede)', short:'Linha unid.'},
+  {id:'bidirectional', label:'Linha bidirecional (rede)', short:'Linha bidir.'},
+  {id:'node', label:'Nó (rede)', short:'Nó'}
 ];
 const GEO_FIELD_PRIMITIVES = [
-  {id:'isoline', label:'Isolinhas', short:'Isolinhas', hint:'Geo-campo representado por linhas de igual valor (ex.: curvas de nível, isoietas).'},
-  {id:'tin', label:'TIN (triangulação)', short:'TIN', hint:'Geo-campo representado por uma malha triangular irregular (ex.: modelo digital de terreno).'},
-  {id:'tessellation', label:'Tesselação (grade)', short:'Tesselação', hint:'Geo-campo representado por uma grade regular de células (ex.: imagem raster).'},
-  {id:'sample', label:'Amostragem (pontos)', short:'Amostragem', hint:'Geo-campo representado por valores conhecidos em pontos de amostragem, interpolados entre eles (ex.: estações pluviométricas).'},
-  {id:'partition', label:'Subdivisão Planar', short:'Subdivisão Planar', hint:'Geo-campo representado por polígonos que particionam o espaço sem sobreposição nem lacunas (ex.: zoneamento, tipos de solo).'}
+  {id:'isoline', label:'Isolinhas', short:'Isolinhas'},
+  {id:'tin', label:'TIN (triangulação)', short:'TIN'},
+  {id:'tessellation', label:'Tesselação (grade)', short:'Tesselação'},
+  {id:'sample', label:'Amostragem (pontos)', short:'Amostragem'},
+  {id:'partition', label:'Subdivisão Planar', short:'Subdivisão Planar'}
 ];
 const ALL_PRIMITIVE_LABEL = Object.fromEntries([...GEO_OBJECT_PRIMITIVES, ...GEO_FIELD_PRIMITIVES].map(p=>[p.id,p.label]));
 /* The 9 official OMT-G spatial relations (Borges/Davis/Laender, Table 2):
@@ -1081,14 +1092,10 @@ let anchorDrag = null;
 let marquee = null; // {x0,y0,x1,y1,additive,moved} — rubber-band multi-select drag on the conceptual canvas background
 let spaceHeld = false; // Space held = the background-drag gesture pans instead of marquee-selecting
 let activeRightTab = 'prop';
-let gridVisible = true; // Round U item 15: toggled by #btnGrid ("Grid")
-// Round X item 1 ("apaga tudo que tem do lógico... vou recriar ela"): the
-// Lógica page (tables, columns, PK/FK, FK-drag, evolveToLogical, the whole
-// logical/* state and every function under "logical canvas" below) has
-// been removed entirely, at the user's explicit request, rather than left
-// half-disabled — this app is conceptual-only until it's rebuilt from
-// scratch. activePage/logicalSelection/colDrag/logicalColRects and every
-// state.logical reference are gone with it.
+let activePage = 'conceptual'; // 'conceptual' | 'logical'
+let logicalSelection = {type:null, id:null}; // {type:'table'|null, id}
+let colDrag = null; // {sourceTableId, sourceColumnId, x, y} — dragging a column-to-column FK link (logical page, Power BI style)
+let logicalColRects = {}; // columnId -> {tableId, x, y, w, h} in canvas coords, rebuilt every renderLogicalCanvas() for drop-target hit-testing
 
 /* ---------- undo/redo history ---------- */
 // Snapshots are whole-state JSON strings. historyBaseline is the state as of
@@ -1116,12 +1123,14 @@ function commitHistory(){
 function restoreState(json){
   state = normalizeState(JSON.parse(json));
   if(!state.meta) state.meta = emptyModel().meta;
+  if(!state.logical) state.logical = {tables:[]};
   selection = {type:null,id:null};
+  logicalSelection = {type:null,id:null};
   multiSelect = new Set();
-  connDrag = null;
+  connDrag = null; colDrag = null;
   const nameInput = document.getElementById('modelName');
   if(nameInput) nameInput.value = state.meta.name || '';
-  renderRelControls(); renderConnDragOverlay();
+  renderRelControls(); renderConnDragOverlay(); renderColDragOverlay();
   touch();
 }
 function undo(){
@@ -1148,7 +1157,7 @@ function updateUndoRedoButtons(){
 }
 
 function emptyModel(name){
-  return { meta:{ name: name||'Novo modelo', srid:4326, schema:'public', workspaceName:'ModeloOMTG', srsAuthority:'EPSG' }, classes:[], relationships:[] };
+  return { meta:{ name: name||'Novo modelo', srid:4326, schema:'public', workspaceName:'ModeloOMTG', srsAuthority:'EPSG' }, classes:[], relationships:[], logical:{tables:[]} };
 }
 /* Shared "base name" / "base name 2" / "base name 3"... dedupe used for new
    class names, new attribute names, and to auto-fix a class rename that
@@ -1307,6 +1316,102 @@ function handleNodeClick(classId){
   selectClass(classId);
 }
 
+/* ============================================================
+   LOGICAL MODEL (page 2) — Power BI–style column-to-column tables.
+   state.logical = { tables: [ { id, name, x, y, w, h, columns:
+     [ {id, name, type, pk, nullable, fk, refTableId, refColumnId} ] } ] }
+   No separate "links" array: an FK relationship is just a column with
+   fk:true plus refTableId/refColumnId pointing at another table's PK
+   column — a table can carry as many FK columns as it needs.
+   ============================================================ */
+function newTableObj(idx){
+  const id = uid('t');
+  return {
+    id, name: 'NovaTabela'+(idx+1),
+    x: 40 + (idx % 4) * 250,
+    y: 40 + Math.floor(idx / 4) * 210,
+    w: 208, h: 60,
+    columns: [{id:uid('col'), name:'id', type:'integer', pk:true, nullable:false, fk:false, refTableId:null, refColumnId:null}]
+  };
+}
+function addTable(){
+  const t = newTableObj(state.logical.tables.length);
+  state.logical.tables.push(t);
+  logicalSelection = {type:'table', id:t.id};
+  touch();
+}
+function addTableAt(x, y){
+  const t = newTableObj(state.logical.tables.length);
+  t.x = Math.round(x); t.y = Math.round(y);
+  state.logical.tables.push(t);
+  logicalSelection = {type:'table', id:t.id};
+  touch();
+}
+function deleteTable(id){
+  state.logical.tables = state.logical.tables.filter(t=>t.id!==id);
+  // a table that referenced the deleted one loses that FK rather than pointing at nothing
+  state.logical.tables.forEach(t=> t.columns.forEach(c=>{
+    if(c.refTableId===id){ c.fk=false; c.refTableId=null; c.refColumnId=null; }
+  }));
+  if(logicalSelection.type==='table' && logicalSelection.id===id) logicalSelection = {type:null,id:null};
+  touch();
+}
+function selectTable(id){ logicalSelection = {type:'table', id}; switchRightTab('prop'); touch(); }
+
+/* "Evoluir para o lógico": one-way generation from the conceptual model.
+   Reuses computeExportFields()/associationPlan() — the same relational
+   inference that used to feed the (now removed) SQL/arcpy exporters — as
+   the starting point the user then edits by hand on the logical page.
+   The two pages are independent after this: later edits to the conceptual
+   model do NOT re-run this automatically (evolve again to re-sync). */
+function evolveToLogical(){
+  const tables = [];
+  const tableByClassId = {};
+  state.classes.forEach(c=>{ tableByClassId[c.id] = uid('t'); });
+
+  state.classes.forEach(c=>{
+    const fields = computeExportFields(c);
+    const columns = fields.map(f=>({
+      id: uid('col'), name: f.name, type: f.type, pk: !!f.pk, nullable: !!f.nullable,
+      fk: !!f.fkTable, refTableId: f.fkClassId ? tableByClassId[f.fkClassId] : null, refColumnId: null,
+      _fkClassId: f.fkClassId || null
+    }));
+    if(!columns.some(col=>col.pk)){
+      // "toda entidade criada no modelo tem que ter PK" — synthesize one if the
+      // conceptual class had none marked (computeValidation only warns there).
+      columns.unshift({id:uid('col'), name:'id', type:'integer', pk:true, nullable:false, fk:false, refTableId:null, refColumnId:null, _fkClassId:null});
+    }
+    tables.push({ id: tableByClassId[c.id], name: sqlIdent(c.name), x: c.x, y: c.y, w:208, h:60, columns });
+  });
+
+  // resolve every FK column's target PK column (first PK column of the referenced table)
+  const pkColumnByTableId = {};
+  tables.forEach(t=>{ const pk = t.columns.find(col=>col.pk); if(pk) pkColumnByTableId[t.id] = pk.id; });
+  tables.forEach(t=> t.columns.forEach(col=>{
+    if(col._fkClassId) col.refColumnId = pkColumnByTableId[col.refTableId] || null;
+    delete col._fkClassId;
+  }));
+
+  // N:N associations have no single-column FK — realize them as a junction
+  // table with a composite PK made of the two sides' FK columns.
+  state.relationships.forEach(r=>{
+    if(r.type!=='association') return;
+    if(associationPlan(r).mode!=='junction') return;
+    const a = state.classes.find(x=>x.id===r.sourceId), b = state.classes.find(x=>x.id===r.targetId);
+    if(!a || !b) return;
+    const tA = tableByClassId[a.id], tB = tableByClassId[b.id];
+    const colA = {id:uid('col'), name: sqlIdent(a.name)+'_id', type:'integer', pk:true, nullable:false, fk:true, refTableId:tA, refColumnId: pkColumnByTableId[tA]||null};
+    const colB = {id:uid('col'), name: sqlIdent(b.name)+'_id', type:'integer', pk:true, nullable:false, fk:true, refTableId:tB, refColumnId: pkColumnByTableId[tB]||null};
+    const jx = ((a.x+(a.w||CARD_W)/2) + (b.x+(b.w||CARD_W)/2))/2;
+    const jy = Math.max(a.y+(a.h||60), b.y+(b.h||60)) + 90;
+    tables.push({ id: uid('t'), name: sqlIdent(r.name || (a.name+'_'+b.name)), x: Math.round(jx-104), y: Math.round(jy), w:208, h:60, columns:[colA, colB] });
+  });
+
+  state.logical = { tables };
+  logicalSelection = {type:null, id:null};
+  switchPage('logical');
+}
+
 /* ---------- sample model ---------- */
 function sampleModel(){
   const m = emptyModel('Bacia Hidrográfica (exemplo)');
@@ -1345,10 +1450,12 @@ function sampleModel(){
 // Note: the Conceitual page has no validation anymore ("pode tirar qualquer
 // validação para o conceitual") — duplicate names are prevented at the
 // source instead (see uniqueName()/the class-name blur handler) rather than
-// merely flagged.
+// merely flagged. The Lógica page keeps its own validation untouched.
 function touch(skipInspector){
   renderClassList();
   renderRelList();
+  renderTableList();
+  renderValidationLogical();
   renderCanvas();
   renderValidationPanel(); // no-op while the "Validação" floating panel is closed
   if(!skipInspector) renderInspector();
@@ -1388,6 +1495,60 @@ function renderRelList(){
       E('span',{class:'ic', html:ICONS[r.type]||ICONS.association}),
       E('div',{class:'tx'},[ E('div',{class:'t1'},[(REL_TYPES[r.type]||REL_TYPES.association).short]), E('div',{class:'t2'},[(a?a.name:'?')+' — '+(b?b.name:'?')]) ]),
       E('button',{class:'del-x', title:'Excluir relacionamento', html:ICONS.trash, onclick:(e)=>{ e.stopPropagation(); confirmIconAction(e.currentTarget, ()=>deleteRel(r.id), 'o relacionamento'); }})
+    ]);
+    wrap.appendChild(row);
+  });
+}
+
+/* ---------- left rail (logical page): table list + validation ---------- */
+function renderTableList(){
+  const wrap = document.getElementById('tableList');
+  if(!wrap || !state.logical) return;
+  wrap.innerHTML = '';
+  document.getElementById('countTables').textContent = state.logical.tables.length;
+  if(!state.logical.tables.length){
+    wrap.appendChild(E('div',{class:'empty-note'},['Nenhuma tabela ainda. Use "Evoluir para o lógico ↑" ou "+ Nova tabela".']));
+    return;
+  }
+  state.logical.tables.forEach(t=>{
+    const row = E('div',{class:'listitem'+(logicalSelection.type==='table'&&logicalSelection.id===t.id?' selected':''), onclick:()=>selectTable(t.id)},[
+      E('span',{class:'ic', html:ICONS.conventional}),
+      E('div',{class:'tx'},[ E('div',{class:'t1'},[t.name]), E('div',{class:'t2'},[t.columns.length+' coluna'+(t.columns.length===1?'':'s')]) ]),
+      E('button',{class:'del-x', title:'Excluir tabela', html:ICONS.trash, onclick:(e)=>{ e.stopPropagation(); confirmIconAction(e.currentTarget, ()=>deleteTable(t.id), 'a tabela "'+t.name+'"'); }})
+    ]);
+    wrap.appendChild(row);
+  });
+}
+function computeLogicalValidation(){
+  const issues = [];
+  if(!state.logical) return issues;
+  const nameCount = {};
+  state.logical.tables.forEach(t=>{ nameCount[t.name]=(nameCount[t.name]||0)+1; });
+  state.logical.tables.forEach(t=>{
+    if(nameCount[t.name]>1) issues.push({sev:'error', ref:{id:t.id}, msg:'Nome de tabela duplicado: "'+t.name+'"'});
+    if(!t.columns.length) issues.push({sev:'warning', ref:{id:t.id}, msg:'"'+t.name+'" não possui colunas'});
+    if(t.columns.length && !t.columns.some(c=>c.pk)) issues.push({sev:'error', ref:{id:t.id}, msg:'"'+t.name+'" precisa de ao menos uma coluna PK'});
+    t.columns.forEach(c=>{
+      if(c.fk && (!c.refTableId || !c.refColumnId)) issues.push({sev:'error', ref:{id:t.id}, msg:'"'+t.name+'.'+c.name+'" está marcada como FK mas não referencia nenhuma PK'});
+      else if(c.fk && c.refTableId && !state.logical.tables.some(tt=>tt.id===c.refTableId)) issues.push({sev:'error', ref:{id:t.id}, msg:'"'+t.name+'.'+c.name+'" referencia uma tabela que não existe mais'});
+    });
+  });
+  return issues;
+}
+function renderValidationLogical(){
+  const wrap = document.getElementById('validationListLogical');
+  if(!wrap || !state.logical) return;
+  wrap.innerHTML = '';
+  const issues = computeLogicalValidation();
+  document.getElementById('countIssuesLogical').textContent = issues.length;
+  if(!issues.length){
+    wrap.appendChild(E('div',{class:'vgood'},['✓ Nenhum problema encontrado']));
+    return;
+  }
+  issues.forEach(is=>{
+    const row = E('div',{class:'vitem '+is.sev, onclick:()=>selectTable(is.ref.id)},[
+      E('span',{class:'dot'}),
+      E('div',{class:'msg'},[is.msg])
     ]);
     wrap.appendChild(row);
   });
@@ -1608,9 +1769,9 @@ function renderValidationPanel(){
   if(!panel || panel.hidden) return;
   const body = document.getElementById('validationBody');
   const countEl = document.getElementById('validationCount');
-  body.innerHTML = '';
   const issues = computeConceptualValidation();
   countEl.textContent = issues.length ? String(issues.length) : '';
+  body.innerHTML = '';
   if(!issues.length){
     body.appendChild(E('div',{class:'vgood'},['✓ Nenhum problema encontrado']));
     return;
@@ -1638,6 +1799,7 @@ function renderValidationPanel(){
 // necessário), seleciona o elemento e centraliza a vista nele sem mudar o
 // zoom atual.
 function revealConceptual(kind, id){
+  if(activePage!=='conceptual') switchPage('conceptual');
   let cx, cy;
   if(kind==='class'){
     const c = state.classes.find(x=>x.id===id);
@@ -1658,6 +1820,7 @@ function revealConceptual(kind, id){
   applyViewBox();
   touch();
 }
+
 /* ---------- canvas rendering ---------- */
 const CARD_HEAD_H = 34;
 const CARD_ROW_H = 19;
@@ -1695,6 +1858,14 @@ function classWidth(c){
 }
 function topRoundedRectPath(w,h,r){
   return 'M0,'+r+' A'+r+','+r+' 0 0 1 '+r+',0 H'+(w-r)+' A'+r+','+r+' 0 0 1 '+w+','+r+' V'+h+' H0 Z';
+}
+function keyGlyph(){
+  const g = S('g',{class:'attr-key'});
+  g.appendChild(S('circle',{cx:0,cy:0,r:2.5, style:'fill:none;stroke:currentColor;stroke-width:1.25'}));
+  g.appendChild(S('line',{x1:1.7,y1:1.7,x2:6.6,y2:6.6, style:'stroke:currentColor;stroke-width:1.25;stroke-linecap:round'}));
+  g.appendChild(S('line',{x1:5,y1:5,x2:5,y2:7.6, style:'stroke:currentColor;stroke-width:1.25;stroke-linecap:round'}));
+  g.appendChild(S('line',{x1:6.6,y1:6.6,x2:8.5,y2:4.7, style:'stroke:currentColor;stroke-width:1.25;stroke-linecap:round'}));
+  return g;
 }
 function buildNode(c){
   const isSel = (selection.type==='class' && selection.id===c.id) || multiSelect.has(c.id);
@@ -3463,8 +3634,12 @@ function buildEdgeDom(route, labelLayer, labelMetas, rects, otherSegs, genGroupS
   // (fill + apex dot) encodes total/partial and disjoint/overlapping.
   return g;
 }
+/* dispatches to whichever page is active — the conceptual canvas (OMT-G
+   classes/relationships) or the logical canvas (tables/FK columns) — so
+   every existing caller of renderCanvas() keeps working unmodified. */
 function renderCanvas(){
-  renderConceptualCanvas();
+  if(activePage==='logical') renderLogicalCanvas();
+  else renderConceptualCanvas();
 }
 // Round T (validação): the routing pipeline used to live inline inside
 // renderConceptualCanvas only — factored out here so computeConceptualValidation
@@ -3648,6 +3823,129 @@ function renderAnchorHandles(routes, rects){
   });
 }
 
+/* ---------- logical canvas: tables + column-to-column FK edges ---------- */
+function tableHeight(t){
+  const rows = Math.max(1, t.columns.length);
+  return CARD_HEAD_H + rows*CARD_ROW_H + 11;
+}
+function fkGlyph(){
+  const g = S('g',{class:'attr-fk'});
+  g.appendChild(S('circle',{cx:0,cy:0,r:2.5, style:'fill:none;stroke:currentColor;stroke-width:1.25'}));
+  return g;
+}
+function buildLogicalTableNode(t){
+  const isSel = logicalSelection.type==='table' && logicalSelection.id===t.id;
+  const h = tableHeight(t);
+  const g = S('g', {
+    class:'node-card table-card'+(isSel?' selected':''),
+    'data-table-id': t.id,
+    transform:'translate('+t.x+','+t.y+')',
+    onpointerdown:(evt)=>{
+      // Round O item 1: same rule as the conceptual class card — a non-
+      // primary button (e.g. middle-click) must pan, not drag the table.
+      if(evt.button!==0) return;
+      evt.stopPropagation();
+      const p = svgPoint(evt);
+      drag = {kind:'table', id:t.id, offX:p.x-t.x, offY:p.y-t.y, moved:false};
+      try{ evt.currentTarget.setPointerCapture(evt.pointerId); }catch(e){}
+    }
+  });
+  // Round T item 0: same border-inset fix as the conceptual class card, kept
+  // consistent between both pages (see the long comment at the class-card
+  // rect above).
+  g.appendChild(S('rect',{class:'card-bg', x:CARD_BORDER_INSET,y:CARD_BORDER_INSET,width:t.w-2*CARD_BORDER_INSET,height:h-2*CARD_BORDER_INSET, rx:9}));
+  g.appendChild(S('text',{class:'cname', x:12, y:22},[t.name]));
+  g.appendChild(S('line',{class:'card-divider', x1:0,y1:CARD_HEAD_H,x2:t.w,y2:CARD_HEAD_H}));
+  const nameX = 12 + 15;
+  if(!t.columns.length){
+    g.appendChild(S('text',{class:'cattr', x:attrX, y:CARD_HEAD_H+CARD_ROW_H-6, style:'fill:var(--muted);font-style:italic;'},['(sem colunas)']));
+  } else {
+    t.columns.forEach((col,i)=>{
+      const rowY = CARD_HEAD_H + CARD_ROW_H*i;
+      const y = rowY + CARD_ROW_H - 6;
+      logicalColRects[col.id] = {tableId:t.id, x:t.x, y:t.y+rowY, w:t.w, h:CARD_ROW_H};
+      if(col.pk){
+        const k = keyGlyph();
+        k.setAttribute('transform','translate('+15+','+(y-3.6)+')');
+        g.appendChild(k);
+      } else if(col.fk){
+        const k = fkGlyph();
+        k.setAttribute('transform','translate('+15+','+(y-3.6)+')');
+        g.appendChild(k);
+      } else if(!col.nullable){
+        g.appendChild(S('text',{class:'attr-required', x:13, y:y},['*']));
+      }
+      const tEl = S('text',{class:'cattr', x:nameX, y:y});
+      const nameSpan = S('tspan',{class: col.pk ? 'cpk' : ''},[col.name]);
+      const typeSpan = S('tspan',{class:'attype'},[' : '+ATTR_TYPE_LABEL[col.type]]);
+      tEl.appendChild(nameSpan); tEl.appendChild(typeSpan);
+      g.appendChild(tEl);
+      // Power BI–style link handle: drag from any column's dot to another
+      // column that is a PK (on this table or another) to wire it as an FK —
+      // dropping directly on the target PK is what picks it, no extra dialog.
+      g.appendChild(S('circle',{class:'col-handle', cx:t.w, cy:rowY+CARD_ROW_H/2, r:4.5,
+        onpointerdown:(evt)=>{
+          // Round O item 1: same rule — a non-primary button falls through to panning.
+          if(evt.button!==0) return;
+          evt.stopPropagation();
+          const p = svgPoint(evt);
+          colDrag = {sourceTableId:t.id, sourceColumnId:col.id, x:p.x, y:p.y};
+          try{ evt.currentTarget.setPointerCapture(evt.pointerId); }catch(e){}
+          renderColDragOverlay();
+        }
+      }));
+    });
+  }
+  return g;
+}
+function buildLogicalEdge(srcRect, targetRect){
+  const srcCx = srcRect.x+srcRect.w/2, tgtCx = targetRect.x+targetRect.w/2;
+  const goRight = tgtCx >= srcCx;
+  const p1x = goRight ? srcRect.x+srcRect.w : srcRect.x, p1y = srcRect.y+srcRect.h/2;
+  const p2x = goRight ? targetRect.x : targetRect.x+targetRect.w, p2y = targetRect.y+targetRect.h/2;
+  const dx = Math.max(40, Math.abs(p2x-p1x)/2);
+  const c1x = goRight ? p1x+dx : p1x-dx;
+  const c2x = goRight ? p2x-dx : p2x+dx;
+  const d = 'M'+p1x+','+p1y+' C'+c1x+','+p1y+' '+c2x+','+p2y+' '+p2x+','+p2y;
+  return S('path',{class:'edge-path logical-fk', d, style:'fill:none;stroke:var(--accent);stroke-width:1.6;marker-end:url(#marker-arrow-fk)'});
+}
+function renderLogicalCanvas(){
+  const nodeLayer = document.getElementById('nodeLayer');
+  const edgeLayer = document.getElementById('edgeLayer');
+  const labelLayer = document.getElementById('labelLayer');
+  nodeLayer.innerHTML = ''; edgeLayer.innerHTML = ''; if(labelLayer) labelLayer.innerHTML = '';
+  logicalColRects = {};
+  state.logical.tables.forEach(t=>{ t.w = CARD_W; t.h = tableHeight(t); });
+  // build nodes first so logicalColRects (per-column row rects) is populated
+  // before we compute edge anchors from it
+  const nodes = state.logical.tables.map(t=> buildLogicalTableNode(t));
+  state.logical.tables.forEach(t=>{
+    t.columns.forEach(col=>{
+      if(!col.fk || !col.refTableId || !col.refColumnId) return;
+      const targetRect = logicalColRects[col.refColumnId];
+      const srcRect = logicalColRects[col.id];
+      if(!targetRect || !srcRect) return;
+      edgeLayer.appendChild(buildLogicalEdge(srcRect, targetRect));
+    });
+  });
+  nodes.forEach(n=> nodeLayer.appendChild(n));
+}
+/* Live preview line while dragging a column-to-column FK link (see
+   buildLogicalTableNode / colDrag). Shares the conceptual page's overlay
+   layer — only one of connDrag/colDrag is ever active, since each page
+   builds only its own drag-handle elements. */
+function renderColDragOverlay(){
+  const layer = document.getElementById('connDragLayer');
+  if(!layer) return;
+  layer.innerHTML = '';
+  if(!colDrag) return;
+  const srcRect = logicalColRects[colDrag.sourceColumnId];
+  if(!srcRect) return;
+  const x1 = srcRect.x+srcRect.w, y1 = srcRect.y+srcRect.h/2;
+  layer.appendChild(S('path',{d:'M'+x1+','+y1+' L'+colDrag.x+','+colDrag.y, style:'fill:none;stroke:var(--accent);stroke-width:1.8;stroke-dasharray:4,3'}));
+  layer.appendChild(S('circle',{cx:colDrag.x, cy:colDrag.y, r:4, style:'fill:var(--accent)'}));
+}
+
 /* ---------- defs: markers + grid pattern ---------- */
 function initDefs(){
   const defs = document.getElementById('svgDefs');
@@ -3779,8 +4077,8 @@ function svgPoint(evt){
   return { x: view.x + (evt.clientX-rect.left-offX)/scale, y: view.y + (evt.clientY-rect.top-offY)/scale };
 }
 function fitView(){
-  const items = state.classes;
-  const heightOf = c=>c.h||60;
+  const items = activePage==='logical' ? state.logical.tables : state.classes;
+  const heightOf = activePage==='logical' ? (t=>tableHeight(t)) : (c=>c.h||60);
   if(!items.length){ view = {x:-40,y:-40,w:1200,h:800}; applyViewBox(); return; }
   let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
   items.forEach(it=>{
@@ -3806,7 +4104,7 @@ function initStageEvents(){
     // Item 9: a plain left-drag on the empty conceptual canvas now rubber-
     // band multi-selects classes instead of panning — panning moves to a
     // middle-click drag, or Space+drag for touchpad/two-button setups.
-    if(evt.button===0 && !spaceHeld){
+    if(activePage==='conceptual' && evt.button===0 && !spaceHeld){
       const p = svgPoint(evt);
       marquee = {x0:p.x, y0:p.y, x1:p.x, y1:p.y, additive: evt.ctrlKey||evt.metaKey, moved:false};
       try{ svg.setPointerCapture(evt.pointerId); }catch(e){}
@@ -3831,7 +4129,12 @@ function initStageEvents(){
       }
       const p = svgPoint(evt);
       const nx = p.x - drag.offX, ny = p.y - drag.offY;
-      {
+      if(drag.kind==='table'){
+        const t = state.logical.tables.find(x=>x.id===drag.id);
+        if(!t) return;
+        if(Math.abs(nx-t.x)>1 || Math.abs(ny-t.y)>1) drag.moved = true;
+        t.x = nx; t.y = ny;
+      } else {
         const c = state.classes.find(x=>x.id===drag.id);
         if(!c) return;
         if(Math.abs(nx-c.x)>1 || Math.abs(ny-c.y)>1) drag.moved = true;
@@ -3854,6 +4157,10 @@ function initStageEvents(){
       const p = svgPoint(evt);
       connDrag.x = p.x; connDrag.y = p.y;
       renderConnDragOverlay();
+    } else if(colDrag){
+      const p = svgPoint(evt);
+      colDrag.x = p.x; colDrag.y = p.y;
+      renderColDragOverlay();
     } else if(anchorDrag){
       // Round N item 5: live-update the anchor on every move (so the line
       // visibly follows the cursor) but don't touch() yet — that happens
@@ -3877,7 +4184,7 @@ function initStageEvents(){
         if(wasDrag){ renderCanvas(); scheduleAutosave(); }
         // a plain click (no movement) on an already multi-selected class
         // just re-affirms the group selection — nothing to change
-      } else if(!wasDrag){ handleNodeClick(id); }
+      } else if(!wasDrag){ if(kind==='table') selectTable(id); else handleNodeClick(id); }
       else { renderCanvas(); scheduleAutosave(); }
     }
     if(marquee){
@@ -3897,12 +4204,13 @@ function initStageEvents(){
       }
       marquee = null;
       renderMarqueeOverlay();
-      renderInspector(); renderCanvas(); renderClassList(); renderRelList();
+      renderInspector(); renderCanvas(); renderClassList(); renderRelList(); renderTableList();
     }
     if(panning){
       if(!panning.moved){
-        selection = {type:null,id:null};
-        renderInspector(); renderCanvas(); renderClassList(); renderRelList();
+        if(activePage==='logical') logicalSelection = {type:null,id:null};
+        else selection = {type:null,id:null};
+        renderInspector(); renderCanvas(); renderClassList(); renderRelList(); renderTableList();
       }
       panning = null;
     }
@@ -3916,6 +4224,30 @@ function initStageEvents(){
       connDrag = null;
       if(target){ createRelationship(relMode.type, sourceId, target.id); touch(); }
       renderConnDragOverlay();
+    }
+    if(colDrag){
+      const p = svgPoint(evt);
+      let targetColId = null;
+      for(const colId in logicalColRects){
+        if(colId===colDrag.sourceColumnId) continue;
+        const r = logicalColRects[colId];
+        if(p.x>=r.x && p.x<=r.x+r.w && p.y>=r.y && p.y<=r.y+r.h){ targetColId = colId; break; }
+      }
+      const srcTable = state.logical.tables.find(t=>t.id===colDrag.sourceTableId);
+      const srcCol = srcTable ? srcTable.columns.find(c=>c.id===colDrag.sourceColumnId) : null;
+      colDrag = null;
+      if(srcCol && targetColId){
+        const targetRect = logicalColRects[targetColId];
+        const targetTable = state.logical.tables.find(t=>t.id===targetRect.tableId);
+        const targetCol = targetTable ? targetTable.columns.find(c=>c.id===targetColId) : null;
+        if(targetCol && targetCol.pk){
+          srcCol.fk = true; srcCol.refTableId = targetTable.id; srcCol.refColumnId = targetCol.id;
+          touch();
+        } else {
+          toast('Arraste até uma coluna marcada como PK para criar a ligação.', true);
+        }
+      }
+      renderColDragOverlay();
     }
     if(anchorDrag){
       // Round P item 4 ("ao separar eu não consigo juntar mais... sugiro
@@ -3995,6 +4327,7 @@ function initStageEvents(){
     if(!evt.dataTransfer) return;
     const kind = evt.dataTransfer.getData('application/x-omtg-kind');
     if(kind!=='conventional' && kind!=='geo') return;
+    if(activePage==='logical') return; // palette drag/drop is conceptual-only
     evt.preventDefault();
     const geoType = evt.dataTransfer.getData('application/x-omtg-geotype') || undefined;
     const primitive = evt.dataTransfer.getData('application/x-omtg-primitive') || undefined;
@@ -4005,6 +4338,7 @@ function initStageEvents(){
     if(evt.code==='Space' && document.activeElement.tagName!=='INPUT' && document.activeElement.tagName!=='TEXTAREA'){ spaceHeld = true; }
     if(evt.key==='Escape'){
       if(connDrag){ connDrag=null; renderConnDragOverlay(); }
+      if(colDrag){ colDrag=null; renderColDragOverlay(); }
       if(marquee){ marquee=null; renderMarqueeOverlay(); }
     }
     if((evt.key==='Delete'||evt.key==='Backspace') && document.activeElement.tagName!=='INPUT' && document.activeElement.tagName!=='TEXTAREA' && document.activeElement.tagName!=='SELECT'){
@@ -4015,7 +4349,7 @@ function initStageEvents(){
     // text field has focus (that keeps the browser's native copy/paste for
     // text working normally).
     const tag = document.activeElement && document.activeElement.tagName;
-    if((evt.ctrlKey||evt.metaKey) && tag!=='INPUT' && tag!=='TEXTAREA' && tag!=='SELECT'){
+    if((evt.ctrlKey||evt.metaKey) && activePage==='conceptual' && tag!=='INPUT' && tag!=='TEXTAREA' && tag!=='SELECT'){
       if(evt.key==='c' || evt.key==='C'){ copySelection(); }
       else if(evt.key==='v' || evt.key==='V'){ pasteClipboard(); }
     }
@@ -4038,11 +4372,7 @@ function makeDraggableAddBtn(kind, iconHtml, label, opts){
   // spot too, but that made the button feel like two different affordances —
   // now the ONLY way to add a class is dragging it onto the canvas.
   opts = opts || {};
-  // Round U item 7: a per-class-type hover (opts.hint) replaces the old
-  // generic "arraste para o canvas para adicionar" repeated on every button
-  // — each type now explains itself according to OMT-G. Falls back to the
-  // generic text only if a type has none set.
-  const btn = E('button',{class:'addbtn'+(opts.wide?' wide':''), draggable:'true', title:opts.hint||'Arraste para adicionar'},[
+  const btn = E('button',{class:'addbtn'+(opts.wide?' wide':''), draggable:'true', title:'Arraste para o canvas para adicionar'},[
     E('span',{class:'ic', html:iconHtml}), label
   ]);
   btn.addEventListener('dragstart', (evt)=>{
@@ -4064,29 +4394,22 @@ function initAddControls(){
   // "Primitiva geométrica" fields in the class properties panel still let
   // you change it later (buildClassInspector, unchanged).
   const grid = document.getElementById('addClassGrid');
-  grid.appendChild(makeDraggableAddBtn('conventional', ICONS.conventional, 'Convencional', {wide:true, hint:'Classe sem geometria — como no modelo entidade-relacionamento tradicional, sem localização espacial.'}));
+  grid.appendChild(makeDraggableAddBtn('conventional', ICONS.conventional, 'Convencional', {wide:true}));
   grid.appendChild(E('div',{class:'addgrid-sublabel'},['Geo-objeto']));
   GEO_OBJECT_PRIMITIVES.forEach(p=>{
-    grid.appendChild(makeDraggableAddBtn('geo', ICONS[p.id]||ICONS.geoObject, p.short, {geoType:'object', primitive:p.id, hint:p.hint}));
+    grid.appendChild(makeDraggableAddBtn('geo', ICONS[p.id]||ICONS.geoObject, p.short, {geoType:'object', primitive:p.id}));
   });
   grid.appendChild(E('div',{class:'addgrid-sublabel'},['Geo-campo']));
   GEO_FIELD_PRIMITIVES.forEach(p=>{
-    grid.appendChild(makeDraggableAddBtn('geo', ICONS[p.id]||ICONS.geoField, p.short, {geoType:'field', primitive:p.id, hint:p.hint}));
+    grid.appendChild(makeDraggableAddBtn('geo', ICONS[p.id]||ICONS.geoField, p.short, {geoType:'field', primitive:p.id}));
   });
-  // Round U item 8: shortened from "Arraste para o canvas para posicionar a
-  // nova classe. Natureza e primitiva podem ser trocadas depois nas
-  // propriedades." — the per-button hover (above) now carries the
-  // per-type explanation, so this line only needs the plain instruction.
-  grid.parentNode.insertBefore(E('div',{class:'addhint'},['Arraste para posicionar uma classe']), grid.nextSibling);
+  grid.parentNode.insertBefore(E('div',{class:'addhint'},['Arraste para o canvas para posicionar a nova classe. Natureza e primitiva podem ser trocadas depois nas propriedades.']), grid.nextSibling);
 
   // Item 2 (2nd round): separate buttons per relationship type — like the
   // class buttons above — instead of one dropdown you have to open first.
   const relGrid = document.getElementById('relTypeGrid');
   Object.keys(REL_TYPES).forEach(k=>{
-    // Round V item 2: hover explaining each relationship type per OMT-G —
-    // reuses relDesc() (the same text the "Ajuda" legend shows), so the two
-    // never drift apart, instead of a second, separately-maintained string.
-    const btn = E('button',{class:'addbtn wide'+(k===relMode.type?' active':''), title:relDesc(k), onclick:()=>{
+    const btn = E('button',{class:'addbtn wide'+(k===relMode.type?' active':''), onclick:()=>{
       relMode.type = k;
       relGrid.querySelectorAll('.addbtn').forEach(b=>b.classList.remove('active'));
       btn.classList.add('active');
@@ -4110,17 +4433,20 @@ const REL_HINTS = {
 function renderRelControls(){
   const hint = document.getElementById('relHint');
   if(hint) hint.textContent = REL_HINTS[relMode.type][0];
-  // Round U item 9 ("em adicionar relacionamento, ao clicar em associação,
-  // há uma explicação sobre cardinalidade logo abaixo, pode tirar e deixe
-  // na mesma lógica dos outros"): association used to get this extra
-  // "como ler a cardinalidade" mini box here, on top of the plain relHint
-  // text every other type gets — removed so association follows the same
-  // logic as every other type (just the hint sentence above). The reading
-  // example now lives in the properties panel instead (buildRelInspector /
-  // relReadingExample, item 10), same place association's own cardinality
-  // example (buildCardHint) has always lived.
   const mini = document.getElementById('relCardHintMini');
-  if(mini) mini.innerHTML = '';
+  if(mini){
+    mini.innerHTML = '';
+    // Round S item 2 ("dentro de agregação, tem uma explicação de
+    // cardinalidade, pode tirar, não tem cardinalidade em Agregação"):
+    // aggregation lost its cardinality fields back in Round Q item 5 (it's
+    // always a fixed whole/part structure, 1 todo to many partes) but this
+    // "como ler a cardinalidade" mini-hint in the sidebar kept showing for
+    // it anyway — only association actually has configurable cardinality.
+    if(relMode.type==='association'){
+      const ends = REL_HINTS[relMode.type][1];
+      mini.appendChild(buildCardHintMini(ends[0], '1', ends[1], '0..*'));
+    }
+  }
 }
 
 /* ---------- cardinality hint (visual explainer for relationship multiplicities) ---------- */
@@ -4284,64 +4610,6 @@ function buildClassInspector(c){
   return root;
 }
 
-// Round U item 10 ("na outra barra lateral, assim como para o
-// relacionamento de associação, quero um exemplo de leitura para cada tipo
-// de relacionamento, segundo OMT-G"): association already gets a rich
-// cardinality reading (buildCardHint, below in buildRelInspector) — this
-// gives every OTHER type the same kind of concrete, plain-language example,
-// built from the relationship's own configured classes/rule instead of a
-// generic description. Generalização and Generalização Cartográfica read
-// the whole merged group (every relationship sharing this target+type) as
-// ONE superclasse/subclasses (or generalizada/detalhadas) statement, per
-// the user's explicit correction — never one line per fused segment.
-// Round V item 3: on top of varying by TYPE (Round U item 10), the reading
-// now varies by the relationship's own configured properties too —
-// Cobertura/Elementos de Restrição (generalização e generalização
-// cartográfica), Tipo Forma/Escala (generalização cartográfica), e
-// Simples/Espacial (agregação) — so two relationships of the same type but
-// different settings read differently, instead of a single fixed template
-// per type.
-function relReadingExample(r, a, b){
-  if(!a || !b) return null;
-  if(r.type==='spatial'){
-    const label = TOPO_RULE_LABEL[r.topoRule];
-    if(!label) return null;
-    const verb = label.replace(/\s*\([^)]*\)\s*$/,'').trim(); // drop the "(touch)"-style gloss
-    return verb ? (a.name+' '+verb+' '+b.name+'.') : null;
-  }
-  if(r.type==='network'){
-    return r.sourceId===r.targetId
-      ? (a.name+' se conecta a si mesma, formando uma rede arco-arco recursiva ("'+(r.name||'Rede')+'").')
-      : (a.name+' conecta-se a '+b.name+' na rede "'+(r.name||'Rede')+'".');
-  }
-  if(relFamily(r.type)==='generalization' || r.type==='cartographicGeneralization'){
-    const siblingNames = state.relationships
-      .filter(o=> o.targetId===r.targetId && o.type===r.type)
-      .map(o=>{ const s=state.classes.find(x=>x.id===o.sourceId); return s?s.name:null; })
-      .filter(Boolean);
-    const names = siblingNames.length ? siblingNames : [a.name];
-    const many = names.length>1;
-    if(r.type==='cartographicGeneralization'){
-      const kindTxt = r.kind==='scale' ? 'mudança de escala' : 'mudança de forma';
-      const constraintTxt = r.disjoint
-        ? 'elementos disjuntos — cada feição da representação detalhada corresponde a no máximo uma da generalizada'
-        : 'elementos sobrepostos — uma feição da representação detalhada pode corresponder a mais de uma da generalizada';
-      return b.name+' é a representação generalizada ('+kindTxt+'); '+names.join(', ')+' '+(many?'são as representações mais detalhadas':'é a representação mais detalhada')+' ('+constraintTxt+').';
-    }
-    const covTxt = r.total ? 'cobertura total' : 'cobertura parcial';
-    const constraintTxt = r.total
-      ? (r.disjoint ? 'toda instância da superclasse pertence a exatamente uma subclasse' : 'toda instância da superclasse pertence a uma ou mais subclasses')
-      : (r.disjoint ? 'nem toda instância da superclasse tem subclasse correspondente, e cada uma pertence a no máximo uma' : 'nem toda instância da superclasse tem subclasse correspondente, e pode pertencer a mais de uma');
-    return b.name+' é a superclasse; '+names.join(', ')+' '+(many?'são as subclasses':'é a subclasse')+' ('+covTxt+', '+(r.disjoint?'elementos disjuntos':'elementos sobrepostos')+' — '+constraintTxt+').';
-  }
-  if(relFamily(r.type)==='aggregation'){
-    const base = a.name+' (todo) é composto por '+b.name+' (parte)';
-    return r.spatial
-      ? (base+' — agregação espacial: as partes devem ser disjuntas ou se tocar, cobrindo exatamente o todo.')
-      : (base+' (agregação simples, sem restrição topológica).');
-  }
-  return null; // association: already covered by buildCardHint
-}
 function buildRelInspector(r){
   const a = state.classes.find(x=>x.id===r.sourceId), b = state.classes.find(x=>x.id===r.targetId);
   const root = E('div',{style:'display:flex;flex-direction:column;flex:1;min-height:0;'});
@@ -4420,16 +4688,6 @@ function buildRelInspector(r){
     // há mais um texto separado e editável para sobrepor a ele.
     scroll.appendChild(fieldSelect('Regra topológica', r.topoRule, TOPO_RULES, v=>{ r.topoRule=v; touch(); }));
   }
-  // Round U item 10: reading example for every non-association type (see
-  // relReadingExample) — same spot/style (.card-hint-mini) association's
-  // own cardinality example already uses above.
-  const reading = relReadingExample(r, a, b);
-  if(reading){
-    scroll.appendChild(E('div',{class:'card-hint-mini'},[
-      E('div',{class:'chm-title'},['Exemplo de leitura']),
-      E('div',{},[reading])
-    ]));
-  }
   root.appendChild(scroll);
   root.appendChild(E('div',{class:'inspector-actions'},[
     E('button',{class:'btn danger ghost', onclick:(e)=>confirmAction(e.currentTarget, ()=>deleteRel(r.id))},['Excluir relacionamento'])
@@ -4437,9 +4695,124 @@ function buildRelInspector(r){
   return root;
 }
 
+/* Column table for a logical table's inspector — mirrors buildAttrTable, but
+   a checked "FK" adds an inline row asking which table + which of that
+   table's PK columns it references (the explicit picker the user asked
+   for), and a column can't be un-PK'd / removed if it's the table's last PK
+   ("toda entidade criada no modelo tem que ter PK"). */
+function buildColumnTable(t){
+  const table = E('table',{class:'attr-table'});
+  table.appendChild(E('tr',{},[E('th',{},['Nome']),E('th',{},['Tipo']),E('th',{},['PK']),E('th',{},['FK']),E('th',{},['Obrig.']),E('th',{})]));
+  t.columns.forEach(col=>{
+    const nameInp = E('input',{type:'text', value:col.name, oninput:(e)=>{ col.name=e.target.value; touch(true); }});
+    const typeSel = E('select',{onchange:(e)=>{ col.type=e.target.value; touch(); }});
+    ATTR_TYPES.forEach(ty=>typeSel.appendChild(E('option',{value:ty.id, selected:(ty.id===col.type)?'':null},[ty.label])));
+    const pkChk = E('input',{type:'checkbox', onchange:(e)=>{
+      if(!e.target.checked && t.columns.filter(c=>c.pk).length<=1){
+        e.target.checked = true;
+        toast('Toda tabela precisa de ao menos uma coluna PK.', true);
+        return;
+      }
+      col.pk = e.target.checked; if(col.pk) col.nullable=false; touch();
+    }});
+    if(col.pk) pkChk.checked = true;
+    const fkChk = E('input',{type:'checkbox', onchange:(e)=>{
+      col.fk = e.target.checked;
+      if(col.fk && !col.refTableId){
+        const other = state.logical.tables.find(x=>x.id!==t.id) || state.logical.tables[0];
+        if(other){
+          col.refTableId = other.id;
+          const pk = other.columns.find(c=>c.pk);
+          col.refColumnId = pk ? pk.id : null;
+        }
+      }
+      if(!col.fk){ col.refTableId=null; col.refColumnId=null; }
+      touch();
+    }});
+    if(col.fk) fkChk.checked = true;
+    const reqChk = E('input',{type:'checkbox', onchange:(e)=>{ col.nullable = !e.target.checked; touch(); }});
+    if(!col.nullable) reqChk.checked = true;
+    const delBtn = E('button',{class:'del-x', title:'Remover coluna', html:ICONS.trash, onclick:(e)=>{
+      if(col.pk && t.columns.filter(c=>c.pk).length<=1){
+        toast('Toda tabela precisa de ao menos uma coluna PK — marque outra coluna como PK antes de remover esta.', true);
+        return;
+      }
+      confirmIconAction(e.currentTarget, ()=>{
+        t.columns = t.columns.filter(x=>x.id!==col.id);
+        state.logical.tables.forEach(tt=> tt.columns.forEach(c=>{
+          if(c.refColumnId===col.id){ c.fk=false; c.refTableId=null; c.refColumnId=null; }
+        }));
+        touch();
+      }, 'a coluna "'+col.name+'"');
+    }});
+    table.appendChild(E('tr',{},[
+      E('td',{},[nameInp]), E('td',{},[typeSel]),
+      E('td',{style:'text-align:center'},[pkChk]), E('td',{style:'text-align:center'},[fkChk]),
+      E('td',{style:'text-align:center'},[reqChk]),
+      E('td',{},[delBtn])
+    ]));
+    if(col.fk){
+      const tblSel = E('select',{onchange:(e)=>{
+        col.refTableId = e.target.value;
+        const rt = state.logical.tables.find(x=>x.id===col.refTableId);
+        const pk = rt ? rt.columns.find(c=>c.pk) : null;
+        col.refColumnId = pk ? pk.id : null;
+        touch();
+      }});
+      state.logical.tables.forEach(rt=> tblSel.appendChild(E('option',{value:rt.id, selected:(rt.id===col.refTableId)?'':null},[rt.name])));
+      const refTable = state.logical.tables.find(x=>x.id===col.refTableId);
+      const pkCols = refTable ? refTable.columns.filter(c=>c.pk) : [];
+      const colSel = E('select',{onchange:(e)=>{ col.refColumnId = e.target.value; touch(); }});
+      if(!pkCols.length){
+        colSel.appendChild(E('option',{value:''},['(tabela sem PK)']));
+        colSel.disabled = true;
+      } else {
+        pkCols.forEach(pc=> colSel.appendChild(E('option',{value:pc.id, selected:(pc.id===col.refColumnId)?'':null},[pc.name])));
+      }
+      table.appendChild(E('tr',{class:'fk-picker-row'},[
+        E('td',{colspan:'6'},[
+          E('div',{class:'field-row'},[
+            E('div',{class:'field'},[E('label',{},['Referencia a tabela']), tblSel]),
+            E('div',{class:'field'},[E('label',{},['PK referenciada']), colSel])
+          ])
+        ])
+      ]));
+    }
+  });
+  return table;
+}
+function buildTableInspector(t){
+  const root = E('div',{style:'display:flex;flex-direction:column;flex:1;min-height:0;'});
+  const scroll = E('div',{class:'inspector-scroll'});
+  scroll.appendChild(E('div',{class:'inspector-head'},[ E('span',{class:'badge'},['tabela lógica']) ]));
+  scroll.appendChild(fieldText('Nome da tabela', t.name, v=>{ t.name=v; touch(true); }));
+  scroll.appendChild(E('hr'));
+  scroll.appendChild(E('div',{class:'rail-label'},['Colunas']));
+  scroll.appendChild(buildColumnTable(t));
+  scroll.appendChild(E('button',{class:'btn attr-add', onclick:()=>{ t.columns.push({id:uid('col'),name:'nova_coluna',type:'text',pk:false,nullable:true,fk:false,refTableId:null,refColumnId:null}); touch(); }},['+ Adicionar coluna']));
+  root.appendChild(scroll);
+  root.appendChild(E('div',{class:'inspector-actions'},[
+    E('button',{class:'btn danger ghost', onclick:(e)=>confirmAction(e.currentTarget, ()=>deleteTable(t.id))},['Excluir tabela'])
+  ]));
+  return root;
+}
+
 function renderInspector(){
   const panel = document.getElementById('panelProp');
   panel.innerHTML = '';
+  if(activePage==='logical'){
+    if(logicalSelection.type==='table'){
+      const t = state.logical.tables.find(x=>x.id===logicalSelection.id);
+      if(!t){ logicalSelection={type:null,id:null}; renderInspector(); return; }
+      panel.appendChild(buildTableInspector(t));
+    } else {
+      panel.appendChild(E('div',{class:'inspector-empty'},[
+        E('div',{class:'ic', html:ICONS.empty}),
+        E('div',{},['Selecione uma tabela no diagrama, ou crie uma nova pela barra à esquerda.'])
+      ]));
+    }
+    return;
+  }
   if(multiSelect.size>=2){
     panel.appendChild(E('div',{class:'inspector-empty'},[
       E('div',{class:'ic', html:ICONS.conventional}),
@@ -4463,6 +4836,55 @@ function renderInspector(){
   }
 }
 
+/* synthetic FK fields derived from generalization / aggregation / network relationships */
+function computeExportFields(c){
+  const fields = c.attributes.map(a=>({name:sqlIdent(a.name), type:a.type, pk:a.pk, nullable:a.nullable, fkTable:null}));
+  state.relationships.forEach(r=>{
+    if(r.type==='generalization' && r.sourceId===c.id){
+      const sup = state.classes.find(x=>x.id===r.targetId);
+      if(sup) fields.push({name: sqlIdent(sup.name)+'_id', type:'integer', pk:false, nullable:false, fkTable: sqlIdent(sup.name), fkClassId: sup.id, fkNote:'generalização (' + (r.total?'total':'parcial') + ', ' + (r.disjoint?'disjunta':'sobreposta') + ')'});
+    }
+    if(r.type==='aggregation' && r.targetId===c.id){
+      const whole = state.classes.find(x=>x.id===r.sourceId);
+      // Round Q item 5: aggregation has no cardinality to derive nullability
+      // from any more — a part is always required to belong to its whole.
+      if(whole) fields.push({name: sqlIdent(whole.name)+'_id', type:'integer', pk:false, nullable:false, fkTable: sqlIdent(whole.name), fkClassId: whole.id, fkNote:'agregação todo-parte'+(r.spatial?' (espacial: com controle topológico)':'')});
+    }
+    if(r.type==='network' && r.targetId===c.id){
+      const node = state.classes.find(x=>x.id===r.sourceId);
+      if(node){
+        fields.push({name: sqlIdent(node.name)+'_no_origem_id', type:'integer', pk:false, nullable:true, fkTable: sqlIdent(node.name), fkClassId: node.id, fkNote:'rede: nó de origem do arco'});
+        fields.push({name: sqlIdent(node.name)+'_no_destino_id', type:'integer', pk:false, nullable:true, fkTable: sqlIdent(node.name), fkClassId: node.id, fkNote:'rede: nó de destino do arco'});
+      }
+    }
+    if(r.type==='association'){
+      const plan = associationPlan(r);
+      if(plan.mode==='fk' && plan.fkOn===c.id){
+        const refClass = state.classes.find(x=>x.id===plan.refTo);
+        if(refClass){
+          const ownCard = (plan.fkOn===r.sourceId) ? r.cardSource : r.cardTarget;
+          fields.push({name: sqlIdent(refClass.name)+'_id', type:'integer', pk:false, nullable:(ownCard==='0..*'||ownCard==='0..1'), fkTable: sqlIdent(refClass.name), fkClassId: refClass.id, fkNote:'associação'+(r.name?' ('+r.name+')':'')});
+        }
+      }
+    }
+  });
+  return fields;
+}
+/* how to realize a simple association relationally */
+function associationPlan(r){
+  const many = (v)=> v==='0..*' || v==='1..*';
+  const one = (v)=> v==='1' || v==='0..1';
+  if(many(r.cardSource) && one(r.cardTarget)) return {mode:'fk', fkOn:r.sourceId, refTo:r.targetId};
+  if(one(r.cardSource) && many(r.cardTarget)) return {mode:'fk', fkOn:r.targetId, refTo:r.sourceId};
+  if(one(r.cardSource) && one(r.cardTarget)) return {mode:'fk', fkOn:r.sourceId, refTo:r.targetId};
+  return {mode:'junction'};
+}
+
+function pkFieldName(c){
+  const pk = c.attributes.find(a=>a.pk);
+  return pk ? sqlIdent(pk.name) : 'id';
+}
+
 /* ============================================================
    LEGEND panel (static)
    ============================================================ */
@@ -4471,14 +4893,8 @@ function relDesc(k){
     association: 'Ligação estrutural simples entre classes (convencionais ou geográficas), com cardinalidade em cada extremidade.',
     spatial: 'Relação topológica entre duas classes geográficas, com o predicado do OMT-G (Toca, Dentro, Sobrepõe...) escrito na linha tracejada.',
     network: 'Conecta uma classe Nó a uma classe Arco — ou uma classe Arco a ela mesma (rede arco-arco recursiva, sem nó) — formando um grafo/rede, desenhada como duas linhas tracejadas paralelas.',
-    // Round U item 11: clarified — in vez de só citar "especialização" de
-    // passagem (o que soava como um segundo conceito à parte), o texto agora
-    // deixa explícito que é a MESMA relação, só olhada em outro sentido.
-    generalization: 'Superclasse/subclasse (quaisquer classes, uma superclasse pode ter várias subclasses) — no OMT-G, a mesma relação é chamada de generalização no sentido subclasse→superclasse, e de especialização no sentido inverso. Triângulo vazado = disjunto, preenchido = sobreposto; ponto além do ápice = total, ausência de ponto = parcial.',
-    // Round U item 12: removido o trecho final ("uma classe generalizada
-    // também pode reunir... quadrado vazado = disjunto, preenchido =
-    // sobreposto; rótulo indica Forma ou Escala") a pedido do usuário.
-    cartographicGeneralization: 'Mudança de forma ou de escala entre representações da mesma classe em resoluções/propósitos diferentes — sem relação com a Generalização acima, além do nome.',
+    generalization: 'Superclasse/subclasse (quaisquer classes, uma superclasse pode ter várias subclasses): triângulo vazado = disjunto, preenchido = sobreposto; ponto além do ápice = total, ausência de ponto = parcial.',
+    cartographicGeneralization: 'Mudança de forma ou de escala entre representações da mesma classe em resoluções/propósitos diferentes — sem relação com a Generalização/especialização acima, além do nome (uma classe generalizada também pode reunir várias classes mais detalhadas). Linha tracejada como a Espacial; quadrado vazado = disjunto, preenchido = sobreposto; rótulo indica Forma ou Escala.',
     aggregation: 'Relação todo–parte com losango vazado no lado do "todo" — entre classes convencionais, geográficas, ou mistas. Marcada como Espacial quando é o caso topológico ("whole-part"): exige todo e parte geográficos, com as partes disjuntas ou se tocando, cobrindo exatamente o todo (linha tracejada).'
   }[k] || '';
 }
@@ -4517,21 +4933,8 @@ function renderLegendOnce(){
   });
   scroll.appendChild(gTopo);
 
-  // Round U items 13/14: added the authorship line; removed the
-  // geo-field-vector-equivalence caveat entirely (item 14). Round V item 5
-  // ("seguir a referência da ABNT"): replaced the earlier "segue a
-  // normalização ABNT" claim with an actual ABNT (NBR 6023) reference entry
-  // for the OMT-G paper, instead of just asserting compliance in prose.
-  // Bibliographic data (authors, year, volume/issue/pages) confirmed via
-  // the publisher record (Springer/GeoInformatica, DOI 10.1023/A:1011482030093)
-  // rather than guessed.
   const gNote = E('div',{class:'legend-group'},[E('h3',{},['Sobre esta notação'])]);
-  // Round W item 1 ("pode colocar um espaço para meu e-mail ou qualquer
-  // outra coisa que eu queira"): a plainly-a-placeholder slot right after
-  // the name, in brackets so it never reads as a real value on its own —
-  // easiest place for him to swap in whatever contact info he wants later.
-  gNote.appendChild(E('div',{class:'ld', style:'line-height:1.6;'},['Notação baseada no OMT-G (Borges, Davis Jr. & Laender), adaptada por Pétrik Emanuel Lauermann [contato] para este editor.']));
-  gNote.appendChild(E('div',{class:'ld', style:'line-height:1.5;margin-top:8px;padding-left:1em;text-indent:-1em;'},['BORGES, K. A. V.; DAVIS JR., C. A.; LAENDER, A. H. F. OMT-G: an object-oriented data model for geographic applications. GeoInformatica, v. 5, n. 3, p. 221-260, 2001.']));
+  gNote.appendChild(E('div',{class:'ld', style:'line-height:1.6;'},['Notação inspirada no OMT-G (Borges, Davis & Laender), adaptada para este editor. Primitivas de geo-campo (isolinhas, TIN, tesselação, amostragem, partição) não têm equivalente vetorial direto em geodatabase/GeoPackage/PostGIS — são exportadas como aproximações vetoriais, sinalizadas em comentário nos arquivos gerados.']));
   scroll.appendChild(gNote);
 
   panel.appendChild(scroll);
@@ -4612,11 +5015,14 @@ function normalizeState(s){
 function loadModel(m){
   state = normalizeState(m);
   if(!state.meta) state.meta = emptyModel().meta;
+  if(!state.logical) state.logical = {tables:[]};
   selection = {type:null, id:null};
+  logicalSelection = {type:null, id:null};
   multiSelect = new Set();
   connDrag = null;
+  colDrag = null;
   document.getElementById('modelName').value = state.meta.name || '';
-  renderRelControls(); renderConnDragOverlay();
+  renderRelControls(); renderConnDragOverlay(); renderColDragOverlay();
   touch();
   fitView();
   historyInit(); // a freshly loaded/new/sample model is undo's own "origin" — nothing before it to undo to
@@ -4658,7 +5064,9 @@ function confirmIconAction(btn, action, what){
 let keyDeleteArm = null; // {sig, timer}
 function handleDeleteKey(){
   let sig=null, action=null, what=null;
-  if(multiSelect.size>=2){
+  if(activePage==='logical'){
+    if(logicalSelection.type==='table'){ sig='table:'+logicalSelection.id; action=()=>deleteTable(logicalSelection.id); what='a tabela'; }
+  } else if(multiSelect.size>=2){
     const ids=[...multiSelect].sort();
     sig='multi:'+ids.join(',');
     action=()=>{ ids.forEach(id=>deleteClass(id)); multiSelect=new Set(); touch(); };
@@ -4928,20 +5336,10 @@ function initTopbar(){
     document.getElementById('validationPanel').hidden = true;
   });
 
-  // Round U item 15: "Grid" toggles the background grid on/off — same grid
-  // layer used by both pages and by the SVG export (buildCanvasSvgString
-  // clones #canvasSvg live, inline style included).
-  const btnGrid = document.getElementById('btnGrid');
-  if(btnGrid){
-    btnGrid.classList.toggle('active', gridVisible);
-    btnGrid.addEventListener('click', ()=>{
-      gridVisible = !gridVisible;
-      const gl = document.getElementById('gridLayer');
-      if(gl) gl.style.display = gridVisible ? '' : 'none';
-      btnGrid.classList.toggle('active', gridVisible);
-    });
-  }
-
+  document.getElementById('btnSample').addEventListener('click', (e)=>{
+    const run = ()=>loadModel(sampleModel());
+    if(state.classes.length) confirmAction(e.currentTarget, run); else run();
+  });
   document.getElementById('btnNew').addEventListener('click', (e)=>{
     const run = ()=>loadModel(emptyModel());
     if(state.classes.length) confirmAction(e.currentTarget, run); else run();
@@ -4980,6 +5378,27 @@ function switchRightTab(tabId){
   document.getElementById('panelLegend').classList.toggle('active', tabId==='legend');
 }
 
+/* ---------- top bar: page switch (Conceitual / Lógica) + Evoluir ---------- */
+function switchPage(page){
+  activePage = page;
+  if(page==='logical') multiSelect = new Set(); // multi-select is conceptual-only (item 9)
+  document.querySelectorAll('.pagetab').forEach(b=> b.classList.toggle('active', b.dataset.page===page));
+  document.getElementById('railConceptual').hidden = page!=='conceptual';
+  document.getElementById('railLogical').hidden = page!=='logical';
+  touch();
+  fitView();
+}
+function initPageSwitch(){
+  document.querySelectorAll('.pagetab').forEach(btn=>{
+    btn.addEventListener('click', ()=> switchPage(btn.dataset.page));
+  });
+  document.getElementById('btnEvolve').addEventListener('click', (e)=>{
+    const run = ()=> evolveToLogical();
+    if(state.logical.tables.length) confirmAction(e.currentTarget, run); else run();
+  });
+  document.getElementById('btnAddTable').addEventListener('click', ()=> addTable());
+}
+
 function initHistoryControls(){
   const btnU = document.getElementById('btnUndo');
   const btnR = document.getElementById('btnRedo');
@@ -5004,12 +5423,14 @@ function boot(){
   initDefs();
   initAddControls();
   initTopbar();
+  initPageSwitch();
   initResizers();
   initExportMenu();
   initStageEvents();
   const saved = loadAutosave();
   state = normalizeState(saved || emptyModel());
   if(!state.meta) state.meta = emptyModel().meta;
+  if(!state.logical) state.logical = {tables:[]};
   document.getElementById('modelName').value = state.meta.name || '';
   renderRelControls();
   renderLegendOnce();

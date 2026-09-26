@@ -2303,9 +2303,14 @@ function buildGdbJson(){
       const dis = r.disjoint ? 'disjunta' : 'sobreposta';
       warn(nameFor(r.targetId), 'Generalização '+cov+'/'+dis+': essas restrições não são representáveis no GDB.', {relIds:[r.id]});
     } else if(r.type==='cartographicGeneralization'){
-      pushRel(r, r.sourceId, r.targetId, {cardinality:'ONE_TO_MANY',
-        forward: r.kind==='scale' ? 'em outra escala' : 'em outra forma', backward:'origem',
-        notes:['Generalização cartográfica: representações distintas da mesma entidade.']});
+      // Superclasse (destino no diagrama) → representação (origem no
+      // diagrama), FK na representação. Modelos antigos com a FK do outro
+      // lado continuam funcionando.
+      const sub = classes.find(c=>c.id===r.sourceId), sup = classes.find(c=>c.id===r.targetId);
+      const oldWay = !(sub && fkBetween(sub, r.targetId)) && !!(sup && fkBetween(sup, r.sourceId));
+      pushRel(r, oldWay ? r.sourceId : r.targetId, oldWay ? r.targetId : r.sourceId, {cardinality:'ONE_TO_MANY',
+        forward: r.kind==='scale' ? 'representado em outra escala por' : 'representado em outra forma por', backward:'representa',
+        notes:['Generalização cartográfica: cada subclasse é uma representação ('+(r.kind==='scale'?'escala':'forma')+') da mesma entidade da superclasse.']});
     } else if(r.type==='network'){
       // Decisão 12: declarar, nunca criar.
       const parts = [a,b];
@@ -2391,6 +2396,19 @@ function buildGdbJson(){
   // — nenhuma regra existe sem ele. Anexos não pedem (usam o OBJECTID).
   const withRules = new Set(attributeRules.map(r=>r.dataset));
   datasets.forEach(d=>{ if(withRules.has(d.name)) d.systemFields.push('GLOBALID'); });
+  // Validation rule (lote) só existe com Editor Tracking ligado na tabela
+  // (ERROR 003324). Onde o Lógico não pediu "Controle de edições", liga
+  // mesmo assim e avisa.
+  const withValidation = new Set(attributeRules.filter(r=>r.type==='validation').map(r=>r.dataset));
+  datasets.forEach(d=>{
+    if(!withValidation.has(d.name) || d.editorTracking) return;
+    const taken = new Set((d.fields||[]).map(f=>String(f.name).toLowerCase()));
+    const base = ['created_user','created_date','last_edited_user','last_edited_date'];
+    const nm = base.map(n=> taken.has(n) ? 'et_'+n : n);
+    d.editorTracking = {creatorField:nm[0], creationDateField:nm[1], lastEditorField:nm[2], lastEditDateField:nm[3],
+      recordDatesIn:'UTC', requiredBy:'validationRule'};
+    warn(d.name, 'A participação mínima (1..*) é uma Validation Rule, e o ArcGIS só aceita esse tipo de regra com Controle de edições (Editor Tracking) ligado — foi habilitado nesta tabela (4 campos a mais). Marque "Controle de edições" na classe no Lógico para deixar isso explícito.');
+  });
 
   if(meta.schema) note('workspace', 'meta.schema', 'Conceito do PostGIS; sem equivalente no GDB.');
 
@@ -4955,6 +4973,19 @@ function computeConceptualValidation(){
   // existem nesse lado das "independent models"; rodar isso contra o
   // Conceitual acusaria toda classe, já que nenhum atributo conceitual tem
   // pk/fk de fato).
+  // Generalização cartográfica: superclasse com pelo menos duas
+  // representações. Com uma só, é relação espacial entre duas classes.
+  {
+    const bySuper = {};
+    state.relationships.filter(r=>r.type==='cartographicGeneralization' && r.sourceId!==r.targetId)
+      .forEach(r=> (bySuper[r.targetId] = bySuper[r.targetId] || []).push(r));
+    Object.entries(bySuper).forEach(([sid, list])=>{
+      if(list.length>=2) return;
+      const sup = classes.find(c=>c.id===sid), sub = classes.find(c=>c.id===list[0].sourceId);
+      if(!sup || !sub) return;
+      add('warning','ESTRUTURAL','semantic','CART-GEN','Generalização cartográfica "'+sup.name+'" tem só uma representação ("'+sub.name+'"). A superclasse precisa de pelo menos duas representações (ex.: ponto e polígono); se são duas entidades diferentes, use um relacionamento espacial entre elas.', [sup.id, sub.id], list.map(r=>r.id));
+    });
+  }
   if(logicalMode){
     // Item 1 ("gosto de ter uma PK para cada classe, mesmo pensando no
     // modelo lógico — posso obrigar isso?"): sim — no relacional, toda
@@ -5364,19 +5395,77 @@ function clipToRect(cx, cy, tx, ty, r){
   const k = Math.min(sx, sy);
   return {x: cx+dx*k, y: cy+dy*k};
 }
+function ensureListBoxPos(cls, attr){
+  if(attr.listBox) return attr.listBox;
+  // Primeira aparição: à direita da classe, escalonada por atributo Lista.
+  const listAttrs = (cls.attributes||[]).filter(a=>a.type==='list');
+  const idx = Math.max(0, listAttrs.indexOf(attr));
+  attr.listBox = { x: (cls.x||0) + (cls.w||classWidth(cls)) + 50, y: (cls.y||0) + idx*44 };
+  return attr.listBox;
+}
+function ensureCalcNotePos(cls){
+  if(!cls.calcNote) cls.calcNote = { x: cls.x||0, y: (cls.y||0) + (cls.h||classHeight(cls)) + 40 };
+  return cls.calcNote;
+}
+function calcNoteRect(cls){
+  const lines = calcNoteLines(cls);
+  if(!lines.length) return null;
+  const pos = ensureCalcNotePos(cls), sz = calcNoteSize(lines);
+  return {x:pos.x, y:pos.y, w:sz.w, h:sz.h};
+}
+// Linha da nota até a classe: reta ortogonal curta sempre que as duas caixas
+// se sobrepõem num dos eixos (fica fácil de desviar); diagonal só quando a
+// nota foi arrastada para uma diagonal da classe.
+function calcNoteLinkSeg(cls, n){
+  const c = {x:cls.x, y:cls.y, w:cls.w||classWidth(cls), h:cls.h||classHeight(cls)};
+  const oy1 = Math.max(c.y, n.y), oy2 = Math.min(c.y+c.h, n.y+n.h);
+  if(oy2-oy1 >= 8){
+    const y = (oy1+oy2)/2;
+    if(n.x >= c.x+c.w) return {x1:c.x+c.w, y1:y, x2:n.x, y2:y};
+    if(n.x+n.w <= c.x) return {x1:c.x, y1:y, x2:n.x+n.w, y2:y};
+  }
+  const ox1 = Math.max(c.x, n.x), ox2 = Math.min(c.x+c.w, n.x+n.w);
+  if(ox2-ox1 >= 8){
+    const x = (ox1+ox2)/2;
+    if(n.y >= c.y+c.h) return {x1:x, y1:c.y+c.h, x2:x, y2:n.y};
+    if(n.y+n.h <= c.y) return {x1:x, y1:c.y, x2:x, y2:n.y+n.h};
+  }
+  const cc = {x:c.x+c.w/2, y:c.y+c.h/2}, nc = {x:n.x+n.w/2, y:n.y+n.h/2};
+  const a = clipToRect(cc.x, cc.y, nc.x, nc.y, {w:c.w, h:c.h});
+  const b = clipToRect(nc.x, nc.y, cc.x, cc.y, {w:n.w, h:n.h});
+  return {x1:a.x, y1:a.y, x2:b.x, y2:b.y, diagonal:true};
+}
+// Retângulos das caixas satélite de uma classe (só no Lógico), usados como
+// obstáculo pelo roteamento e pela busca de lugar dos rótulos.
+function satelliteRects(cls){
+  if(!logicalMode) return [];
+  const out = [];
+  (cls.attributes||[]).forEach(a=>{
+    if(a.type!=='list') return;
+    const p = ensureListBoxPos(cls, a);
+    out.push({key:'sat:'+a.id, x:p.x, y:p.y, w:listBoxWidth(a), h:listBoxHeight(a), m:12});
+  });
+  const n = calcNoteRect(cls);
+  if(n){
+    out.push({key:'note:'+cls.id, x:n.x, y:n.y, w:n.w, h:n.h, m:12});
+    const l = calcNoteLinkSeg(cls, n);
+    if(!l.diagonal){
+      out.push({key:'link:'+cls.id, x:Math.min(l.x1,l.x2)-2, y:Math.min(l.y1,l.y2)-2,
+        w:Math.abs(l.x2-l.x1)+4, h:Math.abs(l.y2-l.y1)+4, m:6});
+    }
+  }
+  return out;
+}
 function buildCalcNote(cls){
   const lines = calcNoteLines(cls);
   if(!lines.length) return null;
-  const cw = cls.w||classWidth(cls), ch = cls.h||classHeight(cls);
-  if(!cls.calcNote) cls.calcNote = { x: cls.x||0, y: (cls.y||0) + ch + 40 };
+  ensureCalcNotePos(cls);
   const {w, h} = calcNoteSize(lines);
   const nx = cls.calcNote.x, ny = cls.calcNote.y;
   const wrap = S('g',{class:'calc-note-wrap'});
   // linha tracejada da nota até a classe
-  const cc = {x:cls.x+cw/2, y:cls.y+ch/2}, nc = {x:nx+w/2, y:ny+h/2};
-  const a = clipToRect(cc.x, cc.y, nc.x, nc.y, {w:cw, h:ch});
-  const b = clipToRect(nc.x, nc.y, cc.x, cc.y, {w:w, h:h});
-  wrap.appendChild(S('line',{class:'calc-note-link', x1:a.x, y1:a.y, x2:b.x, y2:b.y}));
+  const lk = calcNoteLinkSeg(cls, {x:nx, y:ny, w, h});
+  wrap.appendChild(S('line',{class:'calc-note-link', x1:lk.x1, y1:lk.y1, x2:lk.x2, y2:lk.y2}));
   const g = S('g',{
     class:'calc-note', 'data-note-class-id': cls.id,
     transform:'translate('+nx+','+ny+')',
@@ -5399,15 +5488,7 @@ function buildCalcNote(cls){
   return wrap;
 }
 function buildListNode(cls, attr){
-  if(!attr.listBox){
-    // First appearance: placed just to the right of the owning class,
-    // staggered a bit per Lista attribute so several on the same class
-    // don't land exactly on top of each other — from there it's freely
-    // draggable and its position is remembered on the attribute itself.
-    const listAttrs = (cls.attributes||[]).filter(a=>a.type==='list');
-    const idx = Math.max(0, listAttrs.indexOf(attr));
-    attr.listBox = { x: (cls.x||0) + (cls.w||classWidth(cls)) + 50, y: (cls.y||0) + idx*44 };
-  }
+  ensureListBoxPos(cls, attr);
   const w = listBoxWidth(attr), h = listBoxHeight(attr);
   const isSel = selection.type==='listBox' && selection.id===attr.id;
   const g = S('g', {
@@ -5765,6 +5846,9 @@ function buildElbowPoints(a, aSide, b, bSide){
 // visible breathing room to route around, without changing which routes
 // count as blocked vs. clear (still a plain distance, not a boundary rule).
 const OBSTACLE_MARGIN = 20;
+// Caixas satélite (lista, nota de cálculo e a linha da nota) entram como
+// obstáculo com margem própria, menor que a das classes.
+function obsM(rect){ return rect && rect.m!=null ? rect.m : OBSTACLE_MARGIN; }
 function rectHitsObstacles(x1,y1,x2,y2, obstacles){
   const lox=Math.min(x1,x2), hix=Math.max(x1,x2), loy=Math.min(y1,y2), hiy=Math.max(y1,y2);
   return obstacles.some(o=> lox < o.x2 && hix > o.x1 && loy < o.y2 && hiy > o.y1);
@@ -5800,7 +5884,7 @@ function routeOrthogonal(a, aSide, b, bSide, obstacles){
   else if(bSide==='top') ysSet.add(b.y-CLEARANCE); else if(bSide==='bottom') ysSet.add(b.y+CLEARANCE);
   const xs = [...xsSet].sort((p,q)=>p-q);
   const ys = [...ysSet].sort((p,q)=>p-q);
-  if(xs.length>44 || ys.length>44) return null; // keep this cheap; caller falls back
+  if(xs.length>80 || ys.length>80) return null; // keep this cheap; caller falls back
   const xi = xs.reduce((m,v,i)=>(m[v]=i,m),{}), yi = ys.reduce((m,v,i)=>(m[v]=i,m),{});
   const W = xs.length, H = ys.length;
   const blockedH = {}, blockedV = {}; // blockedH[ix+','+iy] = segment (ix,iy)-(ix+1,iy) blocked
@@ -5933,7 +6017,7 @@ const SELF_LOOP_LABEL_PAD = 24; // clearance kept between the label and the loop
 function selfLoopRequiredSegLen(name){
   return measureTextWidth(name||'Rede', EDGE_LABEL_FONT) + SELF_LOOP_LABEL_PAD;
 }
-function selfLoopCandidate(rect, corner, requiredSegLen){
+function selfLoopCandidate(rect, corner, requiredSegLen, scale){
   const insetX = Math.min(SELF_LOOP_INSET_PX, rect.w*0.4);
   const insetY = Math.min(SELF_LOOP_INSET_PX, rect.h*0.4);
   // Round L item 6 ("tá aumentando de tamanho para todos os lados, devia
@@ -5945,8 +6029,8 @@ function selfLoopCandidate(rect, corner, requiredSegLen){
   // is the only one that depends on outX; the other three depend only on
   // outY/insetY and are untouched, so a long name widens the loop sideways
   // without also making it taller.
-  const outY = SELF_LOOP_OUT;
-  let outX = SELF_LOOP_OUT;
+  const outY = SELF_LOOP_OUT*(scale||1);
+  let outX = SELF_LOOP_OUT*(scale||1);
   if(requiredSegLen){
     outX = Math.max(outX, requiredSegLen-insetX);
   }
@@ -6005,23 +6089,37 @@ function boxOverlapsSegs(box, segs, margin){
   }
   return false;
 }
-function selfLoopPoints(aRect, otherRects, requiredSegLen, otherSegs){
-  for(const corner of SELF_LOOP_CORNERS){
-    const cand = selfLoopCandidate(aRect, corner, requiredSegLen);
-    const blockedByRect = otherRects && otherRects.length && boxOverlapsRects(cand.box, otherRects, 6);
-    // A wider margin than the rect check above: a self-loop landing a mere
-    // handful of px from where some OTHER relationship also touches this
-    // same class's border reads as "on top of it" even without a literal
-    // overlap (Round N item 4a) — so a nearby port counts as blocked too,
-    // pushing the loop to the next corner instead of just barely clearing.
-    const blockedBySeg = otherSegs && otherSegs.length && boxOverlapsSegs(cand.box, otherSegs, 16);
-    if(!blockedByRect && !blockedBySeg) return cand.points;
+function countBoxRects(box, rects, margin){
+  let n = 0;
+  for(const rect of rects||[]){
+    const x1=rect.x-margin, y1=rect.y-margin, x2=rect.x+rect.w+margin, y2=rect.y+rect.h+margin;
+    if(box.x1<x2 && box.x2>x1 && box.y1<y2 && box.y2>y1) n++;
   }
-  // No corner is fully clear — rather than force the loop somewhere odd,
-  // fall back to the first preference (top-right) and leave it for the user
-  // to rearrange classes if it ends up crowded (same fallback philosophy as
-  // the label placement search above).
-  return selfLoopCandidate(aRect, SELF_LOOP_CORNERS[0], requiredSegLen).points;
+  return n;
+}
+function countBoxSegs(box, segs, margin){
+  let n = 0;
+  for(const s of segs||[]) if(boxOverlapsSegs(box, [s], margin)) n++;
+  return n;
+}
+// Round N item 4a + "relacionamentos de rede passando por cima um do outro":
+// testa os quatro cantos em três tamanhos de laço e fica com o primeiro
+// totalmente livre; se nenhum for, com o que menos encosta em caixas e em
+// linhas — nunca mais "o primeiro canto" às cegas. A margem contra linhas
+// inclui a largura da rede (as duas paralelas).
+function selfLoopPoints(aRect, otherRects, requiredSegLen, otherSegs, isNetwork){
+  const segMargin = 16 + (isNetwork ? NETWORK_GAP*2 : NETWORK_GAP);
+  let best = null;
+  for(const scale of [1, 1.8, 2.6]){
+    for(const corner of SELF_LOOP_CORNERS){
+      const cand = selfLoopCandidate(aRect, corner, requiredSegLen, scale);
+      const hits = countBoxRects(cand.box, otherRects, 6)*100 + countBoxSegs(cand.box, otherSegs, segMargin);
+      if(hits===0) return cand.points;
+      const score = hits + (scale-1)*0.5; // empate: laço menor ganha
+      if(!best || score < best.score) best = {score, points:cand.points};
+    }
+  }
+  return best.points;
 }
 function segmentsOf(points){
   const segs = [];
@@ -6094,11 +6192,36 @@ function assignPorts(relationships, rects){
   const OPPOSITE_SIDE = {top:'bottom', bottom:'top', left:'right', right:'left'};
   const forcedASide = {}; // idx -> side, for members of a 2+ merged group
   Object.entries(forcedBSide).forEach(([idx,side])=>{ forcedASide[idx] = OPPOSITE_SIDE[side]; });
+  // Lado de uma classe ocupado pelas suas listas/nota de cálculo: nenhum
+  // relacionamento sai por ali (ficaria espremido entre a classe e a caixa).
+  const blockedSides = {};
+  Object.values(rects).forEach(sr=>{
+    if(!sr.owner || !rects[sr.owner]) return;
+    const c = rects[sr.owner], NEAR = 120;
+    const ovY = Math.min(c.y+c.h, sr.y+sr.h) - Math.max(c.y, sr.y) > 0;
+    const ovX = Math.min(c.x+c.w, sr.x+sr.w) - Math.max(c.x, sr.x) > 0;
+    let side = null;
+    if(ovY && sr.x >= c.x+c.w && sr.x-(c.x+c.w) < NEAR) side = 'right';
+    else if(ovY && sr.x+sr.w <= c.x && c.x-(sr.x+sr.w) < NEAR) side = 'left';
+    else if(ovX && sr.y >= c.y+c.h && sr.y-(c.y+c.h) < NEAR) side = 'bottom';
+    else if(ovX && sr.y+sr.h <= c.y && c.y-(sr.y+sr.h) < NEAR) side = 'top';
+    if(side) (blockedSides[sr.owner] = blockedSides[sr.owner] || new Set()).add(side);
+  });
+  const freeSide = (classId, side, dx, dy)=>{
+    const bl = blockedSides[classId];
+    if(!bl || !bl.has(side)) return side;
+    const order = (side==='left' || side==='right')
+      ? [dy>=0?'bottom':'top', dy>=0?'top':'bottom', side==='left'?'right':'left']
+      : [dx>=0?'right':'left', dx>=0?'left':'right', side==='top'?'bottom':'top'];
+    return order.find(sd=>!bl.has(sd)) || side;
+  };
   relationships.forEach((r, idx)=>{
     const aRect = rects[r.sourceId], bRect = rects[r.targetId];
     if(!aRect || !bRect){ sideInfo[idx] = null; return; }
     if(r.sourceId===r.targetId){ sideInfo[idx] = 'self'; return; }
-    const decided = decideSides(aRect, bRect);
+    const decided0 = decideSides(aRect, bRect);
+    const ddx = (bRect.x+bRect.w/2)-(aRect.x+aRect.w/2), ddy = (bRect.y+bRect.h/2)-(aRect.y+aRect.h/2);
+    const decided = {aSide: freeSide(r.sourceId, decided0.aSide, ddx, ddy), bSide: freeSide(r.targetId, decided0.bSide, -ddx, -ddy)};
     // Round N item 5: a manually-placed connector (dragged by the user onto
     // a specific spot on the class's border) uses ITS OWN side instead of
     // the auto-decided one, and sits out of the auto-spacing group entirely
@@ -6172,7 +6295,7 @@ function assignPorts(relationships, rects){
     const obstacles = [];
     rectEntries.forEach(([cid,rect])=>{
       if(cid===r.sourceId || cid===r.targetId) return;
-      const x1=rect.x-OBSTACLE_MARGIN, y1=rect.y-OBSTACLE_MARGIN, x2=rect.x+rect.w+OBSTACLE_MARGIN, y2=rect.y+rect.h+OBSTACLE_MARGIN;
+      const x1=rect.x-obsM(rect), y1=rect.y-obsM(rect), x2=rect.x+rect.w+obsM(rect), y2=rect.y+rect.h+obsM(rect);
       if(x2<loX || x1>hiX || y2<loY || y1>hiY) return;
       obstacles.push({x1,y1,x2,y2});
     });
@@ -6191,7 +6314,28 @@ function assignPorts(relationships, rects){
     // leave outward from the port, so it bends around the card instead.
     obstacles.push({x1:aRect.x, y1:aRect.y, x2:aRect.x+aRect.w, y2:aRect.y+aRect.h});
     obstacles.push({x1:bRect.x, y1:bRect.y, x2:bRect.x+bRect.w, y2:bRect.y+bRect.h});
-    result[idx] = routeEdge(aPt, aSide, bPt, bSide, obstacles);
+    let pts = routeEdge(aPt, aSide, bPt, bSide, obstacles);
+    // o desvio pode sair da região considerada e bater numa caixa que ficou
+    // de fora; nesse caso refaz com todas as caixas como obstáculo
+    const allObs = [];
+    rectEntries.forEach(([cid,rect])=>{
+      if(cid===r.sourceId || cid===r.targetId) return;
+      allObs.push({x1:rect.x-obsM(rect)+1, y1:rect.y-obsM(rect)+1, x2:rect.x+rect.w+obsM(rect)-1, y2:rect.y+rect.h+obsM(rect)-1});
+    });
+    const hitsAny = ps=> ps && ps.some((p0,i)=> i<ps.length-1 && rectHitsObstacles(p0.x,p0.y,ps[i+1].x,ps[i+1].y,allObs));
+    // região ampliada em volta do desvio encontrado, até 3 tentativas
+    for(let tries=0; tries<3 && hitsAny(pts); tries++){
+      const xsP = pts.map(q=>q.x).concat([aPt.x,bPt.x]), ysP = pts.map(q=>q.y).concat([aPt.y,bPt.y]);
+      const SL = 120*(tries+1);
+      const rx1 = Math.min(...xsP)-SL, rx2 = Math.max(...xsP)+SL, ry1 = Math.min(...ysP)-SL, ry2 = Math.max(...ysP)+SL;
+      const wide = allObs.filter(o=> !(o.x2<rx1 || o.x1>rx2 || o.y2<ry1 || o.y1>ry2)).map(o=>({x1:o.x1-1, y1:o.y1-1, x2:o.x2+1, y2:o.y2+1}));
+      wide.push({x1:aRect.x, y1:aRect.y, x2:aRect.x+aRect.w, y2:aRect.y+aRect.h});
+      wide.push({x1:bRect.x, y1:bRect.y, x2:bRect.x+bRect.w, y2:bRect.y+bRect.h});
+      const alt = routeOrthogonal(aPt, aSide, bPt, bSide, wide);
+      if(alt && alt.length>=2){ pts = alt; }
+      else break;
+    }
+    result[idx] = pts;
   });
   const routedSegs = [];
   result.forEach(pts=>{ if(pts) routedSegs.push(...segmentsOf(pts)); });
@@ -6218,14 +6362,14 @@ function assignPorts(relationships, rects){
       const obstacles = [];
       rectEntries.forEach(([cid,rect])=>{
         if(cid===r.sourceId) return;
-        obstacles.push({x1:rect.x-OBSTACLE_MARGIN, y1:rect.y-OBSTACLE_MARGIN, x2:rect.x+rect.w+OBSTACLE_MARGIN, y2:rect.y+rect.h+OBSTACLE_MARGIN});
+        obstacles.push({x1:rect.x-obsM(rect), y1:rect.y-obsM(rect), x2:rect.x+rect.w+obsM(rect), y2:rect.y+rect.h+obsM(rect)});
       });
       obstacles.push({x1:aRect.x, y1:aRect.y, x2:aRect.x+aRect.w, y2:aRect.y+aRect.h});
       result[idx] = routeEdge(aPt, aAnchor.side, bPt, bAnchor.side, obstacles);
       return;
     }
     result[idx] = selfLoopPoints(aRect, rectEntries.filter(([cid])=>cid!==r.sourceId).map(([,rect])=>rect),
-      r.type==='network' ? selfLoopRequiredSegLen(r.name) : undefined, routedSegs);
+      r.type==='network' ? selfLoopRequiredSegLen(r.name) : undefined, routedSegs, r.type==='network');
   });
   return result;
 }
@@ -6275,7 +6419,7 @@ function shiftHitsObstacles(routes, rects, idx, segIdx, horiz, newCoord){
   const obstacles = [];
   Object.entries(rects).forEach(([cid,rect])=>{
     if(cid===route.r.sourceId || cid===route.r.targetId) return;
-    obstacles.push({x1:rect.x-OBSTACLE_MARGIN, y1:rect.y-OBSTACLE_MARGIN, x2:rect.x+rect.w+OBSTACLE_MARGIN, y2:rect.y+rect.h+OBSTACLE_MARGIN});
+    obstacles.push({x1:rect.x-obsM(rect), y1:rect.y-obsM(rect), x2:rect.x+rect.w+obsM(rect), y2:rect.y+rect.h+obsM(rect)});
   });
   return rectHitsObstacles(before.x,before.y,p1.x,p1.y,obstacles)
     || rectHitsObstacles(p1.x,p1.y,p2.x,p2.y,obstacles)
@@ -6389,7 +6533,7 @@ function portJogHitsObstacles(routes, rects, idx, end, horiz, newCoord){
   const obstacles = [];
   Object.entries(rects).forEach(([cid,rect])=>{
     if(cid===route.r.sourceId || cid===route.r.targetId) return;
-    obstacles.push({x1:rect.x-OBSTACLE_MARGIN, y1:rect.y-OBSTACLE_MARGIN, x2:rect.x+rect.w+OBSTACLE_MARGIN, y2:rect.y+rect.h+OBSTACLE_MARGIN});
+    obstacles.push({x1:rect.x-obsM(rect), y1:rect.y-obsM(rect), x2:rect.x+rect.w+obsM(rect), y2:rect.y+rect.h+obsM(rect)});
   });
   return rectHitsObstacles(free.x,free.y,A.x,A.y,obstacles)
     || rectHitsObstacles(A.x,A.y,B.x,B.y,obstacles)
@@ -6501,7 +6645,7 @@ function alignGeneralizationApproach(routes, rects){
     }
     const obstacles = [];
     Object.entries(rects).forEach(([cid,rect])=>{
-      obstacles.push({cid, x1:rect.x-OBSTACLE_MARGIN, y1:rect.y-OBSTACLE_MARGIN, x2:rect.x+rect.w+OBSTACLE_MARGIN, y2:rect.y+rect.h+OBSTACLE_MARGIN});
+      obstacles.push({cid, x1:rect.x-obsM(rect), y1:rect.y-obsM(rect), x2:rect.x+rect.w+obsM(rect), y2:rect.y+rect.h+obsM(rect)});
     });
     idxs.forEach(idx=>{
       const route = routes[idx];
@@ -6717,18 +6861,45 @@ function labelCandidateSegments(points){
    the old single-choice version always used, so an uncrowded diagram looks
    unchanged) and then spreading outward, clear of the segment's own corners
    where a label would sit awkwardly close to the route's bend. */
-function labelCandidatePoints(seg){
-  const T_STEPS = [0.5, 0.32, 0.68, 0.18, 0.82];
-  return T_STEPS.map(t=>({
-    mid: {x:seg.p1.x+seg.dx*t, y:seg.p1.y+seg.dy*t},
-    norm: perpClearDir(seg.dx, seg.dy),
-    dx: seg.dx, dy: seg.dy
-  }));
+function labelCandidatePoints(seg, bothSides){
+  const T_STEPS = [0.5, 0.4, 0.6, 0.3, 0.7, 0.22, 0.78, 0.14, 0.86];
+  const n0 = perpClearDir(seg.dx, seg.dy);
+  const sides = bothSides ? [n0, {x:-n0.x || 0, y:-n0.y || 0}] : [n0];
+  const out = [];
+  T_STEPS.forEach(t=> sides.forEach(norm=> out.push({
+    mid: {x:seg.p1.x+seg.dx*t, y:seg.p1.y+seg.dy*t}, norm, dx: seg.dx, dy: seg.dy
+  })));
+  return out;
 }
 /* Total overlap AREA between a padded label box and a list of (also
    padded) line segments — used to compare candidate spots, so "a little
    overlap in a small corner" reliably scores better than "overlap along
    the whole label", not just a yes/no. */
+let LABEL_AVOID_RECTS = [];
+function boxOverlapWithRects(box, rects){
+  let total = 0;
+  (rects||[]).forEach(r=>{
+    const ox = Math.min(box.x+box.width, r.x+r.w) - Math.max(box.x, r.x);
+    const oy = Math.min(box.y+box.height, r.y+r.h) - Math.max(box.y, r.y);
+    if(ox>0 && oy>0) total += ox*oy;
+  });
+  return total;
+}
+function boxOverlapWithLabels(box, metas){
+  let total = 0;
+  (metas||[]).forEach(m=>{
+    const x = m.b.x+m.dx, y = m.b.y+m.dy;
+    const ox = Math.min(box.x+box.width, x+m.b.width) - Math.max(box.x, x);
+    const oy = Math.min(box.y+box.height, y+m.b.height) - Math.max(box.y, y);
+    if(ox>0 && oy>0) total += ox*oy;
+  });
+  return total;
+}
+// Nota de um lugar candidato para o rótulo: 0 = livre. Linhas, caixas e
+// outros rótulos pesam; caixa e rótulo pesam mais que raspar numa linha.
+function labelSpotScore(box, segs, labelMetas){
+  return boxOverlapWithSegs(box, segs) + 3*boxOverlapWithRects(box, LABEL_AVOID_RECTS) + 3*boxOverlapWithLabels(box, labelMetas);
+}
 function boxOverlapWithSegs(box, segs){
   if(!segs || !segs.length) return 0;
   const MARGIN = 3;
@@ -6871,7 +7042,7 @@ function buildAssocNameArrow(labelLayer, labelMetas, points, r, otherSegs, opts)
   // Round E item 1 ("a flecha tem que ficar mais afastada"): how far the
   // line itself must stay from the NEAREST point of the arrow or name —
   // not just from their center points.
-  const MIN_GAP = 8;
+  const MIN_GAP = 8 + ((opts && opts.extraGap) || 0);
   if(r.name){
     t = S('text', {class:'edge-card-label', x:0, y:0, 'text-anchor':'middle'}, [r.name]);
     wrap.appendChild(t);
@@ -6956,18 +7127,24 @@ function buildAssocNameArrow(labelLayer, labelMetas, points, r, otherSegs, opts)
   }
 
   const segs = labelCandidateSegments(points);
+  // procura o lugar mais livre: as duas margens da linha, vários pontos de
+  // cada trecho; conta outras linhas, a própria linha nas dobras, caixas
+  // (classes, listas, notas) e rótulos já colocados
+  const scoreSegs = (otherSegs||[]).concat(segmentsOf(points));
   let bestCand = null, bestOverlap = Infinity;
   search:
   for(const seg of segs){
-    for(const cand of labelCandidatePoints(seg)){
+    if(seg.len < 24) continue;
+    for(const cand of labelCandidatePoints(seg, true)){
       const box = applyCandidate(cand);
-      const overlap = boxOverlapWithSegs(box, otherSegs);
+      const overlap = labelSpotScore(box, scoreSegs, labelMetas);
       if(overlap < bestOverlap){
         bestOverlap = overlap; bestCand = cand;
         if(overlap<=0) break search; // fully clear — good enough, stop searching
       }
     }
   }
+  if(!bestCand) bestCand = labelCandidatePoints(segs[0], false)[0];
   const finalBox = applyCandidate(bestCand);
   try{
     const hit = S('rect', {x:finalBox.x, y:finalBox.y, width:finalBox.width, height:finalBox.height, style:'fill:transparent;'});
@@ -6991,8 +7168,17 @@ function buildNetworkNameLabel(labelLayer, labelMetas, points, r, otherSegs){
   labelLayer.appendChild(wrap);
   const t = S('text', {class:'edge-card-label', x:0, y:0, 'text-anchor':'middle'}, [r.name||'Rede']);
   wrap.appendChild(t);
-  let centerYOffset = 0;
-  try{ const b = t.getBBox(); centerYOffset = b.y + b.height/2; }catch(e){}
+  let centerYOffset = 0, textW = 0;
+  try{ const b = t.getBBox(); centerYOffset = b.y + b.height/2; textW = b.width; }catch(e){}
+  // o nome só cabe entre as paralelas num trecho mais comprido que ele;
+  // se nenhum trecho couber, vai para fora, ao lado das duas linhas, em vez
+  // de atravessá-las
+  const fitting = labelCandidateSegments(points).filter(sg=> sg.len >= textW + NETWORK_GAP*2 + 12);
+  if(!fitting.length){
+    labelLayer.removeChild(wrap);
+    buildAssocNameArrow(labelLayer, labelMetas, points, Object.assign({}, r, {name: r.name||'Rede'}), otherSegs, {arrow:false, extraGap: NETWORK_GAP});
+    return;
+  }
   function applyCandidate(cand){
     const mid = cand.mid, normMid = cand.norm;
     const vertical = normMid.x !== 0;
@@ -7003,13 +7189,13 @@ function buildNetworkNameLabel(labelLayer, labelMetas, points, r, otherSegs){
     const pad = 4;
     return {x:b.x-pad, y:b.y-pad, width:b.width+pad*2, height:b.height+pad*2};
   }
-  const segs = labelCandidateSegments(points);
+  const segs = fitting;
   let bestCand = null, bestOverlap = Infinity;
   search:
   for(const seg of segs){
-    for(const cand of labelCandidatePoints(seg)){
+    for(const cand of labelCandidatePoints(seg, false)){
       const box = applyCandidate(cand);
-      const overlap = boxOverlapWithSegs(box, otherSegs);
+      const overlap = labelSpotScore(box, otherSegs, labelMetas);
       if(overlap < bestOverlap){
         bestOverlap = overlap; bestCand = cand;
         if(overlap<=0) break search;
@@ -7255,7 +7441,8 @@ function buildEdgeDom(route, labelLayer, labelMetas, rects, otherSegs, genGroupS
   const rectA = rects && rects[r.sourceId], rectB = rects && rects[r.targetId];
   const {nearA, nearB, normA, normB} = edgeLabelAnchors(points, rectA, rectB);
   const CLEAR_GAP = 3;
-  const lbl = (x,y,text,clearDir)=>{
+  const ownSegsForLbl = segmentsOf(points);
+  const lbl = (x0,y0,text,clearDir0,end)=>{
     if(!labelLayer) return;
     // SVG text only hits on its actual painted glyphs, not its bounding box —
     // clicking just beside a short label like "1" would silently do nothing.
@@ -7264,9 +7451,34 @@ function buildEdgeDom(route, labelLayer, labelMetas, rects, otherSegs, genGroupS
     const wrap = S('g', {style:'cursor:pointer;',
       onpointerdown:(e)=>{ e.stopPropagation(); }, // see the same note on the edge hit-path above
       onclick:(e)=>{ e.stopPropagation(); selectRel(r.id); }});
-    const t = edgeText(x,y,text);
+    const t = edgeText(x0,y0,text);
     wrap.appendChild(t);
     labelLayer.appendChild(wrap);
+    // Cardinalidade: procura, perto da ponta, o lugar que não encosta em
+    // outra linha, caixa ou rótulo — alguns passos ao longo do primeiro
+    // trecho e dos dois lados dele.
+    let x = x0, y = y0, clearDir = clearDir0;
+    if(end && points.length>=2 && clearDir0 && (clearDir0.x || clearDir0.y)){
+      const n = points.length;
+      const port = end==='A' ? points[0] : points[n-1], nxt = end==='A' ? points[1] : points[n-2];
+      const legLen = Math.hypot(nxt.x-port.x, nxt.y-port.y) || 1;
+      const ux = (nxt.x-port.x)/legLen, uy = (nxt.y-port.y)/legLen;
+      let best = null;
+      const tryAt = (d, dir)=>{
+        const px = port.x+ux*d, py = port.y+uy*d;
+        t.setAttribute('x', px); t.setAttribute('y', py);
+        let bb; try{ bb = t.getBBox(); }catch(e){ return; }
+        const ox = dir.x ? dir.x*(bb.width/2+CLEAR_GAP) : 0, oy = dir.y ? dir.y*(bb.height/2+CLEAR_GAP) : 0;
+        const box = {x:bb.x+ox, y:bb.y+oy, width:bb.width, height:bb.height};
+        const sc = labelSpotScore(box, (otherSegs||[]).concat(ownSegsForLbl), labelMetas) + d*0.01;
+        if(!best || sc < best.sc) best = {sc, px, py, dir};
+      };
+      const dists = [20, 30, 42, 56, 72].filter(d=> d <= Math.max(20, legLen-10));
+      const sides = [clearDir0, {x:-clearDir0.x||0, y:-clearDir0.y||0}];
+      outer: for(const d of dists){ for(const dir of sides){ tryAt(d, dir); if(best && best.sc < 1) break outer; } }
+      if(best){ x = best.px; y = best.py; clearDir = best.dir; }
+      t.setAttribute('x', x); t.setAttribute('y', y);
+    }
     try{
       let b = t.getBBox();
       if(clearDir && (clearDir.x || clearDir.y)){
@@ -7290,8 +7502,8 @@ function buildEdgeDom(route, labelLayer, labelMetas, rects, otherSegs, genGroupS
     }catch(e){}
   };
   if(r.type==='association'){
-    lbl(nearA.x, nearA.y, r.cardSource||'1', normA);
-    lbl(nearB.x, nearB.y, r.cardTarget||'0..*', normB);
+    lbl(nearA.x, nearA.y, r.cardSource||'1', normA, 'A');
+    lbl(nearB.x, nearB.y, r.cardTarget||'0..*', normB, 'B');
     // Round K: instead of picking one fixed spot up front, the name+arrow
     // actively searches several candidate positions along the route (see
     // labelCandidateSegments/labelCandidatePoints) and lands on whichever is
@@ -7322,8 +7534,8 @@ function buildEdgeDom(route, labelLayer, labelMetas, rects, otherSegs, genGroupS
     // Round LL item 2: same near-the-port cardinality labels association
     // draws — independent of (and drawn alongside) the topological predicate
     // name above.
-    lbl(nearA.x, nearA.y, r.cardSource||'1', normA);
-    lbl(nearB.x, nearB.y, r.cardTarget||'0..*', normB);
+    lbl(nearA.x, nearA.y, r.cardSource||'1', normA, 'A');
+    lbl(nearB.x, nearB.y, r.cardTarget||'0..*', normB, 'B');
   } else if(r.type==='cartographicGeneralization' && !suppressed){
     // Round P item 16: the label is just "Forma" or "Escala" — a shallow
     // clone carries the label as `name` without touching r itself. Only the
@@ -7362,6 +7574,9 @@ function renderCanvas(){
 function computeConceptualLayout(){
   const rects = {};
   state.classes.forEach(c=>{ c.w = classWidth(c); c.h = classHeight(c); rects[c.id] = {x:c.x,y:c.y,w:c.w,h:c.h}; });
+  // Listas, notas de cálculo e a linha da nota: nenhum relacionamento passa
+  // por cima delas (entram como obstáculo, com chave própria).
+  state.classes.forEach(c=> satelliteRects(c).forEach(sr=>{ rects[sr.key] = {x:sr.x, y:sr.y, w:sr.w, h:sr.h, m:sr.m, owner:c.id}; }));
 
   // Phase 1: assign a border port to every relationship end (spreading
   // multiple edges off the same node+side apart) and route each edge
@@ -7473,6 +7688,8 @@ function renderConceptualCanvas(){
 
   // Phase 3: build DOM
   const labelMetas = [];
+  // rótulos de nome também fogem de classes, listas, notas e outros rótulos
+  LABEL_AVOID_RECTS = Object.values(rects);
   routes.forEach(route=>{
     if(!route) return;
     const otherSegs = allSegs.filter(s=> route.segs.indexOf(s)===-1);
@@ -8067,7 +8284,7 @@ const REL_HINTS = {
   spatial: ['Arraste do conector (○) da primeira classe geográfica até a segunda.', ['Classe A','Classe B']],
   network: ['Arraste do conector (○) da classe Nó até a classe Arco — ou da própria classe Arco até ela mesma, para uma rede arco-arco recursiva.', ['Nó (ou Arco)','Arco']],
   generalization: ['Arraste do conector (○) da subclasse até a superclasse. Repita a partir de outras subclasses para a MESMA superclasse — todas entram na mesma generalização.', ['Subclasse','Superclasse']],
-  cartographicGeneralization: ['Arraste do conector (○) da classe mais detalhada até a classe mais generalizada. Repita a partir de outras classes para a MESMA classe generalizada — todas entram na mesma generalização cartográfica. Sem relação com a Generalização acima, além do nome.', ['Classe detalhada','Classe generalizada']],
+  cartographicGeneralization: ['Arraste do conector (○) de cada representação (ex.: o ponto, o polígono) até a superclasse. Repita a partir das outras representações para a MESMA superclasse — todas entram na mesma generalização cartográfica (são precisas pelo menos duas). Sem relação com a Generalização acima, além do nome.', ['Representação','Superclasse']],
   aggregation: ['Arraste do conector (○) da classe todo até a classe parte. Marque Espacial nas propriedades para o caso topológico (ambas geográficas).', ['Todo','Parte']]
 };
 function renderRelControls(){
@@ -8896,9 +9113,9 @@ function relReadingExample(r, a, b){
     if(r.type==='cartographicGeneralization'){
       const kindTxt = r.kind==='scale' ? 'mudança de escala' : 'mudança de forma';
       const constraintTxt = r.disjoint
-        ? 'elementos disjuntos — cada feição da representação detalhada corresponde a no máximo uma da generalizada'
-        : 'elementos sobrepostos — uma feição da representação detalhada pode corresponder a mais de uma da generalizada';
-      return b.name+' é a representação generalizada ('+kindTxt+'); '+names.join(', ')+' '+(many?'são as representações mais detalhadas':'é a representação mais detalhada')+' ('+constraintTxt+').';
+        ? 'elementos disjuntos — cada instância aparece em no máximo uma representação'
+        : 'elementos sobrepostos — uma instância pode aparecer em mais de uma representação';
+      return b.name+' é a superclasse; '+names.join(', ')+' '+(many?'são as suas representações':'é a sua representação')+' por '+kindTxt+' ('+constraintTxt+').';
     }
     const covTxt = r.total ? 'cobertura total' : 'cobertura parcial';
     const constraintTxt = r.total
@@ -9990,7 +10207,7 @@ function autoLayoutEdge(r){
   switch(r.type){
     case 'generalization': return {from:t, to:s, hard:true};          // superclasse em cima
     case 'aggregation': return {from:s, to:t, hard:true};             // todo em cima
-    case 'cartographicGeneralization': return {from:s, to:t, hard:true};
+    case 'cartographicGeneralization': return {from:t, to:s, hard:true};              // superclasse em cima
     case 'association': {
       const ms = relCardMany(r.cardSource||'1'), mt = relCardMany(r.cardTarget||'0..*');
       if(!ms && mt) return {from:s, to:t, hard:true};
@@ -10017,9 +10234,11 @@ function autoLayoutBlock(c){
   const cw = classWidth(c), ch = classHeight(c);
   const sats = [];
   if(logicalMode){
-    (c.attributes||[]).filter(a=>a.type==='list').forEach(a=> sats.push({kind:'list', attr:a, w:listBoxWidth(a), h:listBoxHeight(a)}));
+    // a nota vem primeiro, na altura da classe: a linha até ela fica curta e
+    // horizontal, sem cruzar as listas
     const lines = calcNoteLines(c);
     if(lines.length){ const sz = calcNoteSize(lines); sats.push({kind:'note', w:sz.w, h:sz.h}); }
+    (c.attributes||[]).filter(a=>a.type==='list').forEach(a=> sats.push({kind:'list', attr:a, w:listBoxWidth(a), h:listBoxHeight(a)}));
   }
   let sw = 0, sh = 0;
   sats.forEach((s,i)=>{ sw = Math.max(sw, s.w); sh += s.h + (i ? AUTO_LAYOUT.satStack : 0); });
@@ -10030,7 +10249,8 @@ function autoLayoutBlock(c){
 // possível das desejadas, mantendo a ordem e sem sobreposição.
 function autoLayoutPack(desired, sizes, gap){
   const n = desired.length; if(!n) return [];
-  const off = [0]; for(let i=1;i<n;i++) off[i] = off[i-1] + sizes[i-1] + gap;
+  const g = i=> Array.isArray(gap) ? gap[i] : gap;
+  const off = [0]; for(let i=1;i<n;i++) off[i] = off[i-1] + sizes[i-1] + g(i-1);
   const blocks = [];
   for(let i=0;i<n;i++){
     blocks.push({sum: desired[i]-off[i], cnt:1, start:i});
@@ -10182,31 +10402,50 @@ function autoLayoutComponent(ids, edges, blocks, opts){
     L.sort((a,b)=>val.get(a)-val.get(b));
   };
   const cross = ()=>autoLayoutCrossings(layers, adjDown);
-  let best = layers.map(L=>L.slice()), bestC = cross();
-  for(let it=0; it<24 && bestC>0; it++){
-    if(it%2===0){ for(let l=1;l<nLayers;l++) bary(layers[l], adjUp); }
-    else { for(let l=nLayers-2;l>=0;l--) bary(layers[l], adjDown); }
-    // trocas adjacentes
-    let improved = true, guard = 0;
-    while(improved && guard++<8){
-      improved = false;
-      for(let l=0;l<nLayers;l++){
-        const L = layers[l];
-        const local = ()=> (l>0 ? autoLayoutCrossings([layers[l-1], L], adjDown) : 0) + (l<nLayers-1 ? autoLayoutCrossings([L, layers[l+1]], adjDown) : 0);
-        for(let i=0;i<L.length-1;i++){
-          const c0 = local(); [L[i],L[i+1]] = [L[i+1],L[i]];
-          if(local() < c0) improved = true; else [L[i],L[i+1]] = [L[i+1],L[i]];
+  // várias ordens de partida (a atual, a invertida e embaralhadas com
+  // semente fixa): o resultado não depende da ordem em que as classes foram
+  // criadas e fica o melhor de todas
+  const initial = layers.map(L=>L.slice());
+  let seed = 7; const rnd = ()=>{ seed = (seed*16807) % 2147483647; return seed/2147483647; };
+  const starts = [initial.map(L=>L.slice()), initial.map(L=>L.slice().reverse())];
+  const totalNodes = layers.reduce((n,L)=>n+L.length, 0);
+  const extra = totalNodes>80 ? 0 : (totalNodes>40 ? 2 : 6); // diagramas grandes: menos tentativas
+  for(let k=0;k<extra;k++) starts.push(initial.map(L=>{ const c = L.slice(); for(let i=c.length-1;i>0;i--){ const j = Math.floor(rnd()*(i+1)); [c[i],c[j]] = [c[j],c[i]]; } return c; }));
+  let best = null, bestC = Infinity;
+  for(const st of starts){
+    st.forEach((L,i)=>{ layers[i] = L.slice(); });
+    let c0 = cross();
+    if(c0 < bestC){ bestC = c0; best = layers.map(L=>L.slice()); }
+    for(let it=0; it<(totalNodes>80 ? 12 : 24) && bestC>0; it++){
+      if(it%2===0){ for(let l=1;l<nLayers;l++) bary(layers[l], adjUp); }
+      else { for(let l=nLayers-2;l>=0;l--) bary(layers[l], adjDown); }
+      // trocas adjacentes
+      let improved = true, guard = 0;
+      while(improved && guard++<8){
+        improved = false;
+        for(let l=0;l<nLayers;l++){
+          const L = layers[l];
+          const local = ()=> (l>0 ? autoLayoutCrossings([layers[l-1], L], adjDown) : 0) + (l<nLayers-1 ? autoLayoutCrossings([L, layers[l+1]], adjDown) : 0);
+          for(let i=0;i<L.length-1;i++){
+            const a0 = local(); [L[i],L[i+1]] = [L[i+1],L[i]];
+            if(local() < a0) improved = true; else [L[i],L[i+1]] = [L[i+1],L[i]];
+          }
         }
       }
+      const c = cross();
+      if(c < bestC){ bestC = c; best = layers.map(L=>L.slice()); }
     }
-    const c = cross();
-    if(c < bestC){ bestC = c; best = layers.map(L=>L.slice()); }
+    if(bestC===0) break;
   }
   best.forEach((L,i)=>{ layers[i] = L; });
   // 5) coordenadas: ao longo da camada, alinhando aos vizinhos (PAV)
   const gapAlong = vertical ? AUTO_LAYOUT.gapX : AUTO_LAYOUT.gapY*0.6;
   const coord = new Map();
-  layers.forEach(L=>{ let x = 0; L.forEach(v=>{ coord.set(v, x); x += size.get(v) + gapAlong; }); });
+  // vizinhos na mesma camada ligados entre si ganham folga extra: a linha
+  // entre eles precisa de espaço para o nome e a cardinalidade
+  const pairGap = (a, b)=> (sameLayer.get(a)||[]).includes(b) ? gapAlong + 150 : gapAlong;
+  const gapsOf = L=> L.slice(0,-1).map((v,i)=>pairGap(v, L[i+1]));
+  layers.forEach(L=>{ let x = 0; L.forEach((v,i)=>{ coord.set(v, x); x += size.get(v) + (i<L.length-1 ? pairGap(v, L[i+1]) : 0); }); });
   const center = v=>coord.get(v) + size.get(v)/2;
   for(let it=0; it<12; it++){
     const down = it%2===0;
@@ -10220,7 +10459,7 @@ function autoLayoutComponent(ids, edges, blocks, opts){
         const m = cs.length%2 ? cs[(cs.length-1)/2] : (cs[cs.length/2-1]+cs[cs.length/2])/2;
         return m - size.get(v)/2;
       });
-      const packed = autoLayoutPack(desired, L.map(v=>size.get(v)), gapAlong);
+      const packed = autoLayoutPack(desired, L.map(v=>size.get(v)), gapsOf(L));
       L.forEach((v,i)=>coord.set(v, packed[i]));
     });
   }
@@ -10268,8 +10507,8 @@ function autoLayoutDiagram(){
     const variants = [
       {vertical:true, alignBottom:false, bias:0},
       {vertical:true, alignBottom:true, bias:0.2},
-      {vertical:false, alignBottom:false, bias:2},
-      {vertical:false, alignBottom:true, bias:2.2},
+      {vertical:false, alignBottom:false, bias:5},     // horizontal só se poupar 2+ cruzamentos
+      {vertical:false, alignBottom:true, bias:5.2},
     ];
     let best = null;
     variants.forEach(v=>{
@@ -10331,5 +10570,5 @@ function runAutoLayout(){
 }
 
 /* Modelo de exemplo para teste massivo no ArcGIS Pro (botão "Exemplo"). */
-const EXAMPLE_MODEL = {"meta":{"name":"Exemplo — Teste completo GDB","srid":31982,"schema":"public","workspaceName":"Teste_OMTG","srsAuthority":"EPSG"},"classes":[{"id":"cjoa9ggm","name":"Município","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a1_kjsu","name":"Código IBGE"},{"id":"a2_yzor","name":"Nome"},{"id":"a3_xyg6","name":"UF"},{"id":"a4_ctt7","name":"População"},{"id":"a5_ctgr","name":"Área (km²)"}],"x":60,"y":60,"w":208,"h":166},{"id":"cy5geips","name":"Sede Municipal","kind":"geo","geoType":"object","primitive":"point","attributes":[{"id":"a6_afu4","name":"ID"},{"id":"a7_ld16","name":"Município"}],"x":60,"y":520,"w":208,"h":97},{"id":"cwl7gyfh","name":"Bairro","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a8_qhqo","name":"ID"},{"id":"a9_rei1","name":"Nome"},{"id":"a10_l910","name":"Município"}],"x":620,"y":60,"w":208,"h":120},{"id":"cna1ls4k","name":"Quadra","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a11_58nm","name":"Código"},{"id":"a12_h9ru","name":"Bairro"},{"id":"a13_ylir","name":"Área verde (m²)"}],"x":1180,"y":60,"w":208,"h":120},{"id":"ccffgzj5","name":"Lote","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a14_z0mo","name":"Inscrição"},{"id":"a15_xcbz","name":"Quadra"},{"id":"a16_2ekf","name":"Situação"},{"id":"a17_7lto","name":"Uso"},{"id":"a18_gs81","name":"Área (m²)"},{"id":"a19_kgno","name":"Perímetro (m)"},{"id":"a20_nudz","name":"Testada (m)"},{"id":"a21_tyr0","name":"Murado"},{"id":"a22_e58s","name":"Data do cadastro"},{"id":"a23_clyb","name":"Foto"},{"id":"a24_wkw6","name":"Matrícula digitalizada"}],"x":1740,"y":60,"w":208,"h":304},{"id":"clfedltv","name":"Edificação","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a25_bfbj","name":"ID"},{"id":"a26_tih4","name":"Lote"},{"id":"a27_ghqz","name":"Pavimentos"},{"id":"a28_xczv","name":"Área construída (m²)"}],"x":2300,"y":60,"w":208,"h":143},{"id":"ccrrolxu","name":"Edificação Residencial","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a29_bqgm","name":"ID"},{"id":"a30_syr7","name":"Unidades"}],"x":1740,"y":520,"w":208,"h":97},{"id":"clbxepjd","name":"Edificação Comercial","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a31_bwuv","name":"ID"},{"id":"a32_9i6d","name":"CNAE"}],"x":2300,"y":520,"w":208,"h":97},{"id":"c7kkk1vj","name":"Proprietário","kind":"conventional","geoType":null,"primitive":null,"attributes":[{"id":"a33_u1cd","name":"CPF/CNPJ"},{"id":"a34_9y69","name":"Nome"},{"id":"a35_yu2y","name":"E-mail"},{"id":"a36_wnup","name":"Tipo de pessoa"}],"x":1180,"y":980,"w":208,"h":143},{"id":"cpw48u1d","name":"Matrícula","kind":"conventional","geoType":null,"primitive":null,"attributes":[{"id":"a37_7y4x","name":"Número"},{"id":"a38_9qk4","name":"Cartório"},{"id":"a39_e060","name":"Lote"}],"x":1740,"y":980,"w":208,"h":120},{"id":"cdzfoxvp","name":"IPTU","kind":"conventional","geoType":null,"primitive":null,"attributes":[{"id":"a40_8g6c","name":"Inscrição imobiliária"},{"id":"a41_hx1o","name":"Lote"},{"id":"a42_64yl","name":"Exercício"},{"id":"a43_zj90","name":"Valor territorial"},{"id":"a44_yto2","name":"Valor predial"},{"id":"a45_a2z2","name":"Valor venal"},{"id":"a46_cw7g","name":"Situação"}],"x":2300,"y":980,"w":208,"h":212},{"id":"cyubjuze","name":"Linha de Transmissão","kind":"geo","geoType":"object","primitive":"line","attributes":[{"id":"a47_edex","name":"Código"},{"id":"a48_25ek","name":"Tensão (kV)"},{"id":"a49_3oy1","name":"Extensão (km)"}],"x":60,"y":1440,"w":208,"h":120},{"id":"chhetwti","name":"Torre","kind":"geo","geoType":"object","primitive":"point","attributes":[{"id":"a50_y1jo","name":"Número"},{"id":"a51_yznp","name":"Linha"},{"id":"a52_g6gq","name":"Altura (m)"}],"x":620,"y":1440,"w":208,"h":120},{"id":"cat1nt4q","name":"Faixa de Servidão","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a53_9bn6","name":"Código"},{"id":"a54_lm9f","name":"Linha"},{"id":"a55_b3ul","name":"Largura (m)"}],"x":1180,"y":1440,"w":208,"h":120},{"id":"cqj95ems","name":"Contrato de Servidão","kind":"conventional","geoType":null,"primitive":null,"attributes":[{"id":"a56_g519","name":"Número"},{"id":"a57_aguu","name":"Proprietário"},{"id":"a58_sal6","name":"Faixa"},{"id":"a59_2n7h","name":"Data de assinatura"},{"id":"a60_mxhq","name":"Indenização (R$)"},{"id":"a61_166a","name":"Contrato assinado"}],"x":1180,"y":1900,"w":208,"h":189},{"id":"clepxmgq","name":"Marco Geodésico","kind":"geo","geoType":"object","primitive":"point","attributes":[{"id":"a62_jv1p","name":"Código"},{"id":"a63_64es","name":"Altitude (m)"},{"id":"a64_j2jm","name":"Tipo"}],"x":2860,"y":60,"w":208,"h":120},{"id":"ckgp7i4v","name":"Trecho de Rede de Água","kind":"geo","geoType":"object","primitive":"unidirectional","attributes":[{"id":"a65_0d8e","name":"ID"},{"id":"a66_0qoz","name":"Diâmetro (mm)"}],"x":60,"y":1900,"w":218,"h":97},{"id":"cc706yxf","name":"Nó da Rede","kind":"geo","geoType":"object","primitive":"node","attributes":[{"id":"a67_64ij","name":"ID"},{"id":"a68_kg3n","name":"Tipo"}],"x":620,"y":1900,"w":208,"h":97},{"id":"cn5fio8w","name":"Curva de Nível","kind":"geo","geoType":"field","primitive":"isoline","attributes":[{"id":"a69_2azg","name":"ID"},{"id":"a70_8xky","name":"Cota (m)"}],"x":2860,"y":520,"w":208,"h":97},{"id":"cwfi4qax","name":"Zoneamento","kind":"geo","geoType":"field","primitive":"partition","attributes":[{"id":"a71_ixfc","name":"Código"},{"id":"a72_hjzr","name":"Zona"}],"x":2860,"y":980,"w":208,"h":97},{"id":"cdsoqc99","name":"Amostra de Solo","kind":"geo","geoType":"field","primitive":"sample","attributes":[{"id":"a73_twf1","name":"ID"},{"id":"a74_2vab","name":"pH"}],"x":2860,"y":1440,"w":208,"h":97},{"id":"c8ym9doh","name":"Modelo Digital de Terreno","kind":"geo","geoType":"field","primitive":"tin","attributes":[{"id":"a75_4j39","name":"ID"}],"x":2860,"y":1900,"w":231,"h":74},{"id":"chc0tmpd","name":"Imagem de Satélite","kind":"geo","geoType":"field","primitive":"tessellation","attributes":[{"id":"a76_0204","name":"ID"}],"x":2300,"y":1900,"w":208,"h":74}],"relationships":[{"id":"rfbh9j5e","type":"aggregation","sourceId":"cjoa9ggm","targetId":"cwl7gyfh","name":"É formado por","spatial":true,"spatialAggKind":"union"},{"id":"rd8okf41","type":"aggregation","sourceId":"cna1ls4k","targetId":"ccffgzj5","name":"Subdividida em","spatial":true,"spatialAggKind":"subdivision"},{"id":"rk3oyznu","type":"association","sourceId":"cwl7gyfh","targetId":"cna1ls4k","name":"Contém quadras","cardSource":"1","cardTarget":"1..*"},{"id":"rvfzjvbv","type":"association","sourceId":"ccffgzj5","targetId":"clfedltv","name":"Tem edificações","cardSource":"1","cardTarget":"0..*","nameInverse":"Está no lote"},{"id":"rd6bpy0z","type":"association","sourceId":"ccffgzj5","targetId":"c7kkk1vj","name":"Pertence a","cardSource":"1..*","cardTarget":"1..*","nameInverse":"É dono de"},{"id":"rk8h18ny","type":"association","sourceId":"ccffgzj5","targetId":"cpw48u1d","name":"Registrado em","cardSource":"1","cardTarget":"1"},{"id":"rkwwmllk","type":"association","sourceId":"ccffgzj5","targetId":"cdzfoxvp","name":"Tributado por","cardSource":"1","cardTarget":"0..1"},{"id":"r5iuqima","type":"association","sourceId":"c7kkk1vj","targetId":"cqj95ems","name":"Assina","cardSource":"1","cardTarget":"0..*"},{"id":"rti7lxvu","type":"association","sourceId":"cat1nt4q","targetId":"cqj95ems","name":"Objeto de","cardSource":"1","cardTarget":"0..*"},{"id":"rx38dojz","type":"association","sourceId":"cyubjuze","targetId":"chhetwti","name":"Sustentada por","cardSource":"1","cardTarget":"1..*"},{"id":"rzcz43g4","type":"association","sourceId":"cyubjuze","targetId":"cat1nt4q","name":"Protegida por","cardSource":"1","cardTarget":"1"},{"id":"r79utl92","type":"generalization","sourceId":"ccrrolxu","targetId":"clfedltv","name":"Residencial","total":true,"disjoint":true},{"id":"r2s4hixw","type":"generalization","sourceId":"clbxepjd","targetId":"clfedltv","name":"Comercial","total":true,"disjoint":true},{"id":"r156lfhi","type":"cartographicGeneralization","sourceId":"cjoa9ggm","targetId":"cy5geips","name":"Representa sede","kind":"scale","disjoint":true},{"id":"ruktz2j4","type":"network","sourceId":"cc706yxf","targetId":"ckgp7i4v","name":"Rede de Água"},{"id":"rpayan4k","type":"network","sourceId":"ckgp7i4v","targetId":"ckgp7i4v","name":"Continuidade"},{"id":"ro72gmc6","type":"spatial","sourceId":"clfedltv","targetId":"ccffgzj5","name":"Dentro do lote","topoRule":"dentro","nearDistance":null,"cardSource":"0..*","cardTarget":"1"},{"id":"rqdnkv6j","type":"spatial","sourceId":"cat1nt4q","targetId":"chhetwti","name":"Contém torres","topoRule":"contem","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},{"id":"rb3de8rf","type":"spatial","sourceId":"ccffgzj5","targetId":"cwfi4qax","name":"Coincide zona","topoRule":"coincide","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},{"id":"rl0lttt3","type":"spatial","sourceId":"clfedltv","targetId":"cat1nt4q","name":"Fora da faixa","topoRule":"disjunto","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},{"id":"r01sr78i","type":"spatial","sourceId":"ckgp7i4v","targetId":"cna1ls4k","name":"Toca quadra","topoRule":"touches","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},{"id":"rj20i6i9","type":"spatial","sourceId":"cna1ls4k","targetId":"cat1nt4q","name":"Vizinha da faixa","topoRule":"adjacente","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},{"id":"r36vfts1","type":"spatial","sourceId":"cyubjuze","targetId":"ckgp7i4v","name":"Cruza rede","topoRule":"cruza","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},{"id":"r3f5hitf","type":"spatial","sourceId":"cwl7gyfh","targetId":"cwfi4qax","name":"Sobrepõe zona","topoRule":"sobrepoe","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},{"id":"rb9t092e","type":"spatial","sourceId":"clepxmgq","targetId":"ccffgzj5","name":"Perto do lote","topoRule":"proximo","nearDistance":"50","cardSource":"0..*","cardTarget":"0..*"}],"logical":{"classes":[{"id":"cjoa9ggm","name":"Município","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a1_kjsu","name":"Código IBGE","type":"integer","pk":true,"required":true,"intDigits":"7"},{"id":"a2_yzor","name":"Nome","type":"text","length":"80","required":true,"unique":true},{"id":"a3_xyg6","name":"UF","type":"list","listDomain":[{"key":"SC","value":"Santa Catarina"},{"key":"PR","value":"Paraná"},{"key":"RS","value":"Rio Grande do Sul"}],"defaultValue":"SC","listBox":{"x":318,"y":60}},{"id":"a4_ctt7","name":"População","type":"integer","intDigits":"8","minValue":"0"},{"id":"a5_ctgr","name":"Área (km²)","type":"double","precision":"12","scale":"3","calculated":true,"calculatedExpr":"ARRED(AREA([SHAPE]) / 1000000, 3)"}],"x":60,"y":60,"w":208,"h":189,"operations":[],"srid":"31982","calcNote":{"x":60,"y":289}},{"id":"cy5geips","name":"Sede Municipal","kind":"geo","geoType":"object","primitive":"point","attributes":[{"id":"a6_afu4","name":"ID","type":"integer","pk":true,"required":true,"intDigits":"6"},{"id":"a7_ld16","name":"Município","type":"integer","fk":true,"fkRefClassId":"cjoa9ggm","fkRefAttrId":"a1_kjsu","intDigits":"7","refIntegrity":"cascade","required":true}],"x":60,"y":520,"w":251,"h":120,"operations":[],"srid":"31982"},{"id":"cwl7gyfh","name":"Bairro","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a8_qhqo","name":"ID","type":"integer","pk":true,"required":true,"intDigits":"6"},{"id":"a9_rei1","name":"Nome","type":"text","length":"60","required":true},{"id":"a10_l910","name":"Município","type":"integer","fk":true,"fkRefClassId":"cjoa9ggm","fkRefAttrId":"a1_kjsu","intDigits":"4","refIntegrity":"cascade","required":true}],"x":620,"y":60,"w":208,"h":143,"operations":[],"srid":"31982"},{"id":"cna1ls4k","name":"Quadra","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a11_58nm","name":"Código","type":"text","pk":true,"required":true,"length":"10"},{"id":"a12_h9ru","name":"Bairro","type":"integer","fk":true,"fkRefClassId":"cwl7gyfh","fkRefAttrId":"a8_qhqo","intDigits":"6","refIntegrity":"restrict","required":true},{"id":"a13_ylir","name":"Área verde (m²)","type":"double","precision":"12","scale":"2","minValue":"0"}],"x":1180,"y":60,"w":231,"h":143,"operations":[],"srid":"31982"},{"id":"ccffgzj5","name":"Lote","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a14_z0mo","name":"Inscrição","type":"text","pk":true,"required":true,"length":"20"},{"id":"a15_xcbz","name":"Quadra","type":"text","fk":true,"fkRefClassId":"cna1ls4k","fkRefAttrId":"a11_58nm","length":"10","refIntegrity":"setNull"},{"id":"a16_2ekf","name":"Situação","type":"list","listDomain":[{"key":"1","value":"Regular"},{"key":"2","value":"Irregular"},{"key":"3","value":"Em regularização"}],"required":true,"defaultValue":"3","listBox":{"x":2012,"y":60}},{"id":"a17_7lto","name":"Uso","type":"list","listDomain":[{"key":"R","value":"Residencial"},{"key":"C","value":"Comercial"},{"key":"I","value":"Industrial"},{"key":"M","value":"Misto"}],"listBox":{"x":2012,"y":104}},{"id":"a18_gs81","name":"Área (m²)","type":"double","precision":"12","scale":"2","calculated":true,"calculatedExpr":"ARRED(AREA([SHAPE]), 2)"},{"id":"a19_kgno","name":"Perímetro (m)","type":"double","precision":"10","scale":"2","calculated":true,"calculatedExpr":"ARRED(PERIMETRO([SHAPE]), 2)"},{"id":"a20_nudz","name":"Testada (m)","type":"double","precision":"8","scale":"2","minValue":"0","maxValue":"500"},{"id":"a21_tyr0","name":"Murado","type":"boolean","required":true,"defaultValue":"0"},{"id":"a22_e58s","name":"Data do cadastro","type":"date"},{"id":"a23_clyb","name":"Foto","type":"blob"},{"id":"a24_wkw6","name":"Matrícula digitalizada","type":"blob"}],"x":1740,"y":60,"w":222,"h":327,"operations":[],"srid":"31982","editTracking":true,"calcNote":{"x":1740,"y":427}},{"id":"clfedltv","name":"Edificação","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a25_bfbj","name":"ID","type":"integer","pk":true,"required":true,"intDigits":"8"},{"id":"a26_tih4","name":"Lote","type":"text","fk":true,"fkRefClassId":"ccffgzj5","fkRefAttrId":"a14_z0mo","length":"20","refIntegrity":"setDefault","defaultValue":"SEM-LOTE"},{"id":"a27_ghqz","name":"Pavimentos","type":"integer","intDigits":"2","minValue":"1","maxValue":"60","defaultValue":"1"},{"id":"a28_xczv","name":"Área construída (m²)","type":"double","precision":"10","scale":"2","minValue":"0"}],"x":2300,"y":60,"w":256,"h":166,"operations":[],"srid":"31982","hasZ":true},{"id":"ccrrolxu","name":"Edificação Residencial","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a29_bqgm","name":"ID","type":"integer","pk":true,"required":true,"intDigits":"8","fk":true,"fkRefClassId":"clfedltv","fkRefAttrId":"a25_bfbj","refIntegrity":"cascade"},{"id":"a30_syr7","name":"Unidades","type":"integer","intDigits":"3","minValue":"1"}],"x":1740,"y":520,"w":331,"h":120,"operations":[],"srid":"31982"},{"id":"clbxepjd","name":"Edificação Comercial","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a31_bwuv","name":"ID","type":"integer","pk":true,"required":true,"intDigits":"8","fk":true,"fkRefClassId":"clfedltv","fkRefAttrId":"a25_bfbj","refIntegrity":"cascade"},{"id":"a32_9i6d","name":"CNAE","type":"text","length":"10"}],"x":2300,"y":520,"w":318,"h":120,"operations":[],"srid":"31982"},{"id":"c7kkk1vj","name":"Proprietário","kind":"conventional","geoType":null,"primitive":null,"attributes":[{"id":"a33_u1cd","name":"CPF/CNPJ","type":"text","pk":true,"required":true,"length":"14"},{"id":"a34_9y69","name":"Nome","type":"text","length":"120","required":true},{"id":"a35_yu2y","name":"E-mail","type":"text","length":"100","unique":true},{"id":"a36_wnup","name":"Tipo de pessoa","type":"list","listDomain":[{"key":"1","value":"Física"},{"key":"2","value":"Jurídica"}],"required":true,"listBox":{"x":1438,"y":980}}],"x":1180,"y":980,"w":208,"h":143},{"id":"cpw48u1d","name":"Matrícula","kind":"conventional","geoType":null,"primitive":null,"attributes":[{"id":"a37_7y4x","name":"Número","type":"text","pk":true,"required":true,"length":"20"},{"id":"a38_9qk4","name":"Cartório","type":"text","length":"80","required":true},{"id":"a39_e060","name":"Lote","type":"text","fk":true,"fkRefClassId":"ccffgzj5","fkRefAttrId":"a14_z0mo","length":"20","refIntegrity":"restrict","required":true,"unique":true}],"x":1740,"y":980,"w":208,"h":120},{"id":"cdzfoxvp","name":"IPTU","kind":"conventional","geoType":null,"primitive":null,"attributes":[{"id":"a40_8g6c","name":"Inscrição imobiliária","type":"text","pk":true,"required":true,"length":"25"},{"id":"a41_hx1o","name":"Lote","type":"text","fk":true,"fkRefClassId":"ccffgzj5","fkRefAttrId":"a14_z0mo","length":"20","refIntegrity":"cascade","required":true},{"id":"a42_64yl","name":"Exercício","type":"integer","intDigits":"4","minValue":"2000","maxValue":"2100","required":true},{"id":"a43_zj90","name":"Valor territorial","type":"double","precision":"14","scale":"2","minValue":"0","defaultValue":"0"},{"id":"a44_yto2","name":"Valor predial","type":"double","precision":"14","scale":"2","minValue":"0","defaultValue":"0"},{"id":"a45_a2z2","name":"Valor venal","type":"double","precision":"14","scale":"2","calculated":true,"calculatedExpr":"[Valor territorial] + [Valor predial]"},{"id":"a46_cw7g","name":"Situação","type":"text","length":"20","calculated":true,"calculatedExpr":"SE([Valor venal] > 0, \"Lançado\", \"Isento\")"}],"x":2300,"y":980,"w":246,"h":212,"calcNote":{"x":2300,"y":1232}},{"id":"cyubjuze","name":"Linha de Transmissão","kind":"geo","geoType":"object","primitive":"line","attributes":[{"id":"a47_edex","name":"Código","type":"text","pk":true,"required":true,"length":"15"},{"id":"a48_25ek","name":"Tensão (kV)","type":"integer","intDigits":"3","minValue":"13","maxValue":"800","required":true},{"id":"a49_3oy1","name":"Extensão (km)","type":"double","precision":"10","scale":"3","calculated":true,"calculatedExpr":"ARRED(COMPRIMENTO([SHAPE]) / 1000, 3)"}],"x":60,"y":1440,"w":329,"h":143,"operations":[],"srid":"31982","calcNote":{"x":60,"y":1623}},{"id":"chhetwti","name":"Torre","kind":"geo","geoType":"object","primitive":"point","attributes":[{"id":"a50_y1jo","name":"Número","type":"text","pk":true,"required":true,"length":"10"},{"id":"a51_yznp","name":"Linha","type":"text","fk":true,"fkRefClassId":"cyubjuze","fkRefAttrId":"a47_edex","length":"15","refIntegrity":"restrict","required":true},{"id":"a52_g6gq","name":"Altura (m)","type":"double","precision":"6","scale":"2","minValue":"0"}],"x":620,"y":1440,"w":208,"h":143,"operations":[],"srid":"31982","hasZ":true},{"id":"cat1nt4q","name":"Faixa de Servidão","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a53_9bn6","name":"Código","type":"text","pk":true,"required":true,"length":"20"},{"id":"a54_lm9f","name":"Linha","type":"text","fk":true,"fkRefClassId":"cyubjuze","fkRefAttrId":"a47_edex","length":"15","refIntegrity":"cascade","required":true},{"id":"a55_b3ul","name":"Largura (m)","type":"double","precision":"6","scale":"2","minValue":"1","maxValue":"200","required":true}],"x":1180,"y":1440,"w":283,"h":143,"operations":[],"srid":"31982"},{"id":"cqj95ems","name":"Contrato de Servidão","kind":"conventional","geoType":null,"primitive":null,"attributes":[{"id":"a56_g519","name":"Número","type":"text","pk":true,"required":true,"length":"20"},{"id":"a57_aguu","name":"Proprietário","type":"text","fk":true,"fkRefClassId":"c7kkk1vj","fkRefAttrId":"a33_u1cd","length":"14","refIntegrity":"restrict","required":true},{"id":"a58_sal6","name":"Faixa","type":"text","fk":true,"fkRefClassId":"cat1nt4q","fkRefAttrId":"a53_9bn6","length":"20","refIntegrity":"restrict","required":true},{"id":"a59_2n7h","name":"Data de assinatura","type":"date","required":true},{"id":"a60_mxhq","name":"Indenização (R$)","type":"double","precision":"14","scale":"2","minValue":"0"},{"id":"a61_166a","name":"Contrato assinado","type":"blob"}],"x":1180,"y":1900,"w":283,"h":189},{"id":"clepxmgq","name":"Marco Geodésico","kind":"geo","geoType":"object","primitive":"point","attributes":[{"id":"a62_jv1p","name":"Código","type":"text","pk":true,"required":true,"length":"12"},{"id":"a63_64es","name":"Altitude (m)","type":"double","precision":"8","scale":"3"},{"id":"a64_j2jm","name":"Tipo","type":"list","listDomain":[{"key":"1","value":"SAT"},{"key":"2","value":"RN"},{"key":"3","value":"VT"}],"listBox":{"x":3182,"y":60}}],"x":2860,"y":60,"w":272,"h":143,"operations":[],"srid":"4674","hasZ":true,"hasM":true},{"id":"ckgp7i4v","name":"Trecho de Rede de Água","kind":"geo","geoType":"object","primitive":"unidirectional","attributes":[{"id":"a65_0d8e","name":"ID","type":"integer","pk":true,"required":true,"intDigits":"8"},{"id":"a66_0qoz","name":"Diâmetro (mm)","type":"integer","intDigits":"4","minValue":"20","maxValue":"2000"}],"x":60,"y":1900,"w":365,"h":120,"operations":[],"srid":"31982"},{"id":"cc706yxf","name":"Nó da Rede","kind":"geo","geoType":"object","primitive":"node","attributes":[{"id":"a67_64ij","name":"ID","type":"integer","pk":true,"required":true,"intDigits":"8"},{"id":"a68_kg3n","name":"Tipo","type":"list","listDomain":[{"key":"1","value":"Registro"},{"key":"2","value":"Hidrante"},{"key":"3","value":"Junção"}],"listBox":{"x":882,"y":1900}}],"x":620,"y":1900,"w":212,"h":120,"operations":[],"srid":"31982"},{"id":"cn5fio8w","name":"Curva de Nível","kind":"geo","geoType":"field","primitive":"isoline","attributes":[{"id":"a69_2azg","name":"ID","type":"integer","pk":true,"required":true,"intDigits":"8"},{"id":"a70_8xky","name":"Cota (m)","type":"integer","intDigits":"4","required":true}],"x":2860,"y":520,"w":252,"h":120,"operations":[],"srid":"31982","hasZ":true},{"id":"cwfi4qax","name":"Zoneamento","kind":"geo","geoType":"field","primitive":"partition","attributes":[{"id":"a71_ixfc","name":"Código","type":"text","pk":true,"required":true,"length":"10"},{"id":"a72_hjzr","name":"Zona","type":"list","listDomain":[{"key":"ZR","value":"Residencial"},{"key":"ZC","value":"Comercial"},{"key":"ZI","value":"Industrial"},{"key":"ZEIS","value":"Interesse social"}],"required":true,"listBox":{"x":3118,"y":980}}],"x":2860,"y":980,"w":208,"h":120,"operations":[],"srid":"31982"},{"id":"cdsoqc99","name":"Amostra de Solo","kind":"geo","geoType":"field","primitive":"sample","attributes":[{"id":"a73_twf1","name":"ID","type":"integer","pk":true,"required":true,"intDigits":"6"},{"id":"a74_2vab","name":"pH","type":"double","precision":"4","scale":"2","minValue":"0","maxValue":"14"}],"x":2860,"y":1440,"w":268,"h":120,"operations":[],"srid":"31982"},{"id":"c8ym9doh","name":"Modelo Digital de Terreno","kind":"geo","geoType":"field","primitive":"tin","attributes":[{"id":"a75_4j39","name":"ID","type":"integer","pk":true,"required":true,"intDigits":"6"}],"x":2860,"y":1900,"w":382,"h":97,"operations":[],"srid":"31982"},{"id":"chc0tmpd","name":"Imagem de Satélite","kind":"geo","geoType":"field","primitive":"tessellation","attributes":[{"id":"a76_0204","name":"ID","type":"integer","pk":true,"required":true,"intDigits":"6"}],"x":2300,"y":1900,"w":297,"h":97,"operations":[],"srid":"31982"}],"relationships":[{"id":"rfbh9j5e","type":"aggregation","sourceId":"cjoa9ggm","targetId":"cwl7gyfh","name":"É formado por","spatial":true,"spatialAggKind":"union"},{"id":"rd8okf41","type":"aggregation","sourceId":"cna1ls4k","targetId":"ccffgzj5","name":"Subdividida em","spatial":true,"spatialAggKind":"subdivision"},{"id":"rk3oyznu","type":"association","sourceId":"cwl7gyfh","targetId":"cna1ls4k","name":"Contém quadras","cardSource":"1","cardTarget":"1..*"},{"id":"rvfzjvbv","type":"association","sourceId":"ccffgzj5","targetId":"clfedltv","name":"Tem edificações","cardSource":"1","cardTarget":"0..*","nameInverse":"Está no lote"},{"id":"rd6bpy0z","type":"association","sourceId":"ccffgzj5","targetId":"c7kkk1vj","name":"Pertence a","cardSource":"1..*","cardTarget":"1..*","nameInverse":"É dono de"},{"id":"rk8h18ny","type":"association","sourceId":"ccffgzj5","targetId":"cpw48u1d","name":"Registrado em","cardSource":"1","cardTarget":"1"},{"id":"rkwwmllk","type":"association","sourceId":"ccffgzj5","targetId":"cdzfoxvp","name":"Tributado por","cardSource":"1","cardTarget":"0..1"},{"id":"r5iuqima","type":"association","sourceId":"c7kkk1vj","targetId":"cqj95ems","name":"Assina","cardSource":"1","cardTarget":"0..*"},{"id":"rti7lxvu","type":"association","sourceId":"cat1nt4q","targetId":"cqj95ems","name":"Objeto de","cardSource":"1","cardTarget":"0..*"},{"id":"rx38dojz","type":"association","sourceId":"cyubjuze","targetId":"chhetwti","name":"Sustentada por","cardSource":"1","cardTarget":"1..*"},{"id":"rzcz43g4","type":"association","sourceId":"cyubjuze","targetId":"cat1nt4q","name":"Protegida por","cardSource":"1","cardTarget":"1"},{"id":"r79utl92","type":"generalization","sourceId":"ccrrolxu","targetId":"clfedltv","name":"Residencial","total":true,"disjoint":true},{"id":"r2s4hixw","type":"generalization","sourceId":"clbxepjd","targetId":"clfedltv","name":"Comercial","total":true,"disjoint":true},{"id":"r156lfhi","type":"cartographicGeneralization","sourceId":"cjoa9ggm","targetId":"cy5geips","name":"Representa sede","kind":"scale","disjoint":true},{"id":"ruktz2j4","type":"network","sourceId":"cc706yxf","targetId":"ckgp7i4v","name":"Rede de Água"},{"id":"rpayan4k","type":"network","sourceId":"ckgp7i4v","targetId":"ckgp7i4v","name":"Continuidade"},{"id":"ro72gmc6","type":"spatial","sourceId":"clfedltv","targetId":"ccffgzj5","name":"Dentro do lote","topoRule":"dentro","nearDistance":null,"cardSource":"0..*","cardTarget":"1"},{"id":"rqdnkv6j","type":"spatial","sourceId":"cat1nt4q","targetId":"chhetwti","name":"Contém torres","topoRule":"contem","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},{"id":"rb3de8rf","type":"spatial","sourceId":"ccffgzj5","targetId":"cwfi4qax","name":"Coincide zona","topoRule":"coincide","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},{"id":"rl0lttt3","type":"spatial","sourceId":"clfedltv","targetId":"cat1nt4q","name":"Fora da faixa","topoRule":"disjunto","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},{"id":"r01sr78i","type":"spatial","sourceId":"ckgp7i4v","targetId":"cna1ls4k","name":"Toca quadra","topoRule":"touches","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},{"id":"rj20i6i9","type":"spatial","sourceId":"cna1ls4k","targetId":"cat1nt4q","name":"Vizinha da faixa","topoRule":"adjacente","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},{"id":"r36vfts1","type":"spatial","sourceId":"cyubjuze","targetId":"ckgp7i4v","name":"Cruza rede","topoRule":"cruza","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},{"id":"r3f5hitf","type":"spatial","sourceId":"cwl7gyfh","targetId":"cwfi4qax","name":"Sobrepõe zona","topoRule":"sobrepoe","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},{"id":"rb9t092e","type":"spatial","sourceId":"clepxmgq","targetId":"ccffgzj5","name":"Perto do lote","topoRule":"proximo","nearDistance":"50","cardSource":"0..*","cardTarget":"0..*"}]}};
+const EXAMPLE_MODEL = {"meta":{"name":"Exemplo — Teste completo GDB","srid":31982,"schema":"public","workspaceName":"Teste_OMTG","srsAuthority":"EPSG"},"classes":[{"id":"chnamfbj","name":"Município","kind":"conventional","geoType":null,"primitive":null,"attributes":[{"id":"a1_g8xy","name":"Código IBGE"},{"id":"a2_oor4","name":"Nome"},{"id":"a3_dgw2","name":"UF"},{"id":"a4_1o0d","name":"População"}],"x":810,"y":60,"w":208,"h":143},{"id":"c4sp9j9r","name":"Limite Municipal","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a5_q5lw","name":"Código IBGE"},{"id":"a6_wbcc","name":"Área (km²)"}],"x":650,"y":350,"w":208,"h":97},{"id":"c2toiaao","name":"Sede Municipal","kind":"geo","geoType":"object","primitive":"point","attributes":[{"id":"a7_8v8y","name":"ID"},{"id":"a8_fe3m","name":"Município"}],"x":970,"y":350,"w":208,"h":97},{"id":"csnt8y6p","name":"Bairro","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a9_mqnz","name":"ID"},{"id":"a10_z1ap","name":"Nome"},{"id":"a11_9fnz","name":"Município"}],"x":770,"y":600,"w":208,"h":120},{"id":"cv1nekxh","name":"Quadra","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a12_6zg1","name":"Código"},{"id":"a13_fsxu","name":"Bairro"},{"id":"a14_0t7q","name":"Área verde (m²)"}],"x":1090,"y":870,"w":208,"h":120},{"id":"cprqd1m6","name":"Lote","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a15_59yl","name":"Inscrição"},{"id":"a16_juqw","name":"Quadra"},{"id":"a17_m0vp","name":"Situação"},{"id":"a18_854d","name":"Uso"},{"id":"a19_mqcb","name":"Área (m²)"},{"id":"a20_g6cf","name":"Perímetro (m)"},{"id":"a21_49ab","name":"Testada (m)"},{"id":"a22_gnid","name":"Murado"},{"id":"a23_84x1","name":"Data do cadastro"},{"id":"a24_17tk","name":"Foto"},{"id":"a25_79yo","name":"Matrícula digitalizada"}],"x":850,"y":1140,"w":208,"h":304},{"id":"cal02eq2","name":"Edificação","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a26_upgt","name":"ID"},{"id":"a27_w8jy","name":"Lote"},{"id":"a28_5vru","name":"Pavimentos"},{"id":"a29_ra8l","name":"Área construída (m²)"}],"x":350,"y":1590,"w":208,"h":143},{"id":"cqo5xyup","name":"Edificação Residencial","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a30_nq30","name":"ID"},{"id":"a31_hf5r","name":"Unidades"}],"x":210,"y":1960,"w":208,"h":97},{"id":"c4s9fl74","name":"Edificação Comercial","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a32_zyse","name":"ID"},{"id":"a33_dppz","name":"CNAE"}],"x":530,"y":1960,"w":208,"h":97},{"id":"cl2zqg7f","name":"Proprietário","kind":"conventional","geoType":null,"primitive":null,"attributes":[{"id":"a34_40p3","name":"CPF/CNPJ"},{"id":"a35_4ct1","name":"Nome"},{"id":"a36_1072","name":"E-mail"},{"id":"a37_k7mo","name":"Tipo de pessoa"}],"x":670,"y":1590,"w":208,"h":143},{"id":"c2msfvli","name":"Matrícula","kind":"conventional","geoType":null,"primitive":null,"attributes":[{"id":"a38_g7w7","name":"Número"},{"id":"a39_laxs","name":"Cartório"},{"id":"a40_4tuq","name":"Lote"}],"x":60,"y":1140,"w":208,"h":120},{"id":"cqzzxelk","name":"IPTU","kind":"conventional","geoType":null,"primitive":null,"attributes":[{"id":"a41_ncv3","name":"Inscrição imobiliária"},{"id":"a42_di9y","name":"Lote"},{"id":"a43_jd4i","name":"Exercício"},{"id":"a44_su59","name":"Valor territorial"},{"id":"a45_7ovq","name":"Valor predial"},{"id":"a46_26he","name":"Valor venal"},{"id":"a47_djue","name":"Situação"}],"x":990,"y":1590,"w":208,"h":212},{"id":"c0y16ffx","name":"Linha de Transmissão","kind":"geo","geoType":"object","primitive":"line","attributes":[{"id":"a48_9210","name":"Código"},{"id":"a49_hjeb","name":"Tensão (kV)"},{"id":"a50_wwcc","name":"Extensão (km)"}],"x":1770,"y":1590,"w":208,"h":120},{"id":"c377nwuw","name":"Torre","kind":"geo","geoType":"object","primitive":"point","attributes":[{"id":"a51_j4m4","name":"Número"},{"id":"a52_9g5d","name":"Linha"},{"id":"a53_vhik","name":"Altura (m)"}],"x":1560,"y":1960,"w":208,"h":120},{"id":"cjsstqes","name":"Faixa de Servidão","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a54_v0ia","name":"Código"},{"id":"a55_ogr5","name":"Linha"},{"id":"a56_k4p3","name":"Largura (m)"}],"x":1310,"y":1590,"w":208,"h":120},{"id":"ct8vo7jl","name":"Contrato de Servidão","kind":"conventional","geoType":null,"primitive":null,"attributes":[{"id":"a57_2xa0","name":"Número"},{"id":"a58_6lcg","name":"Proprietário"},{"id":"a59_zhju","name":"Faixa"},{"id":"a60_493h","name":"Data de assinatura"},{"id":"a61_f5hi","name":"Indenização (R$)"},{"id":"a62_aosd","name":"Contrato assinado"}],"x":1010,"y":1960,"w":208,"h":189},{"id":"cplu26pi","name":"Marco Geodésico","kind":"geo","geoType":"object","primitive":"point","attributes":[{"id":"a63_y3wc","name":"Código"},{"id":"a64_cr7r","name":"Altitude (m)"},{"id":"a65_7iai","name":"Tipo"}],"x":380,"y":1140,"w":208,"h":120},{"id":"cxwwnrbl","name":"Trecho de Rede de Água","kind":"geo","geoType":"object","primitive":"unidirectional","attributes":[{"id":"a66_btzd","name":"ID"},{"id":"a67_z6jl","name":"Diâmetro (mm)"}],"x":1440,"y":1140,"w":218,"h":97},{"id":"c028i06c","name":"Nó da Rede","kind":"geo","geoType":"object","primitive":"node","attributes":[{"id":"a68_wssu","name":"ID"},{"id":"a69_9epy","name":"Tipo"}],"x":2270,"y":1140,"w":208,"h":97},{"id":"c3jcup8r","name":"Curva de Nível","kind":"geo","geoType":"field","primitive":"isoline","attributes":[{"id":"a70_bi2f","name":"ID"},{"id":"a71_6q33","name":"Cota (m)"}],"x":60,"y":2330,"w":208,"h":97},{"id":"cgpdd8xz","name":"Zoneamento","kind":"geo","geoType":"field","primitive":"partition","attributes":[{"id":"a72_w8rf","name":"Código"},{"id":"a73_afg2","name":"Zona"}],"x":770,"y":870,"w":208,"h":97},{"id":"cark5a9c","name":"Amostra de Solo","kind":"geo","geoType":"field","primitive":"sample","attributes":[{"id":"a74_x11g","name":"ID"},{"id":"a75_mdy7","name":"pH"}],"x":380,"y":2330,"w":208,"h":97},{"id":"cd3f0wzb","name":"Modelo Digital de Terreno","kind":"geo","geoType":"field","primitive":"tin","attributes":[{"id":"a76_apdk","name":"ID"}],"x":700,"y":2330,"w":231,"h":74},{"id":"cj2s9esi","name":"Imagem de Satélite","kind":"geo","geoType":"field","primitive":"tessellation","attributes":[{"id":"a77_a7ud","name":"ID"}],"x":1040,"y":2330,"w":208,"h":74}],"relationships":[{"id":"rcanq5zp","type":"aggregation","sourceId":"c4sp9j9r","targetId":"csnt8y6p","name":"É formado por","spatial":true,"spatialAggKind":"union"},{"id":"rd5ittaq","type":"aggregation","sourceId":"cv1nekxh","targetId":"cprqd1m6","name":"Subdividida em","spatial":true,"spatialAggKind":"subdivision"},{"id":"rhh4ewda","type":"association","sourceId":"csnt8y6p","targetId":"cv1nekxh","name":"Contém quadras","cardSource":"1","cardTarget":"1..*"},{"id":"r9kzxkmu","type":"association","sourceId":"cprqd1m6","targetId":"cal02eq2","name":"Tem edificações","cardSource":"1","cardTarget":"0..*","nameInverse":"Está no lote"},{"id":"rqnfyy7z","type":"association","sourceId":"cprqd1m6","targetId":"cl2zqg7f","name":"Pertence a","cardSource":"1..*","cardTarget":"1..*","nameInverse":"É dono de"},{"id":"ryxzlfte","type":"association","sourceId":"cprqd1m6","targetId":"c2msfvli","name":"Registrado em","cardSource":"1","cardTarget":"1"},{"id":"rco67fav","type":"association","sourceId":"cprqd1m6","targetId":"cqzzxelk","name":"Tributado por","cardSource":"1","cardTarget":"0..1"},{"id":"rkx94ht4","type":"association","sourceId":"cl2zqg7f","targetId":"ct8vo7jl","name":"Assina","cardSource":"1","cardTarget":"0..*"},{"id":"rsaga3uf","type":"association","sourceId":"cjsstqes","targetId":"ct8vo7jl","name":"Objeto de","cardSource":"1","cardTarget":"0..*"},{"id":"rnvplgdd","type":"association","sourceId":"c0y16ffx","targetId":"c377nwuw","name":"Sustentada por","cardSource":"1","cardTarget":"1..*"},{"id":"rizbnevk","type":"association","sourceId":"c0y16ffx","targetId":"cjsstqes","name":"Protegida por","cardSource":"1","cardTarget":"1"},{"id":"rn60673z","type":"generalization","sourceId":"cqo5xyup","targetId":"cal02eq2","name":"Residencial","total":true,"disjoint":true},{"id":"rh2nvjic","type":"generalization","sourceId":"c4s9fl74","targetId":"cal02eq2","name":"Comercial","total":true,"disjoint":true},{"id":"roysevc2","type":"cartographicGeneralization","sourceId":"c4sp9j9r","targetId":"chnamfbj","name":"Representa limite","kind":"scale","disjoint":false},{"id":"rvtyapdo","type":"cartographicGeneralization","sourceId":"c2toiaao","targetId":"chnamfbj","name":"Representa sede","kind":"scale","disjoint":false},{"id":"r8iaum6w","type":"network","sourceId":"c028i06c","targetId":"cxwwnrbl","name":"Rede de Água"},{"id":"rutd9eea","type":"network","sourceId":"cxwwnrbl","targetId":"cxwwnrbl","name":"Continuidade"},{"id":"rx7syjt9","type":"spatial","sourceId":"cal02eq2","targetId":"cprqd1m6","name":"Dentro do lote","topoRule":"dentro","nearDistance":null,"cardSource":"0..*","cardTarget":"1"},{"id":"r648ljv0","type":"spatial","sourceId":"cjsstqes","targetId":"c377nwuw","name":"Contém torres","topoRule":"contem","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},{"id":"rzgw4bdp","type":"spatial","sourceId":"cprqd1m6","targetId":"cgpdd8xz","name":"Coincide zona","topoRule":"coincide","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},{"id":"ritqnqj3","type":"spatial","sourceId":"cal02eq2","targetId":"cjsstqes","name":"Fora da faixa","topoRule":"disjunto","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},{"id":"rndwx83q","type":"spatial","sourceId":"cxwwnrbl","targetId":"cv1nekxh","name":"Toca quadra","topoRule":"touches","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},{"id":"rzlklvuq","type":"spatial","sourceId":"cv1nekxh","targetId":"cjsstqes","name":"Vizinha da faixa","topoRule":"adjacente","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},{"id":"r6qmmciq","type":"spatial","sourceId":"c0y16ffx","targetId":"cxwwnrbl","name":"Cruza rede","topoRule":"cruza","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},{"id":"rtl6vmc7","type":"spatial","sourceId":"csnt8y6p","targetId":"cgpdd8xz","name":"Sobrepõe zona","topoRule":"sobrepoe","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},{"id":"r7q8jgs7","type":"spatial","sourceId":"cplu26pi","targetId":"cprqd1m6","name":"Perto do lote","topoRule":"proximo","nearDistance":"50","cardSource":"0..*","cardTarget":"0..*"}],"logical":{"classes":[{"id":"chnamfbj","name":"Município","kind":"conventional","geoType":null,"primitive":null,"attributes":[{"id":"a1_g8xy","name":"Código IBGE","type":"integer","pk":true,"required":true,"intDigits":"7"},{"id":"a2_oor4","name":"Nome","type":"text","length":"80","required":true,"unique":true},{"id":"a3_dgw2","name":"UF","type":"list","listDomain":[{"key":"SC","value":"Santa Catarina"},{"key":"PR","value":"Paraná"},{"key":"RS","value":"Rio Grande do Sul"}],"defaultValue":"SC","listBox":{"x":920,"y":60}},{"id":"a4_1o0d","name":"População","type":"integer","intDigits":"8","minValue":"0"}],"x":660,"y":60,"w":208,"h":143},{"id":"c4sp9j9r","name":"Limite Municipal","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a5_q5lw","name":"Código IBGE","type":"integer","pk":true,"required":true,"intDigits":"7","fk":true,"fkRefClassId":"chnamfbj","fkRefAttrId":"a1_g8xy","refIntegrity":"cascade"},{"id":"a6_wbcc","name":"Área (km²)","type":"double","precision":"12","scale":"3","calculated":true,"calculatedExpr":"ARRED(AREA([SHAPE]) / 1000000, 3)"}],"x":800,"y":350,"w":272,"h":120,"operations":[],"srid":"31982","calcNote":{"x":1120,"y":350}},{"id":"c2toiaao","name":"Sede Municipal","kind":"geo","geoType":"object","primitive":"point","attributes":[{"id":"a7_8v8y","name":"ID","type":"integer","pk":true,"required":true,"intDigits":"6"},{"id":"a8_fe3m","name":"Município","type":"integer","fk":true,"fkRefClassId":"chnamfbj","fkRefAttrId":"a1_g8xy","intDigits":"7","refIntegrity":"cascade","required":true,"unique":true}],"x":440,"y":350,"w":251,"h":120,"operations":[],"srid":"31982"},{"id":"csnt8y6p","name":"Bairro","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a9_mqnz","name":"ID","type":"integer","pk":true,"required":true,"intDigits":"6"},{"id":"a10_z1ap","name":"Nome","type":"text","length":"60","required":true},{"id":"a11_9fnz","name":"Município","type":"integer","fk":true,"fkRefClassId":"c4sp9j9r","fkRefAttrId":"a5_q5lw","intDigits":"4","refIntegrity":"cascade","required":true}],"x":1040,"y":620,"w":208,"h":143,"operations":[],"srid":"31982","editTracking":true},{"id":"cv1nekxh","name":"Quadra","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a12_6zg1","name":"Código","type":"text","pk":true,"required":true,"length":"10"},{"id":"a13_fsxu","name":"Bairro","type":"integer","fk":true,"fkRefClassId":"csnt8y6p","fkRefAttrId":"a9_mqnz","intDigits":"6","refIntegrity":"restrict","required":true},{"id":"a14_0t7q","name":"Área verde (m²)","type":"double","precision":"12","scale":"2","minValue":"0"}],"x":1200,"y":920,"w":231,"h":143,"operations":[],"srid":"31982"},{"id":"cprqd1m6","name":"Lote","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a15_59yl","name":"Inscrição","type":"text","pk":true,"required":true,"length":"20"},{"id":"a16_juqw","name":"Quadra","type":"text","fk":true,"fkRefClassId":"cv1nekxh","fkRefAttrId":"a12_6zg1","length":"10","refIntegrity":"setNull"},{"id":"a17_m0vp","name":"Situação","type":"list","listDomain":[{"key":"1","value":"Regular"},{"key":"2","value":"Irregular"},{"key":"3","value":"Em regularização"}],"required":true,"defaultValue":"3","listBox":{"x":1010,"y":1300}},{"id":"a18_854d","name":"Uso","type":"list","listDomain":[{"key":"R","value":"Residencial"},{"key":"C","value":"Comercial"},{"key":"I","value":"Industrial"},{"key":"M","value":"Misto"}],"listBox":{"x":1010,"y":1450}},{"id":"a19_mqcb","name":"Área (m²)","type":"double","precision":"12","scale":"2","calculated":true,"calculatedExpr":"ARRED(AREA([SHAPE]), 2)"},{"id":"a20_g6cf","name":"Perímetro (m)","type":"double","precision":"10","scale":"2","calculated":true,"calculatedExpr":"ARRED(PERIMETRO([SHAPE]), 2)"},{"id":"a21_49ab","name":"Testada (m)","type":"double","precision":"8","scale":"2","minValue":"0","maxValue":"500"},{"id":"a22_gnid","name":"Murado","type":"boolean","required":true,"defaultValue":"0"},{"id":"a23_84x1","name":"Data do cadastro","type":"date"},{"id":"a24_17tk","name":"Foto","type":"blob"},{"id":"a25_79yo","name":"Matrícula digitalizada","type":"blob"}],"x":740,"y":1210,"w":222,"h":327,"operations":[],"srid":"31982","editTracking":true,"calcNote":{"x":1010,"y":1210}},{"id":"cal02eq2","name":"Edificação","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a26_upgt","name":"ID","type":"integer","pk":true,"required":true,"intDigits":"8"},{"id":"a27_w8jy","name":"Lote","type":"text","fk":true,"fkRefClassId":"cprqd1m6","fkRefAttrId":"a15_59yl","length":"20","refIntegrity":"setDefault","defaultValue":"SEM-LOTE"},{"id":"a28_5vru","name":"Pavimentos","type":"integer","intDigits":"2","minValue":"1","maxValue":"60","defaultValue":"1"},{"id":"a29_ra8l","name":"Área construída (m²)","type":"double","precision":"10","scale":"2","minValue":"0"}],"x":1180,"y":1750,"w":256,"h":166,"operations":[],"srid":"31982","hasZ":true},{"id":"cqo5xyup","name":"Edificação Residencial","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a30_nq30","name":"ID","type":"integer","pk":true,"required":true,"intDigits":"8","fk":true,"fkRefClassId":"cal02eq2","fkRefAttrId":"a26_upgt","refIntegrity":"cascade"},{"id":"a31_hf5r","name":"Unidades","type":"integer","intDigits":"3","minValue":"1"}],"x":1310,"y":2110,"w":331,"h":120,"operations":[],"srid":"31982"},{"id":"c4s9fl74","name":"Edificação Comercial","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a32_zyse","name":"ID","type":"integer","pk":true,"required":true,"intDigits":"8","fk":true,"fkRefClassId":"cal02eq2","fkRefAttrId":"a26_upgt","refIntegrity":"cascade"},{"id":"a33_dppz","name":"CNAE","type":"text","length":"10"}],"x":890,"y":2110,"w":318,"h":120,"operations":[],"srid":"31982"},{"id":"cl2zqg7f","name":"Proprietário","kind":"conventional","geoType":null,"primitive":null,"attributes":[{"id":"a34_40p3","name":"CPF/CNPJ","type":"text","pk":true,"required":true,"length":"14"},{"id":"a35_4ct1","name":"Nome","type":"text","length":"120","required":true},{"id":"a36_1072","name":"E-mail","type":"text","length":"100","unique":true},{"id":"a37_k7mo","name":"Tipo de pessoa","type":"list","listDomain":[{"key":"1","value":"Física"},{"key":"2","value":"Jurídica"}],"required":true,"listBox":{"x":1810,"y":1750}}],"x":1550,"y":1750,"w":208,"h":143,"editTracking":true},{"id":"c2msfvli","name":"Matrícula","kind":"conventional","geoType":null,"primitive":null,"attributes":[{"id":"a38_g7w7","name":"Número","type":"text","pk":true,"required":true,"length":"20"},{"id":"a39_laxs","name":"Cartório","type":"text","length":"80","required":true},{"id":"a40_4tuq","name":"Lote","type":"text","fk":true,"fkRefClassId":"cprqd1m6","fkRefAttrId":"a15_59yl","length":"20","refIntegrity":"restrict","required":true,"unique":true}],"x":60,"y":2110,"w":208,"h":120},{"id":"cqzzxelk","name":"IPTU","kind":"conventional","geoType":null,"primitive":null,"attributes":[{"id":"a41_ncv3","name":"Inscrição imobiliária","type":"text","pk":true,"required":true,"length":"25"},{"id":"a42_di9y","name":"Lote","type":"text","fk":true,"fkRefClassId":"cprqd1m6","fkRefAttrId":"a15_59yl","length":"20","refIntegrity":"cascade","required":true},{"id":"a43_jd4i","name":"Exercício","type":"integer","intDigits":"4","minValue":"2000","maxValue":"2100","required":true},{"id":"a44_su59","name":"Valor territorial","type":"double","precision":"14","scale":"2","minValue":"0","defaultValue":"0"},{"id":"a45_7ovq","name":"Valor predial","type":"double","precision":"14","scale":"2","minValue":"0","defaultValue":"0"},{"id":"a46_26he","name":"Valor venal","type":"double","precision":"14","scale":"2","calculated":true,"calculatedExpr":"[Valor territorial] + [Valor predial]"},{"id":"a47_djue","name":"Situação","type":"text","length":"20","calculated":true,"calculatedExpr":"SE([Valor venal] > 0, \"Lançado\", \"Isento\")"}],"x":340,"y":1750,"w":246,"h":212,"calcNote":{"x":640,"y":1750}},{"id":"c0y16ffx","name":"Linha de Transmissão","kind":"geo","geoType":"object","primitive":"line","attributes":[{"id":"a48_9210","name":"Código","type":"text","pk":true,"required":true,"length":"15"},{"id":"a49_hjeb","name":"Tensão (kV)","type":"integer","intDigits":"3","minValue":"13","maxValue":"800","required":true},{"id":"a50_wwcc","name":"Extensão (km)","type":"double","precision":"10","scale":"3","calculated":true,"calculatedExpr":"ARRED(COMPRIMENTO([SHAPE]) / 1000, 3)"}],"x":2220,"y":1210,"w":329,"h":143,"operations":[],"srid":"31982","editTracking":true,"calcNote":{"x":2600,"y":1210}},{"id":"c377nwuw","name":"Torre","kind":"geo","geoType":"object","primitive":"point","attributes":[{"id":"a51_j4m4","name":"Número","type":"text","pk":true,"required":true,"length":"10"},{"id":"a52_9g5d","name":"Linha","type":"text","fk":true,"fkRefClassId":"c0y16ffx","fkRefAttrId":"a48_9210","length":"15","refIntegrity":"restrict","required":true},{"id":"a53_vhik","name":"Altura (m)","type":"double","precision":"6","scale":"2","minValue":"0"}],"x":2180,"y":2110,"w":208,"h":143,"operations":[],"srid":"31982","hasZ":true},{"id":"cjsstqes","name":"Faixa de Servidão","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a54_v0ia","name":"Código","type":"text","pk":true,"required":true,"length":"20"},{"id":"a55_ogr5","name":"Linha","type":"text","fk":true,"fkRefClassId":"c0y16ffx","fkRefAttrId":"a48_9210","length":"15","refIntegrity":"cascade","required":true},{"id":"a56_k4p3","name":"Largura (m)","type":"double","precision":"6","scale":"2","minValue":"1","maxValue":"200","required":true}],"x":2060,"y":1750,"w":283,"h":143,"operations":[],"srid":"31982"},{"id":"ct8vo7jl","name":"Contrato de Servidão","kind":"conventional","geoType":null,"primitive":null,"attributes":[{"id":"a57_2xa0","name":"Número","type":"text","pk":true,"required":true,"length":"20"},{"id":"a58_6lcg","name":"Proprietário","type":"text","fk":true,"fkRefClassId":"cl2zqg7f","fkRefAttrId":"a34_40p3","length":"14","refIntegrity":"restrict","required":true},{"id":"a59_zhju","name":"Faixa","type":"text","fk":true,"fkRefClassId":"cjsstqes","fkRefAttrId":"a54_v0ia","length":"20","refIntegrity":"restrict","required":true},{"id":"a60_493h","name":"Data de assinatura","type":"date","required":true},{"id":"a61_f5hi","name":"Indenização (R$)","type":"double","precision":"14","scale":"2","minValue":"0"},{"id":"a62_aosd","name":"Contrato assinado","type":"blob"}],"x":1780,"y":2110,"w":283,"h":189},{"id":"cplu26pi","name":"Marco Geodésico","kind":"geo","geoType":"object","primitive":"point","attributes":[{"id":"a63_y3wc","name":"Código","type":"text","pk":true,"required":true,"length":"12"},{"id":"a64_cr7r","name":"Altitude (m)","type":"double","precision":"8","scale":"3"},{"id":"a65_7iai","name":"Tipo","type":"list","listDomain":[{"key":"1","value":"SAT"},{"key":"2","value":"RN"},{"key":"3","value":"VT"}],"listBox":{"x":1960,"y":1210}}],"x":1640,"y":1210,"w":272,"h":143,"operations":[],"srid":"4674","hasZ":true,"hasM":true},{"id":"cxwwnrbl","name":"Trecho de Rede de Água","kind":"geo","geoType":"object","primitive":"unidirectional","attributes":[{"id":"a66_btzd","name":"ID","type":"integer","pk":true,"required":true,"intDigits":"8"},{"id":"a67_z6jl","name":"Diâmetro (mm)","type":"integer","intDigits":"4","minValue":"20","maxValue":"2000"}],"x":2440,"y":920,"w":365,"h":120,"operations":[],"srid":"31982"},{"id":"c028i06c","name":"Nó da Rede","kind":"geo","geoType":"object","primitive":"node","attributes":[{"id":"a68_wssu","name":"ID","type":"integer","pk":true,"required":true,"intDigits":"8"},{"id":"a69_9epy","name":"Tipo","type":"list","listDomain":[{"key":"1","value":"Registro"},{"key":"2","value":"Hidrante"},{"key":"3","value":"Junção"}],"listBox":{"x":1800,"y":920}}],"x":1540,"y":920,"w":212,"h":120,"operations":[],"srid":"31982"},{"id":"c3jcup8r","name":"Curva de Nível","kind":"geo","geoType":"field","primitive":"isoline","attributes":[{"id":"a70_bi2f","name":"ID","type":"integer","pk":true,"required":true,"intDigits":"8"},{"id":"a71_6q33","name":"Cota (m)","type":"integer","intDigits":"4","required":true}],"x":60,"y":2480,"w":252,"h":120,"operations":[],"srid":"31982","hasZ":true},{"id":"cgpdd8xz","name":"Zoneamento","kind":"geo","geoType":"field","primitive":"partition","attributes":[{"id":"a72_w8rf","name":"Código","type":"text","pk":true,"required":true,"length":"10"},{"id":"a73_afg2","name":"Zona","type":"list","listDomain":[{"key":"ZR","value":"Residencial"},{"key":"ZC","value":"Comercial"},{"key":"ZI","value":"Industrial"},{"key":"ZEIS","value":"Interesse social"}],"required":true,"listBox":{"x":950,"y":920}}],"x":690,"y":920,"w":208,"h":120,"operations":[],"srid":"31982"},{"id":"cark5a9c","name":"Amostra de Solo","kind":"geo","geoType":"field","primitive":"sample","attributes":[{"id":"a74_x11g","name":"ID","type":"integer","pk":true,"required":true,"intDigits":"6"},{"id":"a75_mdy7","name":"pH","type":"double","precision":"4","scale":"2","minValue":"0","maxValue":"14"}],"x":420,"y":2480,"w":268,"h":120,"operations":[],"srid":"31982"},{"id":"cd3f0wzb","name":"Modelo Digital de Terreno","kind":"geo","geoType":"field","primitive":"tin","attributes":[{"id":"a76_apdk","name":"ID","type":"integer","pk":true,"required":true,"intDigits":"6"}],"x":800,"y":2480,"w":382,"h":97,"operations":[],"srid":"31982"},{"id":"cj2s9esi","name":"Imagem de Satélite","kind":"geo","geoType":"field","primitive":"tessellation","attributes":[{"id":"a77_a7ud","name":"ID","type":"integer","pk":true,"required":true,"intDigits":"6"}],"x":1290,"y":2480,"w":297,"h":97,"operations":[],"srid":"31982"}],"relationships":[{"id":"rcanq5zp","type":"aggregation","sourceId":"c4sp9j9r","targetId":"csnt8y6p","name":"É formado por","spatial":true,"spatialAggKind":"union"},{"id":"rd5ittaq","type":"aggregation","sourceId":"cv1nekxh","targetId":"cprqd1m6","name":"Subdividida em","spatial":true,"spatialAggKind":"subdivision"},{"id":"rhh4ewda","type":"association","sourceId":"csnt8y6p","targetId":"cv1nekxh","name":"Contém quadras","cardSource":"1","cardTarget":"1..*"},{"id":"r9kzxkmu","type":"association","sourceId":"cprqd1m6","targetId":"cal02eq2","name":"Tem edificações","cardSource":"1","cardTarget":"0..*","nameInverse":"Está no lote"},{"id":"rqnfyy7z","type":"association","sourceId":"cprqd1m6","targetId":"cl2zqg7f","name":"Pertence a","cardSource":"1..*","cardTarget":"1..*","nameInverse":"É dono de"},{"id":"ryxzlfte","type":"association","sourceId":"cprqd1m6","targetId":"c2msfvli","name":"Registrado em","cardSource":"1","cardTarget":"1"},{"id":"rco67fav","type":"association","sourceId":"cprqd1m6","targetId":"cqzzxelk","name":"Tributado por","cardSource":"1","cardTarget":"0..1"},{"id":"rkx94ht4","type":"association","sourceId":"cl2zqg7f","targetId":"ct8vo7jl","name":"Assina","cardSource":"1","cardTarget":"0..*"},{"id":"rsaga3uf","type":"association","sourceId":"cjsstqes","targetId":"ct8vo7jl","name":"Objeto de","cardSource":"1","cardTarget":"0..*"},{"id":"rnvplgdd","type":"association","sourceId":"c0y16ffx","targetId":"c377nwuw","name":"Sustentada por","cardSource":"1","cardTarget":"1..*"},{"id":"rizbnevk","type":"association","sourceId":"c0y16ffx","targetId":"cjsstqes","name":"Protegida por","cardSource":"1","cardTarget":"1"},{"id":"rn60673z","type":"generalization","sourceId":"cqo5xyup","targetId":"cal02eq2","name":"Residencial","total":true,"disjoint":true},{"id":"rh2nvjic","type":"generalization","sourceId":"c4s9fl74","targetId":"cal02eq2","name":"Comercial","total":true,"disjoint":true},{"id":"roysevc2","type":"cartographicGeneralization","sourceId":"c4sp9j9r","targetId":"chnamfbj","name":"Representa limite","kind":"scale","disjoint":false},{"id":"rvtyapdo","type":"cartographicGeneralization","sourceId":"c2toiaao","targetId":"chnamfbj","name":"Representa sede","kind":"scale","disjoint":false},{"id":"r8iaum6w","type":"network","sourceId":"c028i06c","targetId":"cxwwnrbl","name":"Rede de Água"},{"id":"rutd9eea","type":"network","sourceId":"cxwwnrbl","targetId":"cxwwnrbl","name":"Continuidade"},{"id":"rx7syjt9","type":"spatial","sourceId":"cal02eq2","targetId":"cprqd1m6","name":"Dentro do lote","topoRule":"dentro","nearDistance":null,"cardSource":"0..*","cardTarget":"1"},{"id":"r648ljv0","type":"spatial","sourceId":"cjsstqes","targetId":"c377nwuw","name":"Contém torres","topoRule":"contem","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},{"id":"rzgw4bdp","type":"spatial","sourceId":"cprqd1m6","targetId":"cgpdd8xz","name":"Coincide zona","topoRule":"coincide","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},{"id":"ritqnqj3","type":"spatial","sourceId":"cal02eq2","targetId":"cjsstqes","name":"Fora da faixa","topoRule":"disjunto","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},{"id":"rndwx83q","type":"spatial","sourceId":"cxwwnrbl","targetId":"cv1nekxh","name":"Toca quadra","topoRule":"touches","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},{"id":"rzlklvuq","type":"spatial","sourceId":"cv1nekxh","targetId":"cjsstqes","name":"Vizinha da faixa","topoRule":"adjacente","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},{"id":"r6qmmciq","type":"spatial","sourceId":"c0y16ffx","targetId":"cxwwnrbl","name":"Cruza rede","topoRule":"cruza","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},{"id":"rtl6vmc7","type":"spatial","sourceId":"csnt8y6p","targetId":"cgpdd8xz","name":"Sobrepõe zona","topoRule":"sobrepoe","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},{"id":"r7q8jgs7","type":"spatial","sourceId":"cplu26pi","targetId":"cprqd1m6","name":"Perto do lote","topoRule":"proximo","nearDistance":"50","cardSource":"0..*","cardTarget":"0..*"}]}};
 </script>

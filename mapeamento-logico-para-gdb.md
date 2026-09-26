@@ -615,3 +615,46 @@ Ao organizar, as pontas de relacionamento arrastadas à mão voltam para o rotea
 O aviso "exige Pro 3.5" foi removido. No PostGIS, o cálculo continua via `::geography`.
 
 **Validation rules.** Agora a toolbox passa `severity=3`, que é obrigatório (de 1 a 5); faltava e causava o ERROR 002709.
+
+## Atualização — generalização cartográfica como superclasse
+
+No diagrama, o **destino** da generalização cartográfica é a **superclasse**, e cada **origem** é uma representação dela (ponto, polígono etc.). No GDB:
+
+- vira uma relationship class 1:N por representação;
+- a origem é a superclasse, e a FK fica na representação;
+- modelos antigos que tinham a FK na superclasse continuam funcionando.
+
+A validação avisa (CART-GEN) quando a superclasse tem só uma representação. Nesse caso, o certo é um relacionamento espacial entre as duas classes.
+
+No Exemplo, Município virou a superclasse (classe convencional), com duas representações por escala, do tipo sobreposto: Limite Municipal (polígono) e Sede Municipal (ponto).
+
+## Atualização — desenho sem sobreposições
+
+**Relacionamentos, rótulos e caixas.**
+
+- Listas, notas de cálculo e a linha da nota até a classe agora são obstáculos: nenhum relacionamento passa por cima delas.
+- Um lado da classe ocupado por uma lista ou nota não recebe pontas de relacionamento.
+- Quando o desvio sai da área considerada e bate em outra caixa, o traçado é refeito com uma área maior.
+
+**Posição dos rótulos.** O nome do relacionamento e as cardinalidades procuram um lugar livre. A busca vai pelos dois lados da linha e por vários pontos, e evita linhas (inclusive a própria nas dobras), caixas e outros rótulos.
+
+**Redes.** O nome de rede só fica entre as duas paralelas quando o trecho cabe o texto; se não couber, fica ao lado, por fora. O laço de uma rede sobre si mesma escolhe canto e tamanho pelo que menos encosta em outras linhas, já contando a largura das paralelas.
+
+**Linha da nota de cálculo.** É uma reta curta, horizontal ou vertical, sempre que a nota está ao lado ou abaixo da classe.
+
+**Organizar.**
+
+- A nota de cálculo vem primeiro, na altura da classe, e as listas logo abaixo dela.
+- Classes vizinhas na mesma camada e ligadas entre si ganham mais espaço entre elas.
+- A ordem das camadas é testada a partir de várias ordens de partida.
+- O layout horizontal só vence o vertical se poupar pelo menos dois cruzamentos.
+
+## Atualização — participação mínima exige Controle de edições
+
+O ArcGIS só aceita Validation Rule (regra em lote) numa tabela com Editor Tracking ligado; sem ele, dá o ERROR 003324. Por isso, quando uma classe recebe a regra de participação mínima (1..*):
+
+- se o "Controle de edições" não estiver marcado, o gerador liga o Editor Tracking nessa tabela mesmo assim;
+- um aviso diz quais tabelas foram afetadas;
+- se algum dos nomes padrão da Esri já existir na tabela, os campos de controle usam o prefixo `et_`.
+
+No Exemplo, Bairro, Proprietário e Linha de Transmissão já vêm com "Controle de edições" marcado.

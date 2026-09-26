@@ -1,6 +1,7 @@
 <!doctype html>
-<html data-theme="light">
+<html lang="pt-BR" data-theme="light">
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>GeoGeoGeo</title>
 <meta name="description" content="Editor visual de modelos OMT-G com exportação para Geodatabase (ArcGIS ou GDAL puro, com relationship classes), GeoPackage e PostGIS.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -47,26 +48,8 @@
     --edge-cartgen:#be123c;
     --radius:10px;
   }
-  @media (prefers-color-scheme: dark){
-    :root:not([data-theme="light"]){
-      --bg:#12181a;
-      --surface:#181f22;
-      --surface-2:#1e2629;
-      --surface-3:#26302f;
-      --border:#2c3739;
-      --ink:#e9ede9;
-      --ink-soft:#b9c3bd;
-      --muted:#84928b;
-      --accent:#4fc3d3;
-      --accent-ink:#08191c;
-      --accent-soft:#173137;
-      --good:#57c67c;
-      --warn:#d9a441;
-      --bad:#e2735c;
-      --bad-soft:#3a2420;
-      --shadow:0 1px 2px rgba(0,0,0,.35), 0 10px 30px -12px rgba(0,0,0,.55);
-    }
-  }
+  /* Paleta escura. O <html> fixa data-theme="light" e ainda não há seletor
+     de tema na interface: isto fica pronto para quando houver. */
   :root[data-theme="dark"]{
     --bg:#12181a;
     --surface:#181f22;
@@ -173,15 +156,10 @@
   .btn:disabled{ opacity:.45; cursor:not-allowed; }
   .btn svg{ width:14px; height:14px; flex:none; }
   .btn.icon-only{ padding:7px 9px; font-size:16px; line-height:1; }
-  /* Follow-up round: Conceitual/Lógico pill tabs + the separate migrate
-     button that sits right beside them. */
+  /* abas dos modelos (Conceitual/Lógico/Físico) + o botão Migrar ao lado */
   .model-switch{ display:flex; align-items:center; gap:6px; }
-  #btnMigrateModel svg{ transition:transform .15s ease; }
-  #btnMigrateModel.flip svg{ transform:rotate(180deg); }
-  #btnMigrateModel.armed{ background:var(--warn); border-color:var(--warn); color:#fff; }
-  #btnMigrateModel.armed:hover{ background:var(--warn); color:#fff; }
   .dl-menu-wrap{ position:relative; }
-  .dl-menu{ position:absolute; top:calc(100% + 5px); right:0; min-width:170px; background:var(--surface); border:1px solid var(--border); border-radius:8px; box-shadow:var(--shadow); padding:4px; display:flex; flex-direction:column; gap:2px; min-width:110px; z-index:20; }
+  .dl-menu{ position:absolute; top:calc(100% + 5px); right:0; min-width:110px; background:var(--surface); border:1px solid var(--border); border-radius:8px; box-shadow:var(--shadow); padding:4px; display:flex; flex-direction:column; gap:2px; z-index:20; }
   .dl-menu button{ text-align:left; padding:7px 10px; border-radius:6px; font-size:12.5px; font-weight:500; color:var(--ink); background:transparent; border:none; white-space:nowrap; }
   .dl-menu-label{ font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); padding:7px 10px 3px; }
   .dl-menu-label:first-child{ padding-top:3px; }
@@ -197,7 +175,6 @@
     min-height:0;
   }
   .layout > *{ min-width:0; }
-  body{ overflow-x:hidden; }
   .resizer{ flex:none; cursor:col-resize; position:relative; z-index:6; background:transparent; touch-action:none; }
   .resizer::after{ content:''; position:absolute; top:0; bottom:0; left:2px; width:2px; background:var(--border); }
   .resizer:hover::after, .resizer.dragging::after{ background:var(--accent); width:2px; }
@@ -250,14 +227,7 @@
     font-size:13px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted);
     margin-bottom:9px; display:flex; align-items:center; justify-content:space-between; gap:8px;
   }
-  /* Round OO: bloco "ArcGIS Geodatabase" do inspector no modelo Físico. */
   .rail-sublabel{ font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--muted); margin:12px 0 7px; }
-  .gdb-hint{ color:var(--muted); font-size:11px; line-height:1.5; margin:-7px 0 10px; }
-  .gdb-stereo{
-    margin-top:12px; padding:8px 10px; border-radius:7px; font-size:12px;
-    background:color-mix(in srgb, var(--accent) 10%, var(--surface));
-    color:var(--accent); font-weight:600; text-align:center;
-  }
   .rail-label .count{
     font-family:"IBM Plex Mono"; font-weight:500; background:var(--surface-2); color:var(--ink-soft);
     border-radius:999px; padding:1px 7px; font-size:12.5px; letter-spacing:0;
@@ -286,8 +256,6 @@
   }
 
   .addbtn.active{ background:var(--accent-soft); border-color:var(--accent); }
-  .relarm{ width:100%; justify-content:center; }
-  .relarm.active{ background:var(--accent); border-color:var(--accent); color:var(--accent-ink); }
   .relhint{ font-size:12.5px; color:var(--muted); margin-top:7px; line-height:1.45; }
 
   /* cardinality hint — full (properties panel) */
@@ -342,9 +310,9 @@
   .vitem:hover{ background:var(--surface-2); }
   .zm-row{ display:flex; gap:16px; margin:2px 0 8px; font-size:12.5px; }
   .phys-hint{ color:var(--muted); font-size:11px; margin:-6px 0 6px; line-height:1.5; }
-  .phys-hint code{ font-family:ui-monospace,Consolas,monospace; font-size:11px; background:var(--surface-2); padding:1px 5px; border-radius:4px; color:var(--text, inherit); }
+  .phys-hint code{ font-family:ui-monospace,Consolas,monospace; font-size:11px; background:var(--surface-2); padding:1px 5px; border-radius:4px; color:inherit; }
   .phys-hint .phys-trunc{ color:var(--warn); }
-  .vitem.active{ background:var(--surface-2); box-shadow:inset 3px 0 0 var(--accent, #2563eb); }
+  .vitem.active{ background:var(--surface-2); box-shadow:inset 3px 0 0 var(--accent); }
   .vitem .dot{ width:7px;height:7px;border-radius:50%; margin-top:5px; flex:none; }
   .vitem.error .dot{ background:var(--bad); }
   .vitem.warning .dot{ background:var(--warn); }
@@ -366,11 +334,6 @@
   .stage-badge{
     position:absolute; left:12px; bottom:12px; z-index:4; color:var(--canvas-ink); font-size:13px;
     font-family:"IBM Plex Mono"; opacity:.55; letter-spacing:.02em;
-  }
-  .relmode-banner{
-    position:absolute; top:12px; left:50%; transform:translateX(-50%); z-index:4;
-    background:var(--accent); color:var(--accent-ink); font-size:12.5px; font-weight:500;
-    padding:7px 14px; border-radius:999px; box-shadow:var(--shadow); display:none; align-items:center; gap:8px;
   }
   /* janela flutuante do botão "Validação", por cima do canvas */
   .legend-btn{
@@ -423,8 +386,6 @@
     color:var(--muted); border:1px solid var(--canvas-card-border); border-radius:4px;
     padding:0 4px; margin-right:6px; vertical-align:1px;
   }
-  .relmode-banner.show{ display:flex; }
-  .relmode-banner button{ background:rgba(0,0,0,.18); border:none; color:inherit; border-radius:999px; width:18px;height:18px; font-size:13px; display:flex; align-items:center; justify-content:center;}
 
   .node-card{ cursor:grab; filter:drop-shadow(0 1px 2px rgba(20,30,26,.10)) drop-shadow(0 3px 8px rgba(20,30,26,.07)); }
   .node-card.dragging{ cursor:grabbing; }
@@ -453,16 +414,8 @@
   .calc-note-line{ font-family:"IBM Plex Mono", ui-monospace, Consolas, monospace; font-size:12px; fill:var(--canvas-card-ink); white-space:pre; }
   .calc-note-link{ stroke:var(--canvas-line); stroke-width:1; stroke-dasharray:4 3; fill:none; opacity:.7; }
   .node-card .cname .cname-phys{ font-weight:400; font-size:12px; fill:var(--muted); }
-  .node-card .geo-chip{ fill:var(--canvas-chip-bg); stroke:var(--canvas-line); stroke-width:1.1; }
   .node-card .chip-glyph{ color:var(--canvas-line); }
   .node-card .cattr{ font-family:"IBM Plex Mono"; font-size:13px; fill:var(--canvas-card-ink); }
-  .node-card .cattr .attype{ fill:#7a887f; }
-  .node-card .cpk{ font-weight:700; }
-  .node-card .attr-key{ color:var(--accent); }
-  .node-card .attr-fk{ color:var(--edge-association); }
-  .node-card .col-handle{ opacity:0; fill:var(--canvas-bg); stroke:var(--accent); stroke-width:1.4; cursor:crosshair; transition:opacity .12s,r .1s; }
-  .node-card:hover .col-handle{ opacity:.85; }
-  .node-card .col-handle:hover{ opacity:1; fill:var(--accent); }
   /* Round LL item 6 ("as configurações dos atributos tá meio feia, melhora
      visualmente toda essa parte"): the FK picker / Lista domain / tipo
      extras / campo calculado used to each be their own disconnected
@@ -504,17 +457,11 @@
      against a near-black surface. Toned down specifically for dark — the
      app defaults to the light theme now (see <html data-theme>), but this
      keeps dark mode reasonable if it's ever turned back on. */
-  @media (prefers-color-scheme: dark){
-    :root:not([data-theme="light"]) .attr-panel-section--calc{ background:color-mix(in srgb, var(--warn) 7%, var(--surface)); }
-  }
   :root[data-theme="dark"] .attr-panel-section--calc{ background:color-mix(in srgb, var(--warn) 7%, var(--surface)); }
   .attr-panel .field{ margin-bottom:0; }
   .attr-panel .field label{ font-size:11.5px; font-weight:500; text-transform:none; letter-spacing:0; color:var(--ink-soft); margin-bottom:3px; }
   .attr-panel .field-row{ gap:8px; }
   .attr-panel-hint{ color:var(--muted); font-size:11px; line-height:1.5; }
-  .attr-calc-toggle{ display:flex; align-items:center; gap:7px; font-size:12.5px; font-weight:600; cursor:pointer; }
-  .attr-calc-toggle input{ width:15px; height:15px; margin:0; }
-  .node-card .attr-required{ font-family:"IBM Plex Mono"; font-size:12.5px; font-weight:700; fill:var(--canvas-required); }
 
   .edge-path{ fill:none; stroke-linecap:round; stroke-linejoin:round; }
   .edge-path.association{ stroke:var(--edge-association); stroke-width:1.5; }
@@ -522,12 +469,9 @@
   .edge-path.aggregation{ stroke:var(--edge-aggregation); stroke-width:1.5; }
   .edge-path.aggregation.spatial-agg{ stroke-dasharray:5,4; }
   .edge-path.network{ stroke:var(--edge-network); stroke-width:1.3; stroke-dasharray:5,3; }
-  .edge-path.network-arrow{ stroke:var(--edge-network); stroke-width:1.6; stroke-dasharray:none; }
   .edge-path.spatial{ stroke:var(--edge-spatial); stroke-width:1.5; stroke-dasharray:5,4; }
   .edge-path.cartographicGeneralization{ stroke:var(--edge-cartgen); stroke-width:1.5; stroke-dasharray:5,4; }
   .edge-path.selected{ stroke-width:2.75 !important; filter:drop-shadow(0 0 3px rgba(127,208,224,.6)); }
-  .edge-label{ font-family:"IBM Plex Mono"; font-size:12.5px; fill:var(--canvas-ink); }
-  .edge-label rect{ fill:var(--canvas-bg); }
   .edge-card-label{ fill:var(--canvas-ink); opacity:.85; }
 
   /* ============ Inspector / right rail ============ */
@@ -570,26 +514,6 @@
   .inspector-scroll{ padding:14px; overflow-y:auto; overflow-x:auto; flex:1; min-height:0; }
   .inspector-actions{ padding:10px 14px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; }
 
-  .exp-tabs{ display:flex; flex-wrap:wrap; gap:6px; padding:10px 12px 0; }
-  .exp-tab{ font-size:12.5px; padding:6px 9px; border-radius:6px 6px 0 0; background:var(--surface-2); color:var(--muted); font-weight:600; }
-  .exp-tab.active{ background:var(--surface-3); color:var(--ink); }
-  .exp-opts{ padding:10px 12px; border-bottom:1px solid var(--border); background:var(--surface-3); display:flex; flex-wrap:wrap; gap:8px 14px; }
-  .exp-opts .field{ margin:0; min-width:118px; }
-  .exp-opts .field label{ margin-bottom:3px; }
-  .exp-opts .chk{ margin:0; align-self:flex-end; padding-bottom:6px; }
-  .exp-body{ flex:1; min-height:0; overflow:auto; background:#0c1416; }
-  .exp-body pre{ margin:0; padding:14px; font-size:12.5px; line-height:1.6; color:#dce8e4; white-space:pre; }
-  .exp-actions{ padding:9px 12px; border-top:1px solid var(--border); display:flex; gap:8px; justify-content:flex-end; }
-  .exp-note{ padding:9px 14px; font-size:13px; color:var(--muted); border-top:1px solid var(--border); line-height:1.55; }
-  .exp-warn{ flex:0 0 auto; margin:9px 12px 0; padding:7px 10px; border:1px solid var(--warn); border-radius:8px; background:color-mix(in srgb, var(--warn) 14%, var(--surface)); font-size:12.5px; line-height:1.5; color:var(--ink-soft); }
-  .exp-warn summary{ cursor:pointer; font-weight:700; color:var(--warn); }
-  .exp-warn summary::marker{ color:var(--warn); }
-  .exp-warn b{ color:var(--ink); }
-  .exp-warn-body{ margin-top:6px; padding-top:6px; border-top:1px dashed var(--border); }
-  .exp-warn-body ol{ margin:5px 0 0; padding-left:18px; }
-  .exp-warn-body li{ margin-top:3px; }
-  .exp-warn-body > div{ margin-top:6px; }
-  .exp-warn-body > div:first-child{ margin-top:0; }
 
   .legend-scroll{ padding:14px; overflow-y:auto; flex:1; }
   .legend-group{ margin-bottom:16px; }
@@ -610,8 +534,7 @@
   .gdb-json-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px; flex-wrap:wrap; }
   .gdb-json-actions{ display:flex; gap:6px; }
   .gdb-screen-body{ flex:1; min-height:0; min-width:0; overflow-y:auto; overflow-x:hidden; padding:16px 18px 24px; }
-  .gdb-section{ min-width:0; }
-  .gdb-section{ margin-bottom:18px; }
+  .gdb-section{ min-width:0; margin-bottom:18px; }
   .gdb-json{
     background:#0c1416; color:#dce8e4; border-radius:10px; padding:14px 16px; overflow:auto;
     max-height:520px; max-width:100%; font-family:"IBM Plex Mono", ui-monospace, Consolas, monospace; font-size:12px; line-height:1.55; white-space:pre;
@@ -1414,6 +1337,123 @@ class GdbBuilder(object):
         else:
             self.info(u"Concluido sem avisos.")
 </script>
+<!-- Modelo "Exemplo — Teste completo GDB" (botão Exemplo): exercita todas as
+     transformações Lógico → GDB; é a entrada do teste de referência. -->
+<script type="application/json" id="exampleModel">
+{
+ "meta":{"name":"Exemplo — Teste completo GDB","srid":31982,"schema":"public","workspaceName":"Teste_OMTG","srsAuthority":"EPSG"},
+ "classes":[
+   {"id":"chnamfbj","name":"Município","kind":"conventional","geoType":null,"primitive":null,"attributes":[{"id":"a1_g8xy","name":"Código IBGE"},{"id":"a2_oor4","name":"Nome"},{"id":"a3_dgw2","name":"UF"},{"id":"a4_1o0d","name":"População"}],"x":810,"y":60,"w":208,"h":143},
+   {"id":"c4sp9j9r","name":"Limite Municipal","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a5_q5lw","name":"Código IBGE"},{"id":"a6_wbcc","name":"Área (km²)"}],"x":650,"y":350,"w":208,"h":97},
+   {"id":"c2toiaao","name":"Sede Municipal","kind":"geo","geoType":"object","primitive":"point","attributes":[{"id":"a7_8v8y","name":"ID"},{"id":"a8_fe3m","name":"Município"}],"x":970,"y":350,"w":208,"h":97},
+   {"id":"csnt8y6p","name":"Bairro","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a9_mqnz","name":"ID"},{"id":"a10_z1ap","name":"Nome"},{"id":"a11_9fnz","name":"Município"}],"x":770,"y":600,"w":208,"h":120},
+   {"id":"cv1nekxh","name":"Quadra","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a12_6zg1","name":"Código"},{"id":"a13_fsxu","name":"Bairro"},{"id":"a14_0t7q","name":"Área verde (m²)"}],"x":1090,"y":870,"w":208,"h":120},
+   {"id":"cprqd1m6","name":"Lote","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a15_59yl","name":"Inscrição"},{"id":"a16_juqw","name":"Quadra"},{"id":"a17_m0vp","name":"Situação"},{"id":"a18_854d","name":"Uso"},{"id":"a19_mqcb","name":"Área (m²)"},{"id":"a20_g6cf","name":"Perímetro (m)"},{"id":"a21_49ab","name":"Testada (m)"},{"id":"a22_gnid","name":"Murado"},{"id":"a23_84x1","name":"Data do cadastro"},{"id":"a24_17tk","name":"Foto"},{"id":"a25_79yo","name":"Matrícula digitalizada"}],"x":850,"y":1140,"w":208,"h":304},
+   {"id":"cal02eq2","name":"Edificação","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a26_upgt","name":"ID"},{"id":"a27_w8jy","name":"Lote"},{"id":"a28_5vru","name":"Pavimentos"},{"id":"a29_ra8l","name":"Área construída (m²)"}],"x":350,"y":1590,"w":208,"h":143},
+   {"id":"cqo5xyup","name":"Edificação Residencial","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a30_nq30","name":"ID"},{"id":"a31_hf5r","name":"Unidades"}],"x":210,"y":1960,"w":208,"h":97},
+   {"id":"c4s9fl74","name":"Edificação Comercial","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a32_zyse","name":"ID"},{"id":"a33_dppz","name":"CNAE"}],"x":530,"y":1960,"w":208,"h":97},
+   {"id":"cl2zqg7f","name":"Proprietário","kind":"conventional","geoType":null,"primitive":null,"attributes":[{"id":"a34_40p3","name":"CPF/CNPJ"},{"id":"a35_4ct1","name":"Nome"},{"id":"a36_1072","name":"E-mail"},{"id":"a37_k7mo","name":"Tipo de pessoa"}],"x":670,"y":1590,"w":208,"h":143},
+   {"id":"c2msfvli","name":"Matrícula","kind":"conventional","geoType":null,"primitive":null,"attributes":[{"id":"a38_g7w7","name":"Número"},{"id":"a39_laxs","name":"Cartório"},{"id":"a40_4tuq","name":"Lote"}],"x":60,"y":1140,"w":208,"h":120},
+   {"id":"cqzzxelk","name":"IPTU","kind":"conventional","geoType":null,"primitive":null,"attributes":[{"id":"a41_ncv3","name":"Inscrição imobiliária"},{"id":"a42_di9y","name":"Lote"},{"id":"a43_jd4i","name":"Exercício"},{"id":"a44_su59","name":"Valor territorial"},{"id":"a45_7ovq","name":"Valor predial"},{"id":"a46_26he","name":"Valor venal"},{"id":"a47_djue","name":"Situação"}],"x":990,"y":1590,"w":208,"h":212},
+   {"id":"c0y16ffx","name":"Linha de Transmissão","kind":"geo","geoType":"object","primitive":"line","attributes":[{"id":"a48_9210","name":"Código"},{"id":"a49_hjeb","name":"Tensão (kV)"},{"id":"a50_wwcc","name":"Extensão (km)"}],"x":1770,"y":1590,"w":208,"h":120},
+   {"id":"c377nwuw","name":"Torre","kind":"geo","geoType":"object","primitive":"point","attributes":[{"id":"a51_j4m4","name":"Número"},{"id":"a52_9g5d","name":"Linha"},{"id":"a53_vhik","name":"Altura (m)"}],"x":1560,"y":1960,"w":208,"h":120},
+   {"id":"cjsstqes","name":"Faixa de Servidão","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a54_v0ia","name":"Código"},{"id":"a55_ogr5","name":"Linha"},{"id":"a56_k4p3","name":"Largura (m)"}],"x":1310,"y":1590,"w":208,"h":120},
+   {"id":"ct8vo7jl","name":"Contrato de Servidão","kind":"conventional","geoType":null,"primitive":null,"attributes":[{"id":"a57_2xa0","name":"Número"},{"id":"a58_6lcg","name":"Proprietário"},{"id":"a59_zhju","name":"Faixa"},{"id":"a60_493h","name":"Data de assinatura"},{"id":"a61_f5hi","name":"Indenização (R$)"},{"id":"a62_aosd","name":"Contrato assinado"}],"x":1010,"y":1960,"w":208,"h":189},
+   {"id":"cplu26pi","name":"Marco Geodésico","kind":"geo","geoType":"object","primitive":"point","attributes":[{"id":"a63_y3wc","name":"Código"},{"id":"a64_cr7r","name":"Altitude (m)"},{"id":"a65_7iai","name":"Tipo"}],"x":380,"y":1140,"w":208,"h":120},
+   {"id":"cxwwnrbl","name":"Trecho de Rede de Água","kind":"geo","geoType":"object","primitive":"unidirectional","attributes":[{"id":"a66_btzd","name":"ID"},{"id":"a67_z6jl","name":"Diâmetro (mm)"}],"x":1440,"y":1140,"w":218,"h":97},
+   {"id":"c028i06c","name":"Nó da Rede","kind":"geo","geoType":"object","primitive":"node","attributes":[{"id":"a68_wssu","name":"ID"},{"id":"a69_9epy","name":"Tipo"}],"x":2270,"y":1140,"w":208,"h":97},
+   {"id":"c3jcup8r","name":"Curva de Nível","kind":"geo","geoType":"field","primitive":"isoline","attributes":[{"id":"a70_bi2f","name":"ID"},{"id":"a71_6q33","name":"Cota (m)"}],"x":60,"y":2330,"w":208,"h":97},
+   {"id":"cgpdd8xz","name":"Zoneamento","kind":"geo","geoType":"field","primitive":"partition","attributes":[{"id":"a72_w8rf","name":"Código"},{"id":"a73_afg2","name":"Zona"}],"x":770,"y":870,"w":208,"h":97},
+   {"id":"cark5a9c","name":"Amostra de Solo","kind":"geo","geoType":"field","primitive":"sample","attributes":[{"id":"a74_x11g","name":"ID"},{"id":"a75_mdy7","name":"pH"}],"x":380,"y":2330,"w":208,"h":97},
+   {"id":"cd3f0wzb","name":"Modelo Digital de Terreno","kind":"geo","geoType":"field","primitive":"tin","attributes":[{"id":"a76_apdk","name":"ID"}],"x":700,"y":2330,"w":231,"h":74},
+   {"id":"cj2s9esi","name":"Imagem de Satélite","kind":"geo","geoType":"field","primitive":"tessellation","attributes":[{"id":"a77_a7ud","name":"ID"}],"x":1040,"y":2330,"w":208,"h":74}
+ ],
+ "relationships":[
+   {"id":"rcanq5zp","type":"aggregation","sourceId":"c4sp9j9r","targetId":"csnt8y6p","name":"É formado por","spatial":true,"spatialAggKind":"union"},
+   {"id":"rd5ittaq","type":"aggregation","sourceId":"cv1nekxh","targetId":"cprqd1m6","name":"Subdividida em","spatial":true,"spatialAggKind":"subdivision"},
+   {"id":"rhh4ewda","type":"association","sourceId":"csnt8y6p","targetId":"cv1nekxh","name":"Contém quadras","cardSource":"1","cardTarget":"1..*"},
+   {"id":"r9kzxkmu","type":"association","sourceId":"cprqd1m6","targetId":"cal02eq2","name":"Tem edificações","cardSource":"1","cardTarget":"0..*","nameInverse":"Está no lote"},
+   {"id":"rqnfyy7z","type":"association","sourceId":"cprqd1m6","targetId":"cl2zqg7f","name":"Pertence a","cardSource":"1..*","cardTarget":"1..*","nameInverse":"É dono de"},
+   {"id":"ryxzlfte","type":"association","sourceId":"cprqd1m6","targetId":"c2msfvli","name":"Registrado em","cardSource":"1","cardTarget":"1"},
+   {"id":"rco67fav","type":"association","sourceId":"cprqd1m6","targetId":"cqzzxelk","name":"Tributado por","cardSource":"1","cardTarget":"0..1"},
+   {"id":"rkx94ht4","type":"association","sourceId":"cl2zqg7f","targetId":"ct8vo7jl","name":"Assina","cardSource":"1","cardTarget":"0..*"},
+   {"id":"rsaga3uf","type":"association","sourceId":"cjsstqes","targetId":"ct8vo7jl","name":"Objeto de","cardSource":"1","cardTarget":"0..*"},
+   {"id":"rnvplgdd","type":"association","sourceId":"c0y16ffx","targetId":"c377nwuw","name":"Sustentada por","cardSource":"1","cardTarget":"1..*"},
+   {"id":"rizbnevk","type":"association","sourceId":"c0y16ffx","targetId":"cjsstqes","name":"Protegida por","cardSource":"1","cardTarget":"1"},
+   {"id":"rn60673z","type":"generalization","sourceId":"cqo5xyup","targetId":"cal02eq2","name":"Residencial","total":true,"disjoint":true},
+   {"id":"rh2nvjic","type":"generalization","sourceId":"c4s9fl74","targetId":"cal02eq2","name":"Comercial","total":true,"disjoint":true},
+   {"id":"roysevc2","type":"cartographicGeneralization","sourceId":"c4sp9j9r","targetId":"chnamfbj","name":"Representa limite","kind":"scale","disjoint":false},
+   {"id":"rvtyapdo","type":"cartographicGeneralization","sourceId":"c2toiaao","targetId":"chnamfbj","name":"Representa sede","kind":"scale","disjoint":false},
+   {"id":"r8iaum6w","type":"network","sourceId":"c028i06c","targetId":"cxwwnrbl","name":"Rede de Água"},
+   {"id":"rutd9eea","type":"network","sourceId":"cxwwnrbl","targetId":"cxwwnrbl","name":"Continuidade"},
+   {"id":"rx7syjt9","type":"spatial","sourceId":"cal02eq2","targetId":"cprqd1m6","name":"Dentro do lote","topoRule":"dentro","nearDistance":null,"cardSource":"0..*","cardTarget":"1"},
+   {"id":"r648ljv0","type":"spatial","sourceId":"cjsstqes","targetId":"c377nwuw","name":"Contém torres","topoRule":"contem","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},
+   {"id":"rzgw4bdp","type":"spatial","sourceId":"cprqd1m6","targetId":"cgpdd8xz","name":"Coincide zona","topoRule":"coincide","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},
+   {"id":"ritqnqj3","type":"spatial","sourceId":"cal02eq2","targetId":"cjsstqes","name":"Fora da faixa","topoRule":"disjunto","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},
+   {"id":"rndwx83q","type":"spatial","sourceId":"cxwwnrbl","targetId":"cv1nekxh","name":"Toca quadra","topoRule":"touches","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},
+   {"id":"rzlklvuq","type":"spatial","sourceId":"cv1nekxh","targetId":"cjsstqes","name":"Vizinha da faixa","topoRule":"adjacente","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},
+   {"id":"r6qmmciq","type":"spatial","sourceId":"c0y16ffx","targetId":"cxwwnrbl","name":"Cruza rede","topoRule":"cruza","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},
+   {"id":"rtl6vmc7","type":"spatial","sourceId":"csnt8y6p","targetId":"cgpdd8xz","name":"Sobrepõe zona","topoRule":"sobrepoe","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},
+   {"id":"r7q8jgs7","type":"spatial","sourceId":"cplu26pi","targetId":"cprqd1m6","name":"Perto do lote","topoRule":"proximo","nearDistance":"50","cardSource":"0..*","cardTarget":"0..*"}
+ ],
+ "logical":{
+  "classes":[
+    {"id":"chnamfbj","name":"Município","kind":"conventional","geoType":null,"primitive":null,"attributes":[{"id":"a1_g8xy","name":"Código IBGE","type":"integer","pk":true,"required":true,"intDigits":"7"},{"id":"a2_oor4","name":"Nome","type":"text","length":"80","required":true,"unique":true},{"id":"a3_dgw2","name":"UF","type":"list","listDomain":[{"key":"SC","value":"Santa Catarina"},{"key":"PR","value":"Paraná"},{"key":"RS","value":"Rio Grande do Sul"}],"defaultValue":"SC","listBox":{"x":920,"y":60}},{"id":"a4_1o0d","name":"População","type":"integer","intDigits":"8","minValue":"0"}],"x":660,"y":60,"w":208,"h":143},
+    {"id":"c4sp9j9r","name":"Limite Municipal","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a5_q5lw","name":"Código IBGE","type":"integer","pk":true,"required":true,"intDigits":"7","fk":true,"fkRefClassId":"chnamfbj","fkRefAttrId":"a1_g8xy","refIntegrity":"cascade"},{"id":"a6_wbcc","name":"Área (km²)","type":"double","precision":"12","scale":"3","calculated":true,"calculatedExpr":"ARRED(AREA([SHAPE]) / 1000000, 3)"}],"x":800,"y":350,"w":272,"h":120,"operations":[],"srid":"31982","calcNote":{"x":1120,"y":350}},
+    {"id":"c2toiaao","name":"Sede Municipal","kind":"geo","geoType":"object","primitive":"point","attributes":[{"id":"a7_8v8y","name":"ID","type":"integer","pk":true,"required":true,"intDigits":"6"},{"id":"a8_fe3m","name":"Município","type":"integer","fk":true,"fkRefClassId":"chnamfbj","fkRefAttrId":"a1_g8xy","intDigits":"7","refIntegrity":"cascade","required":true,"unique":true}],"x":440,"y":350,"w":251,"h":120,"operations":[],"srid":"31982"},
+    {"id":"csnt8y6p","name":"Bairro","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a9_mqnz","name":"ID","type":"integer","pk":true,"required":true,"intDigits":"6"},{"id":"a10_z1ap","name":"Nome","type":"text","length":"60","required":true},{"id":"a11_9fnz","name":"Município","type":"integer","fk":true,"fkRefClassId":"c4sp9j9r","fkRefAttrId":"a5_q5lw","intDigits":"4","refIntegrity":"cascade","required":true}],"x":1040,"y":620,"w":208,"h":143,"operations":[],"srid":"31982","editTracking":true},
+    {"id":"cv1nekxh","name":"Quadra","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a12_6zg1","name":"Código","type":"text","pk":true,"required":true,"length":"10"},{"id":"a13_fsxu","name":"Bairro","type":"integer","fk":true,"fkRefClassId":"csnt8y6p","fkRefAttrId":"a9_mqnz","intDigits":"6","refIntegrity":"restrict","required":true},{"id":"a14_0t7q","name":"Área verde (m²)","type":"double","precision":"12","scale":"2","minValue":"0"}],"x":1200,"y":920,"w":231,"h":143,"operations":[],"srid":"31982"},
+    {"id":"cprqd1m6","name":"Lote","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a15_59yl","name":"Inscrição","type":"text","pk":true,"required":true,"length":"20"},{"id":"a16_juqw","name":"Quadra","type":"text","fk":true,"fkRefClassId":"cv1nekxh","fkRefAttrId":"a12_6zg1","length":"10","refIntegrity":"setNull"},{"id":"a17_m0vp","name":"Situação","type":"list","listDomain":[{"key":"1","value":"Regular"},{"key":"2","value":"Irregular"},{"key":"3","value":"Em regularização"}],"required":true,"defaultValue":"3","listBox":{"x":1010,"y":1300}},{"id":"a18_854d","name":"Uso","type":"list","listDomain":[{"key":"R","value":"Residencial"},{"key":"C","value":"Comercial"},{"key":"I","value":"Industrial"},{"key":"M","value":"Misto"}],"listBox":{"x":1010,"y":1450}},{"id":"a19_mqcb","name":"Área (m²)","type":"double","precision":"12","scale":"2","calculated":true,"calculatedExpr":"ARRED(AREA([SHAPE]), 2)"},{"id":"a20_g6cf","name":"Perímetro (m)","type":"double","precision":"10","scale":"2","calculated":true,"calculatedExpr":"ARRED(PERIMETRO([SHAPE]), 2)"},{"id":"a21_49ab","name":"Testada (m)","type":"double","precision":"8","scale":"2","minValue":"0","maxValue":"500"},{"id":"a22_gnid","name":"Murado","type":"boolean","required":true,"defaultValue":"0"},{"id":"a23_84x1","name":"Data do cadastro","type":"date"},{"id":"a24_17tk","name":"Foto","type":"blob"},{"id":"a25_79yo","name":"Matrícula digitalizada","type":"blob"}],"x":740,"y":1210,"w":222,"h":327,"operations":[],"srid":"31982","editTracking":true,"calcNote":{"x":1010,"y":1210}},
+    {"id":"cal02eq2","name":"Edificação","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a26_upgt","name":"ID","type":"integer","pk":true,"required":true,"intDigits":"8"},{"id":"a27_w8jy","name":"Lote","type":"text","fk":true,"fkRefClassId":"cprqd1m6","fkRefAttrId":"a15_59yl","length":"20","refIntegrity":"setDefault","defaultValue":"SEM-LOTE"},{"id":"a28_5vru","name":"Pavimentos","type":"integer","intDigits":"2","minValue":"1","maxValue":"60","defaultValue":"1"},{"id":"a29_ra8l","name":"Área construída (m²)","type":"double","precision":"10","scale":"2","minValue":"0"}],"x":1180,"y":1750,"w":256,"h":166,"operations":[],"srid":"31982","hasZ":true},
+    {"id":"cqo5xyup","name":"Edificação Residencial","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a30_nq30","name":"ID","type":"integer","pk":true,"required":true,"intDigits":"8","fk":true,"fkRefClassId":"cal02eq2","fkRefAttrId":"a26_upgt","refIntegrity":"cascade"},{"id":"a31_hf5r","name":"Unidades","type":"integer","intDigits":"3","minValue":"1"}],"x":1310,"y":2110,"w":331,"h":120,"operations":[],"srid":"31982"},
+    {"id":"c4s9fl74","name":"Edificação Comercial","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a32_zyse","name":"ID","type":"integer","pk":true,"required":true,"intDigits":"8","fk":true,"fkRefClassId":"cal02eq2","fkRefAttrId":"a26_upgt","refIntegrity":"cascade"},{"id":"a33_dppz","name":"CNAE","type":"text","length":"10"}],"x":890,"y":2110,"w":318,"h":120,"operations":[],"srid":"31982"},
+    {"id":"cl2zqg7f","name":"Proprietário","kind":"conventional","geoType":null,"primitive":null,"attributes":[{"id":"a34_40p3","name":"CPF/CNPJ","type":"text","pk":true,"required":true,"length":"14"},{"id":"a35_4ct1","name":"Nome","type":"text","length":"120","required":true},{"id":"a36_1072","name":"E-mail","type":"text","length":"100","unique":true},{"id":"a37_k7mo","name":"Tipo de pessoa","type":"list","listDomain":[{"key":"1","value":"Física"},{"key":"2","value":"Jurídica"}],"required":true,"listBox":{"x":1810,"y":1750}}],"x":1550,"y":1750,"w":208,"h":143,"editTracking":true},
+    {"id":"c2msfvli","name":"Matrícula","kind":"conventional","geoType":null,"primitive":null,"attributes":[{"id":"a38_g7w7","name":"Número","type":"text","pk":true,"required":true,"length":"20"},{"id":"a39_laxs","name":"Cartório","type":"text","length":"80","required":true},{"id":"a40_4tuq","name":"Lote","type":"text","fk":true,"fkRefClassId":"cprqd1m6","fkRefAttrId":"a15_59yl","length":"20","refIntegrity":"restrict","required":true,"unique":true}],"x":60,"y":2110,"w":208,"h":120},
+    {"id":"cqzzxelk","name":"IPTU","kind":"conventional","geoType":null,"primitive":null,"attributes":[{"id":"a41_ncv3","name":"Inscrição imobiliária","type":"text","pk":true,"required":true,"length":"25"},{"id":"a42_di9y","name":"Lote","type":"text","fk":true,"fkRefClassId":"cprqd1m6","fkRefAttrId":"a15_59yl","length":"20","refIntegrity":"cascade","required":true},{"id":"a43_jd4i","name":"Exercício","type":"integer","intDigits":"4","minValue":"2000","maxValue":"2100","required":true},{"id":"a44_su59","name":"Valor territorial","type":"double","precision":"14","scale":"2","minValue":"0","defaultValue":"0"},{"id":"a45_7ovq","name":"Valor predial","type":"double","precision":"14","scale":"2","minValue":"0","defaultValue":"0"},{"id":"a46_26he","name":"Valor venal","type":"double","precision":"14","scale":"2","calculated":true,"calculatedExpr":"[Valor territorial] + [Valor predial]"},{"id":"a47_djue","name":"Situação","type":"text","length":"20","calculated":true,"calculatedExpr":"SE([Valor venal] > 0, \"Lançado\", \"Isento\")"}],"x":340,"y":1750,"w":246,"h":212,"calcNote":{"x":640,"y":1750}},
+    {"id":"c0y16ffx","name":"Linha de Transmissão","kind":"geo","geoType":"object","primitive":"line","attributes":[{"id":"a48_9210","name":"Código","type":"text","pk":true,"required":true,"length":"15"},{"id":"a49_hjeb","name":"Tensão (kV)","type":"integer","intDigits":"3","minValue":"13","maxValue":"800","required":true},{"id":"a50_wwcc","name":"Extensão (km)","type":"double","precision":"10","scale":"3","calculated":true,"calculatedExpr":"ARRED(COMPRIMENTO([SHAPE]) / 1000, 3)"}],"x":2220,"y":1210,"w":329,"h":143,"operations":[],"srid":"31982","editTracking":true,"calcNote":{"x":2600,"y":1210}},
+    {"id":"c377nwuw","name":"Torre","kind":"geo","geoType":"object","primitive":"point","attributes":[{"id":"a51_j4m4","name":"Número","type":"text","pk":true,"required":true,"length":"10"},{"id":"a52_9g5d","name":"Linha","type":"text","fk":true,"fkRefClassId":"c0y16ffx","fkRefAttrId":"a48_9210","length":"15","refIntegrity":"restrict","required":true},{"id":"a53_vhik","name":"Altura (m)","type":"double","precision":"6","scale":"2","minValue":"0"}],"x":2180,"y":2110,"w":208,"h":143,"operations":[],"srid":"31982","hasZ":true},
+    {"id":"cjsstqes","name":"Faixa de Servidão","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a54_v0ia","name":"Código","type":"text","pk":true,"required":true,"length":"20"},{"id":"a55_ogr5","name":"Linha","type":"text","fk":true,"fkRefClassId":"c0y16ffx","fkRefAttrId":"a48_9210","length":"15","refIntegrity":"cascade","required":true},{"id":"a56_k4p3","name":"Largura (m)","type":"double","precision":"6","scale":"2","minValue":"1","maxValue":"200","required":true}],"x":2060,"y":1750,"w":283,"h":143,"operations":[],"srid":"31982"},
+    {"id":"ct8vo7jl","name":"Contrato de Servidão","kind":"conventional","geoType":null,"primitive":null,"attributes":[{"id":"a57_2xa0","name":"Número","type":"text","pk":true,"required":true,"length":"20"},{"id":"a58_6lcg","name":"Proprietário","type":"text","fk":true,"fkRefClassId":"cl2zqg7f","fkRefAttrId":"a34_40p3","length":"14","refIntegrity":"restrict","required":true},{"id":"a59_zhju","name":"Faixa","type":"text","fk":true,"fkRefClassId":"cjsstqes","fkRefAttrId":"a54_v0ia","length":"20","refIntegrity":"restrict","required":true},{"id":"a60_493h","name":"Data de assinatura","type":"date","required":true},{"id":"a61_f5hi","name":"Indenização (R$)","type":"double","precision":"14","scale":"2","minValue":"0"},{"id":"a62_aosd","name":"Contrato assinado","type":"blob"}],"x":1780,"y":2110,"w":283,"h":189},
+    {"id":"cplu26pi","name":"Marco Geodésico","kind":"geo","geoType":"object","primitive":"point","attributes":[{"id":"a63_y3wc","name":"Código","type":"text","pk":true,"required":true,"length":"12"},{"id":"a64_cr7r","name":"Altitude (m)","type":"double","precision":"8","scale":"3"},{"id":"a65_7iai","name":"Tipo","type":"list","listDomain":[{"key":"1","value":"SAT"},{"key":"2","value":"RN"},{"key":"3","value":"VT"}],"listBox":{"x":1960,"y":1210}}],"x":1640,"y":1210,"w":272,"h":143,"operations":[],"srid":"4674","hasZ":true,"hasM":true},
+    {"id":"cxwwnrbl","name":"Trecho de Rede de Água","kind":"geo","geoType":"object","primitive":"unidirectional","attributes":[{"id":"a66_btzd","name":"ID","type":"integer","pk":true,"required":true,"intDigits":"8"},{"id":"a67_z6jl","name":"Diâmetro (mm)","type":"integer","intDigits":"4","minValue":"20","maxValue":"2000"}],"x":2440,"y":920,"w":365,"h":120,"operations":[],"srid":"31982"},
+    {"id":"c028i06c","name":"Nó da Rede","kind":"geo","geoType":"object","primitive":"node","attributes":[{"id":"a68_wssu","name":"ID","type":"integer","pk":true,"required":true,"intDigits":"8"},{"id":"a69_9epy","name":"Tipo","type":"list","listDomain":[{"key":"1","value":"Registro"},{"key":"2","value":"Hidrante"},{"key":"3","value":"Junção"}],"listBox":{"x":1800,"y":920}}],"x":1540,"y":920,"w":212,"h":120,"operations":[],"srid":"31982"},
+    {"id":"c3jcup8r","name":"Curva de Nível","kind":"geo","geoType":"field","primitive":"isoline","attributes":[{"id":"a70_bi2f","name":"ID","type":"integer","pk":true,"required":true,"intDigits":"8"},{"id":"a71_6q33","name":"Cota (m)","type":"integer","intDigits":"4","required":true}],"x":60,"y":2480,"w":252,"h":120,"operations":[],"srid":"31982","hasZ":true},
+    {"id":"cgpdd8xz","name":"Zoneamento","kind":"geo","geoType":"field","primitive":"partition","attributes":[{"id":"a72_w8rf","name":"Código","type":"text","pk":true,"required":true,"length":"10"},{"id":"a73_afg2","name":"Zona","type":"list","listDomain":[{"key":"ZR","value":"Residencial"},{"key":"ZC","value":"Comercial"},{"key":"ZI","value":"Industrial"},{"key":"ZEIS","value":"Interesse social"}],"required":true,"listBox":{"x":950,"y":920}}],"x":690,"y":920,"w":208,"h":120,"operations":[],"srid":"31982"},
+    {"id":"cark5a9c","name":"Amostra de Solo","kind":"geo","geoType":"field","primitive":"sample","attributes":[{"id":"a74_x11g","name":"ID","type":"integer","pk":true,"required":true,"intDigits":"6"},{"id":"a75_mdy7","name":"pH","type":"double","precision":"4","scale":"2","minValue":"0","maxValue":"14"}],"x":420,"y":2480,"w":268,"h":120,"operations":[],"srid":"31982"},
+    {"id":"cd3f0wzb","name":"Modelo Digital de Terreno","kind":"geo","geoType":"field","primitive":"tin","attributes":[{"id":"a76_apdk","name":"ID","type":"integer","pk":true,"required":true,"intDigits":"6"}],"x":800,"y":2480,"w":382,"h":97,"operations":[],"srid":"31982"},
+    {"id":"cj2s9esi","name":"Imagem de Satélite","kind":"geo","geoType":"field","primitive":"tessellation","attributes":[{"id":"a77_a7ud","name":"ID","type":"integer","pk":true,"required":true,"intDigits":"6"}],"x":1290,"y":2480,"w":297,"h":97,"operations":[],"srid":"31982"}
+  ],
+  "relationships":[
+    {"id":"rcanq5zp","type":"aggregation","sourceId":"c4sp9j9r","targetId":"csnt8y6p","name":"É formado por","spatial":true,"spatialAggKind":"union"},
+    {"id":"rd5ittaq","type":"aggregation","sourceId":"cv1nekxh","targetId":"cprqd1m6","name":"Subdividida em","spatial":true,"spatialAggKind":"subdivision"},
+    {"id":"rhh4ewda","type":"association","sourceId":"csnt8y6p","targetId":"cv1nekxh","name":"Contém quadras","cardSource":"1","cardTarget":"1..*"},
+    {"id":"r9kzxkmu","type":"association","sourceId":"cprqd1m6","targetId":"cal02eq2","name":"Tem edificações","cardSource":"1","cardTarget":"0..*","nameInverse":"Está no lote"},
+    {"id":"rqnfyy7z","type":"association","sourceId":"cprqd1m6","targetId":"cl2zqg7f","name":"Pertence a","cardSource":"1..*","cardTarget":"1..*","nameInverse":"É dono de"},
+    {"id":"ryxzlfte","type":"association","sourceId":"cprqd1m6","targetId":"c2msfvli","name":"Registrado em","cardSource":"1","cardTarget":"1"},
+    {"id":"rco67fav","type":"association","sourceId":"cprqd1m6","targetId":"cqzzxelk","name":"Tributado por","cardSource":"1","cardTarget":"0..1"},
+    {"id":"rkx94ht4","type":"association","sourceId":"cl2zqg7f","targetId":"ct8vo7jl","name":"Assina","cardSource":"1","cardTarget":"0..*"},
+    {"id":"rsaga3uf","type":"association","sourceId":"cjsstqes","targetId":"ct8vo7jl","name":"Objeto de","cardSource":"1","cardTarget":"0..*"},
+    {"id":"rnvplgdd","type":"association","sourceId":"c0y16ffx","targetId":"c377nwuw","name":"Sustentada por","cardSource":"1","cardTarget":"1..*"},
+    {"id":"rizbnevk","type":"association","sourceId":"c0y16ffx","targetId":"cjsstqes","name":"Protegida por","cardSource":"1","cardTarget":"1"},
+    {"id":"rn60673z","type":"generalization","sourceId":"cqo5xyup","targetId":"cal02eq2","name":"Residencial","total":true,"disjoint":true},
+    {"id":"rh2nvjic","type":"generalization","sourceId":"c4s9fl74","targetId":"cal02eq2","name":"Comercial","total":true,"disjoint":true},
+    {"id":"roysevc2","type":"cartographicGeneralization","sourceId":"c4sp9j9r","targetId":"chnamfbj","name":"Representa limite","kind":"scale","disjoint":false},
+    {"id":"rvtyapdo","type":"cartographicGeneralization","sourceId":"c2toiaao","targetId":"chnamfbj","name":"Representa sede","kind":"scale","disjoint":false},
+    {"id":"r8iaum6w","type":"network","sourceId":"c028i06c","targetId":"cxwwnrbl","name":"Rede de Água"},
+    {"id":"rutd9eea","type":"network","sourceId":"cxwwnrbl","targetId":"cxwwnrbl","name":"Continuidade"},
+    {"id":"rx7syjt9","type":"spatial","sourceId":"cal02eq2","targetId":"cprqd1m6","name":"Dentro do lote","topoRule":"dentro","nearDistance":null,"cardSource":"0..*","cardTarget":"1"},
+    {"id":"r648ljv0","type":"spatial","sourceId":"cjsstqes","targetId":"c377nwuw","name":"Contém torres","topoRule":"contem","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},
+    {"id":"rzgw4bdp","type":"spatial","sourceId":"cprqd1m6","targetId":"cgpdd8xz","name":"Coincide zona","topoRule":"coincide","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},
+    {"id":"ritqnqj3","type":"spatial","sourceId":"cal02eq2","targetId":"cjsstqes","name":"Fora da faixa","topoRule":"disjunto","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},
+    {"id":"rndwx83q","type":"spatial","sourceId":"cxwwnrbl","targetId":"cv1nekxh","name":"Toca quadra","topoRule":"touches","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},
+    {"id":"rzlklvuq","type":"spatial","sourceId":"cv1nekxh","targetId":"cjsstqes","name":"Vizinha da faixa","topoRule":"adjacente","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},
+    {"id":"r6qmmciq","type":"spatial","sourceId":"c0y16ffx","targetId":"cxwwnrbl","name":"Cruza rede","topoRule":"cruza","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},
+    {"id":"rtl6vmc7","type":"spatial","sourceId":"csnt8y6p","targetId":"cgpdd8xz","name":"Sobrepõe zona","topoRule":"sobrepoe","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},
+    {"id":"r7q8jgs7","type":"spatial","sourceId":"cplu26pi","targetId":"cprqd1m6","name":"Perto do lote","topoRule":"proximo","nearDistance":"50","cardSource":"0..*","cardTarget":"0..*"}
+  ]
+ }
+}
+</script>
 <div id="app">
   <div class="topbar">
     <div class="brand">
@@ -1494,7 +1534,6 @@ class GdbBuilder(object):
           <div class="rail-label">Adicionar relacionamento</div>
           <div class="addgrid" id="relTypeGrid"></div>
           <div class="relhint" id="relHint">Escolha o tipo e arraste a partir do conector (○) na borda de uma classe até outra.</div>
-          <div id="relCardHintMini"></div>
         </div>
         <div class="rail-scroll">
           <div class="rail-section">
@@ -1609,61 +1648,64 @@ function S(tag, attrs, kids){
 function uid(p){ return p+Math.random().toString(36).slice(2,9); }
 function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
 function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
-/* file names the platform's downloads capability accepts as-is; anything else
-   is saved with a .txt suffix appended (still a real, complete file — just
-   rename it after saving to get the extension back). */
+/* ---------- arquivos e área de transferência ----------
+   saveFile baixa um texto ou Blob como arquivo. Aberto como Claude Artifact,
+   usa o recurso de downloads da plataforma, que só aceita as extensões de
+   DOWNLOAD_ALLOWLIST (as outras ganham ".txt" no fim — o conteúdo é o mesmo,
+   basta renomear). Fora dele (arquivo local, GitHub Pages), usa o download
+   comum do navegador, que aceita qualquer extensão. */
 const DOWNLOAD_ALLOWLIST = new Set(['gif','png','jpg','jpeg','webp','mp4','webm','txt','json','md','docx','pptx','epub','csv','ttf','html','svg','pdf','xml','py','pyt','sql']);
-function safeDownloadName(base, wantExt){
-  return DOWNLOAD_ALLOWLIST.has(wantExt) ? (base+'.'+wantExt) : (base+'.'+wantExt+'.txt');
+function safeDownloadName(base, ext){
+  return DOWNLOAD_ALLOWLIST.has(ext) ? (base+'.'+ext) : (base+'.'+ext+'.txt');
 }
-async function saveFile(filename, text){
+async function saveFile(base, ext, data){
+  const filename = safeDownloadName(base, ext);
+  const copyHint = typeof data==='string' ? ' Use "Copiar" e cole em um editor de texto.' : '';
   let ns = null;
   try{ if(window.claude && window.claude.use) ns = await window.claude.use('downloads'); }catch(e){ ns = null; }
   if(ns){
     try{
-      await ns.save({filename, data:text});
+      await ns.save({filename, data});
       toast('Arquivo salvo: '+filename);
       return;
     }catch(err){
       const code = err && err.code;
       if(code==='declined') return;
       if(code==='rejected_extension' || code==='extension_not_enabled'){
-        toast('Este formato não pode ser salvo diretamente aqui — use "Copiar" e cole em um editor de texto.', true);
+        toast('Este formato não pode ser salvo diretamente aqui.'+copyHint, true);
         return;
       }
-      /* otherwise fall through and try the classic path below */
+      // outro erro: tenta o download comum abaixo
     }
   }
   try{
-    const blob = new Blob([text], {type:'text/plain'});
+    const blob = data instanceof Blob ? data : new Blob([data], {type:'text/plain'});
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url; a.download = filename;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(()=>URL.revokeObjectURL(url), 2000);
   }catch(e){
-    toast('Não foi possível baixar o arquivo. Use "Copiar" e cole em um editor de texto.', true);
+    toast('Não foi possível baixar o arquivo.'+copyHint, true);
   }
 }
-function copyText(text, btn){
-  const done = ()=>{ if(btn){ const old = btn.textContent; btn.textContent='Copiado!'; setTimeout(()=>{btn.textContent=old;}, 1200); } };
-  try{
-    if(navigator.clipboard && navigator.clipboard.writeText){
-      navigator.clipboard.writeText(text).then(done).catch(()=>fallbackCopy(text, done));
-    } else fallbackCopy(text, done);
-  }catch(e){ fallbackCopy(text, done); }
+// Copia texto; onde a Clipboard API não existe, usa o execCommand antigo.
+function copyToClipboard(text){
+  const legacy = ()=>new Promise((resolve, reject)=>{
+    const ta = E('textarea',{style:'position:fixed;opacity:0;'});
+    ta.value = text;
+    document.body.appendChild(ta); ta.select();
+    const ok = document.execCommand('copy');
+    ta.remove();
+    if(ok) resolve(); else reject(new Error('copy'));
+  });
+  if(navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(text).catch(legacy);
+  return legacy();
 }
-function fallbackCopy(text, done){
-  try{
-    const ta = document.createElement('textarea');
-    ta.value = text; ta.style.position='fixed'; ta.style.opacity='0';
-    document.body.appendChild(ta); ta.focus(); ta.select();
-    document.execCommand('copy'); ta.remove(); done();
-  }catch(e){ /* clipboard unavailable in this context */ }
-}
+// escapeHtml: texto dentro de HTML. escapeXml: também serve para atributo.
+function escapeHtml(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function escapeXml(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function sqlIdent(s){ return String(s||'').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9_]+/g,'_').replace(/^_+|_+$/g,'').replace(/^(\d)/,'c$1') || 'sem_nome'; }
-function pascalIdent(s){ return String(s||'').trim().replace(/[^a-zA-Z0-9]+/g,' ').split(' ').filter(Boolean).map(w=>w[0].toUpperCase()+w.slice(1)).join('') || 'SemNome'; }
 
 /* ---------- domain constants ---------- */
 // Round BB item 2a: the exact 5 types requested for Lógico attributes —
@@ -1794,11 +1836,16 @@ function topoRuleArcName(kind, ga, gb){
   return null;
 }
 
+// O modelo Lógico, esteja ele na tela (state) ou parqueado (modelStash).
+// Tudo que é gerado — JSON do GDB, dicionário de dados — sai dele.
+function logicalModel(){
+  if(activeModel==='logical') return {classes: state.classes, relationships: state.relationships};
+  return modelStash.logical || {classes:[], relationships:[]};
+}
+function logicalClasses(){ return logicalModel().classes || []; }
+
 function buildGdbJson(){
-  // Sempre a partir do Lógico, esteja ele na tela ou parqueado.
-  const src = (activeModel==='logical')
-    ? {classes: state.classes, relationships: state.relationships}
-    : (modelStash.logical || {classes:[], relationships:[]});
+  const src = logicalModel();
   const classes = src.classes || [];
   const rels = src.relationships || [];
 
@@ -2484,7 +2531,7 @@ function buildGdbJson(){
    aplica (arcpy.metadata). O texto é HTML simples, que o ArcGIS aceita no
    campo Descrição. */
 function gdbAttachMetadata(doc, classes, rels){
-  const esc = v => String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const esc = escapeHtml;
   const modelName = doc.source.model || 'Novo modelo';
   const when = new Date().toLocaleDateString('pt-BR');
   const credits = 'Gerado pelo GeoGeoGeo em '+when+' a partir do modelo lógico OMT-G "'+modelName+'".';
@@ -2633,14 +2680,12 @@ function gdbAttachMetadata(doc, classes, rels){
   };
 }
 
-/* Mostra o resultado antes de baixar. Os avisos são a parte que interessa —
-   baixar calado esconderia justamente o que precisa ser auditado. */
-function openGdbResult(doc){
-  const overlay = E('div',{class:'calc-overlay'});
-  const modal = E('div',{class:'calc-modal', style:'width:min(760px,100%);'});
-  const close = ()=>{ if(overlay.parentNode) overlay.parentNode.removeChild(overlay); document.removeEventListener('keydown', onKey); };
-  const onKey = e=>{ if(e.key==='Escape') close(); };
-
+/* ---------- resumo do JSON do GDB ----------
+   Aparece em dois lugares: na janela que o menu "Migrar → Para o Físico
+   (GDB)" abre antes de baixar, e na tela da aba Físico (GDB). Os avisos são a
+   parte que interessa — baixar calado esconderia justamente o que precisa ser
+   auditado. */
+function gdbCountsGrid(doc){
   const counts = [
     ['Datasets', doc.datasets.length],
     ['Campos', doc.datasets.reduce((n,d)=>n+d.fields.length,0)],
@@ -2650,25 +2695,40 @@ function openGdbResult(doc){
     ['Attribute rules', doc.attributeRules.length],
     ['Redes declaradas', doc.networks.length]
   ];
-  const body = E('div',{class:'calc-main', style:'padding:14px;'});
-  const grid = E('div',{class:'gdb-counts'});
-  counts.forEach(([l,n])=> grid.appendChild(E('div',{class:'gdb-count'+(n?'':' zero')},[
+  return E('div',{class:'gdb-counts'}, counts.map(([l,n])=> E('div',{class:'gdb-count'+(n?'':' zero')},[
     E('div',{class:'n'},[String(n)]), E('div',{class:'l'},[l])
   ])));
-  body.appendChild(grid);
+}
+// Lista de avisos (warnings) ou perdas (unmapped); `limit` corta listas longas.
+function gdbIssueSection(title, items, cls, limit){
+  if(!items.length) return null;
+  const shown = limit ? items.slice(0, limit) : items;
+  const list = E('div',{class:'gdb-list'}, shown.map(it=> E('div',{class:'gdb-item '+cls},[
+    E('strong',{},[it.on||'—']), ' ', (it.message||it.reason||'')
+  ])));
+  if(shown.length < items.length) list.appendChild(E('div',{class:'gdb-item'},['… e mais '+(items.length-shown.length)+'.']));
+  return E('div',{class:'gdb-section'},[
+    E('div',{class:'rail-sublabel', style:'margin-top:0;'},[title+' ('+items.length+')']),
+    list
+  ]);
+}
+function gdbIssueSections(doc, limit){
+  return [
+    gdbIssueSection('Avisos — o que não coube 1:1', doc.warnings, 'warn', limit),
+    gdbIssueSection('Sem equivalente no GDB', doc.unmapped, 'muted', limit)
+  ].filter(Boolean);
+}
 
-  const section = (title, items, cls)=>{
-    if(!items.length) return;
-    body.appendChild(E('div',{class:'rail-sublabel'},[title+' ('+items.length+')']));
-    const list = E('div',{class:'gdb-list'});
-    items.slice(0,40).forEach(it=> list.appendChild(E('div',{class:'gdb-item '+cls},[
-      E('strong',{},[it.on||'—']), ' ', (it.message||it.reason||'')
-    ])));
-    if(items.length>40) list.appendChild(E('div',{class:'gdb-item'},['… e mais '+(items.length-40)+'.']));
-    body.appendChild(list);
-  };
-  section('Avisos — o que não coube 1:1', doc.warnings, 'warn');
-  section('Sem equivalente no GDB', doc.unmapped, 'muted');
+// Janela do menu Migrar: resumo + botões de download.
+function openGdbResult(doc){
+  const overlay = E('div',{class:'calc-overlay'});
+  const modal = E('div',{class:'calc-modal', style:'width:min(760px,100%);'});
+  const close = ()=>{ if(overlay.parentNode) overlay.parentNode.removeChild(overlay); document.removeEventListener('keydown', onKey); };
+  const onKey = e=>{ if(e.key==='Escape') close(); };
+
+  const body = E('div',{class:'calc-main', style:'padding:14px;'});
+  body.appendChild(gdbCountsGrid(doc));
+  gdbIssueSections(doc, 40).forEach(sec=> body.appendChild(sec));
   if(!doc.warnings.length && !doc.unmapped.length){
     body.appendChild(E('div',{class:'calc-status ok'},['✓ Tudo do modelo lógico coube no GDB sem perda.']));
   }
@@ -2688,17 +2748,15 @@ function openGdbResult(doc){
   document.addEventListener('keydown', onKey);
   document.body.appendChild(overlay);
 }
-/* Round TT: a tela da aba Físico. Regerada toda vez que a aba é aberta,
-   porque ela é derivada do Lógico e ele pode ter mudado no meio do caminho. */
+// Tela da aba Físico (GDB). Regerada toda vez que a aba é aberta, porque é
+// derivada do Lógico e ele pode ter mudado no meio do caminho.
 let gdbScreenDoc = null;
 function renderGdbScreen(){
   const body = document.getElementById('gdbScreenBody');
   const sub = document.getElementById('gdbScreenSub');
   if(!body) return;
   body.innerHTML = '';
-  const hasLogical = (activeModel==='logical') || !!modelStash.logical;
-  const src = (activeModel==='logical') ? state.classes : ((modelStash.logical||{}).classes||[]);
-  if(!hasLogical || !src.length){
+  if(!logicalClasses().length){
     gdbScreenDoc = null;
     if(sub) sub.textContent = '';
     body.appendChild(E('div',{class:'gdb-empty'},[
@@ -2714,59 +2772,29 @@ function renderGdbScreen(){
     + doc.domains.length+' domínios · '+doc.attributeRules.length+' attribute rules'
     + (doc.warnings.length ? ' · '+doc.warnings.length+' aviso(s)' : '');
 
-  const counts = [
-    ['Datasets', doc.datasets.length],
-    ['Campos', doc.datasets.reduce((n,d)=>n+d.fields.length,0)],
-    ['Domínios', doc.domains.length],
-    ['Relationship classes', doc.relationshipClasses.length],
-    ['Topologias', doc.topologies.length],
-    ['Attribute rules', doc.attributeRules.length],
-    ['Redes declaradas', doc.networks.length]
-  ];
-  const grid = E('div',{class:'gdb-counts'});
-  counts.forEach(([l,n])=> grid.appendChild(E('div',{class:'gdb-count'+(n?'':' zero')},[
-    E('div',{class:'n'},[String(n)]), E('div',{class:'l'},[l])
-  ])));
-  body.appendChild(E('div',{class:'gdb-section'},[grid]));
+  body.appendChild(E('div',{class:'gdb-section'},[gdbCountsGrid(doc)]));
+  gdbIssueSections(doc).forEach(sec=> body.appendChild(sec));
 
-  const section = (title, items, cls)=>{
-    if(!items.length) return;
-    const wrap = E('div',{class:'gdb-section'});
-    wrap.appendChild(E('div',{class:'rail-sublabel', style:'margin-top:0;'},[title+' ('+items.length+')']));
-    const list = E('div',{class:'gdb-list'});
-    items.forEach(it=> list.appendChild(E('div',{class:'gdb-item '+cls},[
-      E('strong',{},[it.on||'—']), ' ', (it.message||it.reason||'')
-    ])));
-    wrap.appendChild(list);
-    body.appendChild(wrap);
-  };
-  section('Avisos — o que não coube 1:1', doc.warnings, 'warn');
-  section('Sem equivalente no GDB', doc.unmapped, 'muted');
-
-  const json = E('div',{class:'gdb-section'});
-  // Round AAA: o download fica também junto do JSON, não só no topo da tela.
-  json.appendChild(E('div',{class:'gdb-json-head'},[
-    E('div',{class:'rail-sublabel', style:'margin:0;'},['JSON — entrada da toolbox']),
-    E('div',{class:'gdb-json-actions'},[
-      E('button',{class:'btn ghost', type:'button', title:'Copiar o JSON para a área de transferência', onclick:()=>{
-        const txt = JSON.stringify(doc, null, 2);
-        const done = ()=>toast('JSON copiado.');
-        if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done, ()=>toast('Não foi possível copiar.', true));
-        else toast('Não foi possível copiar.', true);
-      }},['Copiar']),
-      E('button',{class:'btn primary', type:'button', title:'Baixar este JSON', onclick:()=>downloadGdbJson(doc)},['⭳ Baixar JSON'])
-    ])
+  const text = JSON.stringify(doc, null, 2);
+  body.appendChild(E('div',{class:'gdb-section'},[
+    E('div',{class:'gdb-json-head'},[
+      E('div',{class:'rail-sublabel', style:'margin:0;'},['JSON — entrada da toolbox']),
+      E('div',{class:'gdb-json-actions'},[
+        E('button',{class:'btn ghost', type:'button', title:'Copiar o JSON para a área de transferência', onclick:()=>{
+          copyToClipboard(text).then(()=>toast('JSON copiado.'), ()=>toast('Não foi possível copiar.', true));
+        }},['Copiar']),
+        E('button',{class:'btn primary', type:'button', title:'Baixar este JSON', onclick:()=>downloadGdbJson(doc)},['⭳ Baixar JSON'])
+      ])
+    ]),
+    E('pre',{class:'gdb-json'},[text])
   ]));
-  json.appendChild(E('pre',{class:'gdb-json'},[JSON.stringify(doc, null, 2)]));
-  body.appendChild(json);
-
   body.appendChild(E('div',{class:'gdb-item'},[
     'Baixe o JSON e a toolbox, abra o .pyt no ArcGIS Pro e rode "Criar Geodatabase a partir do modelo", apontando para este arquivo.'
   ]));
 }
 function downloadGdbJson(doc){
   const d = doc || gdbScreenDoc || buildGdbJson();
-  saveFile(gdbSanitize(d.workspace.name)+'_gdb.json', JSON.stringify(d, null, 2));
+  saveFile(gdbSanitize(d.workspace.name)+'_gdb', 'json', JSON.stringify(d, null, 2));
 }
 /* ============================================================
    Round HHH: Dicionário de dados em Word (.docx)
@@ -2805,7 +2833,7 @@ function zipStore(files){
   return new Blob([...chunks, ...central, end], {type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
 }
 const DX = {
-  esc: v => String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'),
+  esc: escapeXml,
   run(text, o){
     o = o||{};
     const rpr = (o.b?'<w:b/>':'') + (o.i?'<w:i/>':'') + (o.color?'<w:color w:val="'+o.color+'"/>':'') + (o.sz?'<w:sz w:val="'+o.sz+'"/><w:szCs w:val="'+o.sz+'"/>':'') + (o.mono?'<w:rFonts w:ascii="Consolas" w:hAnsi="Consolas" w:cs="Consolas"/>':'');
@@ -2846,10 +2874,9 @@ const DOCX_STYLES = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
 + '</w:styles>';
 
 function buildDataDictionaryDocx(){
-  const hasLogical = (activeModel==='logical') || !!modelStash.logical;
-  const src = (activeModel==='logical') ? {classes:state.classes, relationships:state.relationships} : (modelStash.logical||{classes:[],relationships:[]});
+  const src = logicalModel();
   const classes = src.classes||[], rels = src.relationships||[];
-  if(!hasLogical || !classes.length) return null;
+  if(!classes.length) return null;
   const doc = buildGdbJson();
   const dsByClass = new Map(doc.datasets.map(d=>[d.omtg.classId, d]));
   const fieldByAttr = new Map();
@@ -2976,8 +3003,7 @@ function buildDataDictionaryDocx(){
 function downloadDataDictionary(){
   const blob = buildDataDictionaryDocx();
   if(!blob){ toast('Crie o modelo Lógico antes de gerar o dicionário de dados.', true); return; }
-  const base = safeDownloadName(sqlIdent(state.meta.name||'modelo')+'_dicionario_de_dados', 'docx');
-  saveBinaryFile(base, blob);
+  saveFile(sqlIdent(state.meta.name||'modelo')+'_dicionario_de_dados', 'docx', blob);
 }
 
 /* A toolbox vai embutida na página (script type="text/plain"), então o
@@ -2986,13 +3012,10 @@ function downloadDataDictionary(){
 function downloadPytToolbox(){
   const el = document.getElementById('pytSource');
   if(!el || !el.textContent.trim()){ toast('A toolbox não está embutida nesta cópia do app.', true); return; }
-  saveFile('geogeogeo_toolbox.pyt', el.textContent.replace(/^\n/, ''));
+  saveFile('geogeogeo_toolbox', 'pyt', el.textContent.replace(/^\n/, ''));
 }
 function generateGdbJson(){
-  const hasLogical = (activeModel==='logical') || !!modelStash.logical;
-  if(!hasLogical){ toast('Crie o modelo Lógico antes de gerar o GDB.', true); return; }
-  const src = (activeModel==='logical') ? state.classes : (modelStash.logical.classes||[]);
-  if(!src.length){ toast('O modelo Lógico está vazio — nada a gerar.', true); return; }
+  if(!logicalClasses().length){ toast('O modelo Lógico está vazio — monte-o (ou migre o Conceitual) antes de gerar o GDB.', true); return; }
   openGdbResult(buildGdbJson());
 }
 
@@ -3681,12 +3704,6 @@ const REL_TYPES = {
   aggregation:                  {label:'Agregação',                  short:'Agregação'},
   cartographicGeneralization:  {label:'Generalização Cartográfica', short:'Gen. Cartográfica'}
 };
-/* Every specific relationship type is its own "family" now (no more
-   plain/spatial split anywhere) — kept as a function rather than inlining
-   `r.type` everywhere in case a future split needs it again. */
-function relFamily(type){
-  return type;
-}
 /* Relationship families that can converge several relationships sharing one
    TARGET class onto a single shared point/marker instead of each getting
    its own separately-spread port (see assignPorts, alignGeneralizationApproach,
@@ -3697,126 +3714,42 @@ function relFamily(type){
    generalization group aimed at the same class never merge with each other. */
 const MERGE_FAMILIES = new Set(['generalization','cartographicGeneralization']);
 
-/* ---------- inline icon set (UI chrome, currentColor) ---------- */
+/* ---------- ícones da interface (SVG inline, cor = currentColor) ---------- */
 const ICONS = {
   conventional: '<svg viewBox="0 0 16 16" fill="none"><rect x="2.5" y="3" width="11" height="10" rx="1.5" stroke="currentColor" stroke-width="1.3"/></svg>',
   geoObject: '<svg viewBox="0 0 16 16" fill="none"><rect x="2.5" y="3" width="11" height="10" rx="1.5" stroke="currentColor" stroke-width="1.3"/><circle cx="8" cy="8" r="2" fill="currentColor"/></svg>',
   geoField: '<svg viewBox="0 0 16 16" fill="none"><rect x="2.5" y="3" width="11" height="10" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M4 10c1.5-3 2.5-3 4 0s2.5 3 4 0" stroke="currentColor" stroke-width="1.2" fill="none"/></svg>',
   plus: '<svg viewBox="0 0 16 16"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
   association: '<svg viewBox="0 0 16 16"><line x1="2" y1="13" x2="14" y2="3" stroke="currentColor" stroke-width="1.4"/></svg>',
-  // Round O item 6 ("triângulo equilátero na ponta, a linha... se une ao
-  // ponto médio do lado oposto a um dos vértices") — PREVIEW, not yet
-  // confirmed: the old icon's line met a VERTEX of a non-equilateral
-  // triangle. This one is a true equilateral triangle (apex at 13,3; base
-  // corners at 11.21,9.69 and 6.31,4.79 — all three sides equal length),
-  // with the connecting line ending exactly at the midpoint of the base
-  // (the side opposite the apex), same as the standard UML/OMT-G
-  // generalization arrow.
+  // triângulo equilátero, com a linha chegando no meio da base (seta de generalização)
   generalization: '<svg viewBox="0 0 16 16" fill="none"><line x1="2" y1="13" x2="8.76" y2="7.24" stroke="currentColor" stroke-width="1.4"/><path d="M13,3 L11.21,9.69 L6.31,4.79 Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>',
-  // Round P item 10/12: dashed lines (like Espacial) meeting at a small
-  // square instead of a filled/hollow circle — the cartographic-
-  // generalization notation, unrelated to the triangle above.
-  // Round S item 4 ("quero que seja um quadrado no meio de 3 segmentos de
-  // linha"): the actual canvas symbol is a square sitting where several
-  // dashed lines converge (one per detailed class, one continuing to the
-  // generalized class) — this single-line-to-a-corner-square icon didn't
-  // match that at all.
-  // Round S item 1(a/b) ("as linhas devem ser perpendiculares... no eixo
-  // horizontal fica duas linhas com a mesma direção horizontal e no eixo
-  // vertical fica uma linha na vertical"): the first redraw used two
-  // diagonal lines, which wasn't what either the canvas symbol or the user
-  // actually wanted — a real merged group's trunk looks like a "T": two
-  // segments collinear along one axis (here, horizontal — standing in for
-  // one subclass's line passing straight through toward the generalized
-  // class) crossed by one segment perpendicular to them (vertical —
-  // standing in for another subclass's line joining from a different row).
-  // One straight horizontal dashed line plus one vertical dashed line
-  // meeting at 90°, with the square at their crossing.
-  // Round S item 1 (next round — "o quadrado do desenho está vazado, não
-  // deve estar... da cor do fundo mas sem desenhar as linhas por baixo
-  // dele"): the rect had no fill (inherited the svg root's fill="none"), so
-  // the two dashed lines showed straight through it instead of stopping at
-  // its edges like the real canvas symbol does. Filled with var(--surface)
-  // — the sidebar panel's own background — painted on top of the lines (the
-  // rect is the last child), so it visually blocks them instead of trying
-  // to look transparent/theme-matched via a hardcoded color that would be
-  // wrong in dark mode.
+  // linhas tracejadas em "T" com o quadrado no cruzamento, como o símbolo do
+  // canvas; o quadrado tem a cor do painel para cobrir as linhas por baixo
   cartographicGeneralization: '<svg viewBox="0 0 16 16" fill="none"><line x1="1.5" y1="8" x2="14.5" y2="8" stroke="currentColor" stroke-width="1.2" stroke-dasharray="1.6,1.3"/><line x1="8" y1="1.5" x2="8" y2="8" stroke="currentColor" stroke-width="1.2" stroke-dasharray="1.6,1.3"/><rect x="6.4" y="6.4" width="3.2" height="3.2" style="fill:var(--surface);stroke:currentColor;stroke-width:1.1"/></svg>',
-  // Round Q item 4: matches the canvas diamond's real (non-square) kite
-  // proportions now — previously equal-diagonal, so it looked like a square.
-  // Round R item 4: the kite's long axis (touching vertex → far vertex) now
-  // runs ALONG the same diagonal as the connecting line (previously the kite
-  // was flat/horizontal while the line was diagonal, so the two looked
-  // unrelated) — and the kite sits at the upper-right end of the line
-  // (touching vertex at (12.5,3.5)) with the line trailing down to the
-  // lower-left, instead of the reverse.
+  // losango (diagonais diferentes, não um quadrado girado) no fim da linha
   aggregation: '<svg viewBox="0 0 16 16" fill="none"><line x1="7.6" y1="8.5" x2="3" y2="13" stroke="currentColor" stroke-width="1.4"/><path d="M12.5 3.5 11.6 7.5 7.6 8.5 8.5 4.4Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>',
   network: '<svg viewBox="0 0 16 16" fill="none"><circle cx="3" cy="12" r="1.8" stroke="currentColor" stroke-width="1.2"/><circle cx="13" cy="4" r="1.8" stroke="currentColor" stroke-width="1.2"/><line x1="4.6" y1="10.6" x2="11.4" y2="5.4" stroke="currentColor" stroke-width="1.3" stroke-dasharray="1,2.3"/></svg>',
   spatial: '<svg viewBox="0 0 16 16" fill="none"><circle cx="6" cy="8" r="4.2" stroke="currentColor" stroke-width="1.2"/><circle cx="10.5" cy="8" r="4.2" stroke="currentColor" stroke-width="1.2"/></svg>',
   trash: '<svg viewBox="0 0 16 16" fill="none"><path d="M3 5h10M6.5 5V3.5h3V5M4.5 5l.6 8.2a1 1 0 0 0 1 .8h3.8a1 1 0 0 0 1-.8L11.5 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-  empty: '<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="14" rx="2" stroke="currentColor" stroke-width="1.3"/><path d="M3 9h18" stroke="currentColor" stroke-width="1.3"/></svg>',
-  // Round MM ("migrar um modelo para o outro"): a plain arrow — the button
-  // rotates it 180° via CSS when on the Lógico tab, so it always visually
-  // points AT the tab migration is about to fill (Conceitual→Lógico points
-  // right, Lógico→Conceitual points left).
-  migrate: '<svg viewBox="0 0 16 16" fill="none"><path d="M2 8h10.5M9 4.5 12.5 8 9 11.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+  empty: '<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="14" rx="2" stroke="currentColor" stroke-width="1.3"/><path d="M3 9h18" stroke="currentColor" stroke-width="1.3"/></svg>'
 };
 
-/* ---------- geometric-primitive pictograms ----------
-   Two parallel sets of chip/button icons for the 11 OMT-G primitives
-   (Point, Line, Polygon, Node, Unidirectional/Bidirectional line — geoobject;
-   Isoline, TIN, Tesselação, Amostragem, Partição planar — geo-field):
-
-   - ICONS_CUSTOM: the original hand-invented glyphs this app shipped with
-     first (kept, unused by default, for a possible future "modern view").
-   - ICONS: now holds the OMT-G-aligned pictograms (Borges/Davis/Laender,
-     Figures 3 and 4) and is what the app actually renders — the class-chip
-     icon, the class-list row icon, and (mirrored below by
-     primitiveGlyphOmtg) the glyph drawn on the card itself. Point is now a
-     star, per explicit user request; the rest follow the same
-     filled-solid-shape (geometry only) vs. open/ring (geometry+topology)
-     convention the paper uses, since the plain-text extraction of the PDF
-     available here doesn't show the actual pictogram artwork to trace
-     exactly — these are a best-effort, paper-consistent reconstruction. */
-const ICONS_CUSTOM = {
-  point: '<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="3" fill="currentColor"/></svg>',
-  line: '<svg viewBox="0 0 16 16"><circle cx="3.2" cy="12" r="1.6" fill="currentColor"/><circle cx="12.8" cy="4" r="1.6" fill="currentColor"/><line x1="4.3" y1="10.9" x2="11.7" y2="5.1" stroke="currentColor" stroke-width="1.4"/></svg>',
-  polygon: '<svg viewBox="0 0 16 16" fill="none"><path d="M8 2.5 13.5 6.5 11.5 13 4.5 13 2.5 6.5Z" stroke="currentColor" stroke-width="1.3" fill="currentColor" fill-opacity=".18"/></svg>',
-  node: '<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="3.4" fill="currentColor"/><circle cx="8" cy="8" r="5.6" fill="none" stroke="currentColor" stroke-width="1"/></svg>',
-  unidirectional: '<svg viewBox="0 0 16 16"><circle cx="3.2" cy="12" r="1.6" fill="currentColor"/><circle cx="12.8" cy="4" r="1.6" fill="currentColor"/><line x1="4.3" y1="10.9" x2="11.7" y2="5.1" stroke="currentColor" stroke-width="1.4"/><path d="M9,4.4 14,3 12.6,7.4" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>',
-  bidirectional: '<svg viewBox="0 0 16 16"><circle cx="3.2" cy="12" r="1.6" fill="currentColor"/><circle cx="12.8" cy="4" r="1.6" fill="currentColor"/><line x1="4.3" y1="10.9" x2="11.7" y2="5.1" stroke="currentColor" stroke-width="1.4"/><path d="M9,4.4 14,3 12.6,7.4" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M7,11.6 2,13 3.4,8.6" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>',
-  isoline: '<svg viewBox="0 0 16 16"><path d="M-7,4 Q-3,-5 0,0 Q3,5 7,-4" transform="translate(8,8)" fill="none" stroke="currentColor" stroke-width="1.1"/></svg>',
-  tin: '<svg viewBox="0 0 16 16"><path d="M-6,5 L0,-6 L6,5 Z M0,-6 L0,5" transform="translate(8,8)" fill="none" stroke="currentColor" stroke-width="1"/></svg>',
-  tessellation: '<svg viewBox="0 0 16 16"><path d="M-6,-6 H6 M-6,0 H6 M-6,6 H6 M-6,-6 V6 M0,-6 V6 M6,-6 V6" transform="translate(8,8)" fill="none" stroke="currentColor" stroke-width=".9"/></svg>',
-  sample: '<svg viewBox="0 0 16 16">'+[[-5,3],[0,-4],[5,3],[-1,4]].map(pt=>'<circle cx="'+(8+pt[0])+'" cy="'+(8+pt[1])+'" r="1.4" fill="currentColor"/>').join('')+'</svg>',
-  partition: '<svg viewBox="0 0 16 16"><path d="M-7,-3 L-1,-6 L6,-4 L7,3 L1,6 L-6,4 Z M-1,-6 L-1,6 M-1,0 L7,3 M-1,0 L-7,-3" transform="translate(8,8)" fill="none" stroke="currentColor" stroke-width=".9"/></svg>'
-};
-// Star polygon (5 points, outer/inner alternating), used both as the 16x16
-// chip icon (below, centered at 8,8) and — at a different scale — as the
-// canvas glyph in primitiveGlyphOmtg. Point = star is the one piece of this
-// icon set the user specified directly, matching OMT-G's own convention.
+/* ---------- pictogramas das primitivas geométricas ----------
+   Redesenhados das Figuras 3 e 4 do artigo do OMT-G (Borges, Davis Jr. &
+   Laender): primitivas só com geometria (ponto, linha, polígono) são
+   símbolos vazados; as com topologia de rede (nó, linha uni/bidirecional)
+   são sólidos. O ponto é uma estrela. Cada pictograma existe em dois
+   formatos, que precisam continuar iguais: o ícone 16×16 dos botões e
+   listas (ICONS.<primitiva>) e o glifo da célula de geometria da classe no
+   canvas (primitiveGlyph, mais abaixo). */
 const STAR_PTS_CHIP = '8,2.5 9.29,6.22 13.23,6.3 10.09,8.68 11.23,12.45 8,10.2 4.77,12.45 5.91,8.68 2.77,6.3 6.71,6.22';
 const STAR_PTS_GLYPH = '0,-6.5 1.53,-2.1 6.18,-2.01 2.47,0.8 3.82,5.26 0,2.6 -3.82,5.26 -2.47,0.8 -6.18,-2.01 -1.53,-2.1';
-// Redrawn from the user's own screenshots of the paper's Figures 3 and 4
-// (the actual pictogram artwork, not just its surrounding text) — replaces
-// the earlier best-effort reconstruction below. Geometry-only primitives
-// (Point/Line/Polygon) are open/outline symbols; geometry+topology ones
-// (Node/Unidirectional/Bidirectional) are solid dots and arrows, matching
-// the figures exactly.
 ICONS.point = '<svg viewBox="0 0 16 16"><polygon points="'+STAR_PTS_CHIP+'" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/></svg>';
 ICONS.line = '<svg viewBox="0 0 16 16"><line x1="3" y1="8" x2="13" y2="8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
 ICONS.polygon = '<svg viewBox="0 0 16 16" fill="none"><rect x="4.5" y="4.5" width="7" height="7" stroke="currentColor" stroke-width="1.3"/></svg>';
 ICONS.node = '<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="2.4" fill="currentColor"/></svg>';
 ICONS.unidirectional = '<svg viewBox="0 0 16 16"><line x1="2.5" y1="8" x2="11.5" y2="8" stroke="currentColor" stroke-width="1.4"/><path d="M9,5 13,8 9,11Z" fill="currentColor"/></svg>';
 ICONS.bidirectional = '<svg viewBox="0 0 16 16"><line x1="4.5" y1="8" x2="11.5" y2="8" stroke="currentColor" stroke-width="1.4"/><path d="M9,5 13,8 9,11Z" fill="currentColor"/><path d="M7,5 3,8 7,11Z" fill="currentColor"/></svg>';
-// Round N item 1 ("a parte de adicionar as classes tem que seguir os mesmos
-// icones que tem nas classes que recem definimos"): these three used to be
-// an older, different-looking set (concentric circles, one stray dot,
-// speech-bubble blob) than the class-card glyph below — now they reuse the
-// EXACT same path data as primitiveGlyphOmtg's isoline/tin/partition (which
-// is already drawn in this same 0,0-centered coordinate system), just
-// wrapped in the chip's own translate(8,8), so the sidebar button and the
-// card glyph are always the same icon.
 ICONS.isoline = '<svg viewBox="0 0 16 16" fill="none"><g transform="translate(8,8)">'+
   '<path d="M5.37,1.09 C5.22,2.00 4.43,2.98 3.73,3.62 C3.03,4.27 2.07,4.75 1.15,4.95 C0.24,5.16 -0.72,5.07 -1.74,4.87 C-2.76,4.69 -4.48,4.57 -4.96,3.83 C-5.44,3.08 -4.76,1.42 -4.65,0.40 C-4.54,-0.62 -4.67,-1.47 -4.32,-2.28 C-3.96,-3.09 -3.30,-3.81 -2.52,-4.46 C-1.74,-5.11 -0.55,-6.27 0.35,-6.20 C1.26,-6.12 2.21,-4.75 2.92,-4.02 C3.64,-3.29 4.24,-2.66 4.65,-1.81 C5.06,-0.96 5.53,0.18 5.37,1.09 Z" stroke="currentColor" stroke-width="1"/>'+
   '<path d="M1.49,2.92 C0.89,3.14 0.33,3.20 -0.33,3.22 C-0.98,3.25 -1.98,3.42 -2.44,3.06 C-2.88,2.69 -2.86,1.69 -3.03,1.03 C-3.22,0.38 -3.61,-0.26 -3.51,-0.87 C-3.41,-1.48 -2.93,-2.11 -2.46,-2.61 C-2.00,-3.10 -1.31,-3.84 -0.72,-3.85 C-0.13,-3.87 0.51,-2.99 1.09,-2.67 C1.67,-2.36 2.30,-2.37 2.77,-1.95 C3.24,-1.53 3.82,-0.81 3.90,-0.17 C3.98,0.47 3.65,1.39 3.25,1.90 C2.85,2.41 2.08,2.69 1.49,2.92 Z" stroke="currentColor" stroke-width="1"/>'+
@@ -3840,53 +3773,13 @@ function classIcon(c){
   return c.geoType==='field' ? ICONS.geoField : ICONS.geoObject;
 }
 
-/* ---------- canvas glyphs (drawn inside the SVG stage) ----------
-   primitiveGlyphCustom is the original hand-invented glyph set, kept intact
-   under this name for a possible future "modern view" toggle (not built
-   yet). primitiveGlyphOmtg is the OMT-G-aligned set that's actually active
-   today (assigned to primitiveGlyph below) — same reconstruction caveat as
-   the ICONS block above: paper-consistent, not traced from the figure
-   artwork itself. */
-function primitiveGlyphCustom(c){
+/* ---------- glifo da primitiva, desenhado na célula de geometria da classe ---------- */
+function primitiveGlyph(c){
   const g = S('g', {class:'pglyph'});
   const st = 'var(--canvas-line)';
   if(c.kind!=='geo' || !c.primitive) return g;
   const p = c.primitive;
-  if(p==='point' || p==='node'){
-    g.appendChild(S('circle',{cx:0,cy:0,r:3.4,style:'fill:'+st}));
-    if(p==='node') g.appendChild(S('circle',{cx:0,cy:0,r:5.6,style:'fill:none;stroke:'+st+';stroke-width:1'}));
-  } else if(p==='line' || p==='unidirectional' || p==='bidirectional'){
-    g.appendChild(S('line',{x1:-6,y1:4,x2:6,y2:-4,style:'stroke:'+st+';stroke-width:1.5'}));
-    g.appendChild(S('circle',{cx:-6,cy:4,r:1.6,style:'fill:'+st}));
-    g.appendChild(S('circle',{cx:6,cy:-4,r:1.6,style:'fill:'+st}));
-    // unidirectional: one arrowhead (a defined flow direction, e.g. sewage);
-    // bidirectional: an arrowhead at both ends (flow either way, e.g. water/electrical)
-    if(p==='unidirectional' || p==='bidirectional') g.appendChild(S('path',{d:'M1,-5.6 L6,-4 L3.4,-0.4', style:'fill:none;stroke:'+st+';stroke-width:1.3'}));
-    if(p==='bidirectional') g.appendChild(S('path',{d:'M-1,5.6 L-6,4 L-3.4,0.4', style:'fill:none;stroke:'+st+';stroke-width:1.3'}));
-  } else if(p==='polygon'){
-    g.appendChild(S('path',{d:'M0,-6 L6,-1 L4,6 L-4,6 L-6,-1 Z', style:'fill:'+st+';fill-opacity:.22;stroke:'+st+';stroke-width:1.2'}));
-  } else if(p==='isoline'){
-    g.appendChild(S('path',{d:'M-7,4 Q-3,-5 0,0 Q3,5 7,-4', style:'fill:none;stroke:'+st+';stroke-width:1.1'}));
-  } else if(p==='tin'){
-    g.appendChild(S('path',{d:'M-6,5 L0,-6 L6,5 Z M0,-6 L0,5', style:'fill:none;stroke:'+st+';stroke-width:1'}));
-  } else if(p==='tessellation'){
-    g.appendChild(S('path',{d:'M-6,-6 H6 M-6,0 H6 M-6,6 H6 M-6,-6 V6 M0,-6 V6 M6,-6 V6', style:'fill:none;stroke:'+st+';stroke-width:.9'}));
-  } else if(p==='sample'){
-    [[-5,3],[0,-4],[5,3],[-1,4]].forEach(pt=>g.appendChild(S('circle',{cx:pt[0],cy:pt[1],r:1.4,style:'fill:'+st})));
-  } else if(p==='partition'){
-    g.appendChild(S('path',{d:'M-7,-3 L-1,-6 L6,-4 L7,3 L1,6 L-6,4 Z M-1,-6 L-1,6 M-1,0 L7,3 M-1,0 L-7,-3', style:'fill:none;stroke:'+st+';stroke-width:.9'}));
-  }
-  return g;
-}
-function primitiveGlyphOmtg(c){
-  const g = S('g', {class:'pglyph'});
-  const st = 'var(--canvas-line)';
-  if(c.kind!=='geo' || !c.primitive) return g;
-  const p = c.primitive;
-  // Redrawn from the user's own screenshots of the paper's Figures 3 and 4 —
-  // geometry-only primitives (point/line/polygon) are open/outline symbols,
-  // geometry+topology ones (node/unidirectional/bidirectional) are solid
-  // dots and arrows, matching the figures exactly.
+  // mesmo desenho dos ícones ICONS.<primitiva>, centrado em (0,0)
   if(p==='point'){
     g.appendChild(S('polygon',{points:STAR_PTS_GLYPH, style:'fill:none;stroke:'+st+';stroke-width:1;stroke-linejoin:round'}));
   } else if(p==='node'){
@@ -3895,25 +3788,15 @@ function primitiveGlyphOmtg(c){
     g.appendChild(S('line',{x1:-6,y1:0,x2:6,y2:0,style:'stroke:'+st+';stroke-width:1.6;stroke-linecap:round'}));
   } else if(p==='unidirectional' || p==='bidirectional'){
     g.appendChild(S('line',{x1:-6,y1:0,x2:6,y2:0,style:'stroke:'+st+';stroke-width:1.4'}));
-    // unidirectional: one arrowhead (a defined flow direction, e.g. sewage);
-    // bidirectional: an arrowhead at both ends (flow either way, e.g. water/electrical)
     g.appendChild(S('path',{d:'M2,-3 L7,0 L2,3 Z', style:'fill:'+st}));
     if(p==='bidirectional') g.appendChild(S('path',{d:'M-2,-3 L-7,0 L-2,3 Z', style:'fill:'+st}));
   } else if(p==='polygon'){
     g.appendChild(S('rect',{x:-5,y:-5,width:10,height:10,style:'fill:none;stroke:'+st+';stroke-width:1.2'}));
   } else if(p==='isoline'){
-    // Round M item 3c/4 ("isolinha não deveriam ser circulos concentricos,
-    // era para ser algo mais proximo de curva de nivel"): three irregular,
-    // organically-wobbling nested contour rings (not perfect circles, no
-    // center dot) — each ring independently jittered so they read as real
-    // topographic contour lines rather than a bullseye/target symbol.
     g.appendChild(S('path',{d:'M5.37,1.09 C5.22,2.00 4.43,2.98 3.73,3.62 C3.03,4.27 2.07,4.75 1.15,4.95 C0.24,5.16 -0.72,5.07 -1.74,4.87 C-2.76,4.69 -4.48,4.57 -4.96,3.83 C-5.44,3.08 -4.76,1.42 -4.65,0.40 C-4.54,-0.62 -4.67,-1.47 -4.32,-2.28 C-3.96,-3.09 -3.30,-3.81 -2.52,-4.46 C-1.74,-5.11 -0.55,-6.27 0.35,-6.20 C1.26,-6.12 2.21,-4.75 2.92,-4.02 C3.64,-3.29 4.24,-2.66 4.65,-1.81 C5.06,-0.96 5.53,0.18 5.37,1.09 Z', style:'fill:none;stroke:'+st+';stroke-width:1'}));
     g.appendChild(S('path',{d:'M1.49,2.92 C0.89,3.14 0.33,3.20 -0.33,3.22 C-0.98,3.25 -1.98,3.42 -2.44,3.06 C-2.88,2.69 -2.86,1.69 -3.03,1.03 C-3.22,0.38 -3.61,-0.26 -3.51,-0.87 C-3.41,-1.48 -2.93,-2.11 -2.46,-2.61 C-2.00,-3.10 -1.31,-3.84 -0.72,-3.85 C-0.13,-3.87 0.51,-2.99 1.09,-2.67 C1.67,-2.36 2.30,-2.37 2.77,-1.95 C3.24,-1.53 3.82,-0.81 3.90,-0.17 C3.98,0.47 3.65,1.39 3.25,1.90 C2.85,2.41 2.08,2.69 1.49,2.92 Z', style:'fill:none;stroke:'+st+';stroke-width:1'}));
     g.appendChild(S('path',{d:'M-0.77,1.69 C-1.12,1.51 -1.47,1.11 -1.60,0.76 C-1.73,0.41 -1.65,-0.02 -1.57,-0.40 C-1.49,-0.79 -1.39,-1.37 -1.11,-1.57 C-0.83,-1.75 -0.29,-1.57 0.12,-1.54 C0.54,-1.50 1.06,-1.60 1.35,-1.37 C1.64,-1.14 1.91,-0.55 1.88,-0.18 C1.86,0.18 1.43,0.50 1.20,0.83 C0.97,1.15 0.82,1.64 0.49,1.78 C0.16,1.93 -0.42,1.86 -0.77,1.69 Z', style:'fill:none;stroke:'+st+';stroke-width:1'}));
   } else if(p==='tin'){
-    // Round M item 3c/4 ("TIN tá com um ponto nada a ver dentro, sendo que
-    // são 3 pontos em cada vertice do triângulo"): a vertex dot at each of
-    // the triangle's 3 corners, not one stray interior point.
     g.appendChild(S('path',{d:'M0,-6 L5.8,4.8 L-5.8,4.8 Z', style:'fill:none;stroke:'+st+';stroke-width:1'}));
     g.appendChild(S('circle',{cx:0,cy:-6,r:1.1,style:'fill:'+st}));
     g.appendChild(S('circle',{cx:5.8,cy:4.8,r:1.1,style:'fill:'+st}));
@@ -3922,28 +3805,14 @@ function primitiveGlyphOmtg(c){
     g.appendChild(S('rect',{x:-6,y:-6,width:12,height:12,style:'fill:none;stroke:'+st+';stroke-width:1'}));
     g.appendChild(S('path',{d:'M-6,-2 H6 M-6,2 H6 M-2,-6 V6 M2,-6 V6', style:'fill:none;stroke:'+st+';stroke-width:.7'}));
   } else if(p==='sample'){
-    // Round M item 3b ("Sampling não está centralizado"): the 7 scattered
-    // dots are recentered on the icon cell's own bounding-box midpoint (the
-    // raw points leaned toward the top-right), matching the +/-6-ish reach
-    // every other geo-campo glyph here uses.
     [[-4.75,-4.5],[2.25,-5],[5.25,-0.5],[-5.25,1.5],[0.25,1],[4.25,4.5],[-2.75,5]].forEach(pt=>g.appendChild(S('circle',{cx:pt[0],cy:pt[1],r:1,style:'fill:'+st})));
   } else if(p==='partition'){
-    // Round M item 3c/4 ("Subdivisão Planar está errado, precisa ter mais
-    // de uma poligono dentro para mostrar que é uma subdivisão planar"): a
-    // single blob outline (v1/v2, rejected) never showed a subdivision at
-    // all — this is an outer boundary cut by internal division lines into
-    // 4 irregular adjacent cells, evoking a land-use/cadastral map, per the
-    // approved "opção B" candidate (the divisions deliberately don't all
-    // meet at one point, unlike a tripoint).
     g.appendChild(S('path',{d:'M-5.40,-4.30 L5.70,-3.40 L5.10,5.40 L-1.90,5.70 L-5.70,1.40 Z', style:'fill:none;stroke:'+st+';stroke-width:1;stroke-linejoin:round'}));
     g.appendChild(S('path',{d:'M-0.60,5.60 L0.60,0.60 L0.90,-3.60', style:'fill:none;stroke:'+st+';stroke-width:.8'}));
     g.appendChild(S('path',{d:'M0.60,0.60 L-5.60,-1.20', style:'fill:none;stroke:'+st+';stroke-width:.8'}));
   }
   return g;
 }
-// The active glyph renderer — swap this assignment (or branch on a future
-// view-mode setting) to switch to primitiveGlyphCustom later.
-const primitiveGlyph = primitiveGlyphOmtg;
 function topoGlyph(rule){
   // small reference icons for the 9 official OMT-G spatial predicates (legend only) — Table 2
   const g = S('g',{class:'topoglyph'});
@@ -4494,12 +4363,6 @@ function newClassObj(kind, idx, geoType, primitive){
   };
   return c;
 }
-function addClass(kind, geoType, primitive){
-  const c = newClassObj(kind, state.classes.length, geoType, primitive);
-  state.classes.push(c);
-  selection = {type:'class', id:c.id};
-  touch();
-}
 function addClassAt(kind, x, y, geoType, primitive){
   const c = newClassObj(kind, state.classes.length, geoType, primitive);
   c.x = Math.round(x); c.y = Math.round(y);
@@ -4700,39 +4563,6 @@ function handleNodeClick(classId){
   selectClass(classId);
 }
 
-/* ---------- sample model ---------- */
-function sampleModel(){
-  const m = emptyModel('Bacia Hidrográfica (exemplo)');
-  m.meta.srid = 4674; m.meta.schema='hidrografia'; m.meta.workspaceName='BaciaHidrografica';
-  const municipio = { id:uid('c'), name:'Município', kind:'geo', geoType:'object', primitive:'polygon',
-    attributes:[{id:uid('a'),name:'nome'},{id:uid('a'),name:'população'}], x:30,y:30 };
-  const bacia = { id:uid('c'), name:'Bacia Hidrográfica', kind:'geo', geoType:'object', primitive:'polygon',
-    attributes:[{id:uid('a'),name:'nome'},{id:uid('a'),name:'área (km²)'}], x:360,y:30 };
-  const subBacia = { id:uid('c'), name:'Sub-bacia', kind:'geo', geoType:'object', primitive:'polygon',
-    attributes:[{id:uid('a'),name:'nome'}], x:360,y:250 };
-  const rio = { id:uid('c'), name:'Rio', kind:'geo', geoType:'object', primitive:'line',
-    attributes:[{id:uid('a'),name:'nome'},{id:uid('a'),name:'perene?'}], x:30,y:250 };
-  const trecho = { id:uid('c'), name:'Trecho de rio', kind:'geo', geoType:'object', primitive:'unidirectional',
-    attributes:[{id:uid('a'),name:'comprimento (m)'}], x:30,y:470 };
-  const confluencia = { id:uid('c'), name:'Confluência', kind:'geo', geoType:'object', primitive:'node',
-    attributes:[{id:uid('a'),name:'cota (m)'}], x:360,y:470 };
-  const estacao = { id:uid('c'), name:'Estação Pluviométrica', kind:'geo', geoType:'object', primitive:'point',
-    attributes:[{id:uid('a'),name:'código'}], x:690,y:30 };
-  const relevo = { id:uid('c'), name:'Relevo', kind:'geo', geoType:'field', primitive:'isoline',
-    attributes:[{id:uid('a'),name:'cota (m)'}], x:690,y:250 };
-  const responsavel = { id:uid('c'), name:'Órgão Responsável', kind:'conventional', geoType:null, primitive:null,
-    attributes:[{id:uid('a'),name:'nome'}], x:690,y:470 };
-  [municipio,bacia,subBacia,rio,trecho,confluencia,estacao,relevo,responsavel].forEach((c,i)=>{ c.w=208; c.h=60; m.classes.push(c); });
-  m.relationships.push({ id:uid('r'), type:'aggregation', sourceId:bacia.id, targetId:subBacia.id, name:'', spatial:true });
-  m.relationships.push({ id:uid('r'), type:'generalization', sourceId:trecho.id, targetId:rio.id, name:'', total:true, disjoint:true });
-  m.relationships.push({ id:uid('r'), type:'network', sourceId:confluencia.id, targetId:trecho.id, name:'rede hidrográfica' });
-  // arc-arc (recursive) network: trechos de rio também se conectam diretamente entre si, sem confluência
-  m.relationships.push({ id:uid('r'), type:'network', sourceId:trecho.id, targetId:trecho.id, name:'continuação de trecho' });
-  m.relationships.push({ id:uid('r'), type:'spatial', sourceId:bacia.id, targetId:municipio.id, name:'', topoRule:'sobrepoe' });
-  m.relationships.push({ id:uid('r'), type:'spatial', sourceId:estacao.id, targetId:bacia.id, name:'', topoRule:'dentro' });
-  m.relationships.push({ id:uid('r'), type:'association', sourceId:bacia.id, targetId:responsavel.id, name:'monitorada por', cardSource:'0..*', cardTarget:'1' });
-  return m;
-}
 
 /* ---------- top-level render orchestration ---------- */
 // Note: the Conceitual page has no validation anymore ("pode tirar qualquer
@@ -5325,9 +5155,6 @@ function classWidth(c){
   }
   return Math.max(CARD_W, Math.min(CARD_W_MAX, Math.round(maxW)));
 }
-function topRoundedRectPath(w,h,r){
-  return 'M0,'+r+' A'+r+','+r+' 0 0 1 '+r+',0 H'+(w-r)+' A'+r+','+r+' 0 0 1 '+w+','+r+' V'+h+' H0 Z';
-}
 // Round CC item 4 ("se é PK deve aparecer um desenho de chave, se FK
 // também... pode variar no símbolo da chave, cor ou forma"): one small key
 // silhouette (circle bow + shaft + tooth) — amber for PK, steel-blue for FK
@@ -5779,14 +5606,6 @@ function renderMarqueeOverlay(){
   const w = Math.abs(marquee.x1-marquee.x0), h = Math.abs(marquee.y1-marquee.y0);
   layer.appendChild(S('rect',{x,y,width:w,height:h, style:'fill:var(--accent);fill-opacity:.12;stroke:var(--accent);stroke-width:1.2;stroke-dasharray:4,3;'}));
 }
-function rectBorderPoint(rect, toward){
-  const cx=rect.x+rect.w/2, cy=rect.y+rect.h/2;
-  const dx=toward.x-cx, dy=toward.y-cy;
-  if(dx===0 && dy===0) return {x:cx,y:cy};
-  const hw=rect.w/2, hh=rect.h/2;
-  const scale = 1/Math.max(Math.abs(dx)/hw, Math.abs(dy)/hh);
-  return {x:cx+dx*scale, y:cy+dy*scale};
-}
 function edgeText(x,y,text,extraClass,onclick){
   return S('text',{class:'edge-card-label'+(extraClass?' '+extraClass:''), x:x, y:y, 'text-anchor':'middle',
     style: onclick ? 'cursor:pointer;' : undefined, onclick}, [text]);
@@ -6090,13 +5909,6 @@ function selfLoopCandidate(rect, corner, requiredSegLen, scale){
   };
   return {points, box};
 }
-function boxOverlapsRects(box, rects, margin){
-  for(const rect of rects){
-    const x1=rect.x-margin, y1=rect.y-margin, x2=rect.x+rect.w+margin, y2=rect.y+rect.h+margin;
-    if(box.x1<x2 && box.x2>x1 && box.y1<y2 && box.y2>y1) return true;
-  }
-  return false;
-}
 // Round N item 4a ("NUNCA deve ter um relacionamento de rede cortado por
 // qualquer outro relacionamento" — a self-loop landed right on top of a
 // separate network relationship's straight segment): does this candidate
@@ -6190,7 +6002,7 @@ function assignPorts(relationships, rects){
   const genGroups = {}; // "targetId|type" -> [idx,...] of members sharing the point
   relationships.forEach((r, idx)=>{
     if(r.sourceId===r.targetId || r.dstAnchor) return;
-    if(!MERGE_FAMILIES.has(relFamily(r.type))) return;
+    if(!MERGE_FAMILIES.has(r.type)) return;
     if(!rects[r.sourceId] || !rects[r.targetId]) return;
     const key = r.targetId+'|'+r.type;
     (genGroups[key] = genGroups[key] || []).push(idx);
@@ -6638,7 +6450,7 @@ function alignGeneralizationApproach(routes, rects){
     if(!route) return;
     const r = route.r;
     if(r.sourceId===r.targetId || r.dstAnchor) return;
-    if(!MERGE_FAMILIES.has(relFamily(r.type))) return;
+    if(!MERGE_FAMILIES.has(r.type)) return;
     const key = r.targetId+'|'+r.type;
     (byTarget[key] = byTarget[key] || []).push(idx);
   });
@@ -7358,7 +7170,7 @@ function appendCartGenSquare(labelLayer, points, disjoint, merged){
 }
 function buildEdgeDom(route, labelLayer, labelMetas, rects, otherSegs, genGroupSuppress, genGroupMerged){
   const r = route.r;
-  const g = S('g', {class:'edge '+relFamily(r.type)});
+  const g = S('g', {class:'edge '+r.type});
   // Round O item 10 / Round P item 17: within a merged MERGE_FAMILIES group,
   // only the carrier draws the shared marker — and (item 16) only it draws
   // the group's label, so a group of several converging lines shows the
@@ -7391,7 +7203,7 @@ function buildEdgeDom(route, labelLayer, labelMetas, rects, otherSegs, genGroupS
     g.appendChild(pathA); g.appendChild(pathB);
   } else {
     const dHopped = buildOrthoPathD(points, route.hops);
-    const fam = relFamily(r.type);
+    const fam = r.type;
     // Round P item 6/7: "espacial" is now a plain property on the single
     // 'aggregation' type (r.spatial), not a separate type string.
     const extraCls = (r.type==='aggregation' && r.spatial) ? ' spatial-agg' : '';
@@ -7639,7 +7451,7 @@ function computeConceptualLayout(){
     const byTarget = {};
     state.relationships.forEach(r=>{
       if(r.sourceId===r.targetId || r.dstAnchor) return;
-      if(!MERGE_FAMILIES.has(relFamily(r.type))) return;
+      if(!MERGE_FAMILIES.has(r.type)) return;
       const key = r.targetId+'|'+r.type;
       (byTarget[key] = byTarget[key] || []).push(r);
     });
@@ -7898,9 +7710,6 @@ function initDefs(){
   defs.appendChild(S('marker',{id:'marker-arrow', viewBox:'0 0 10 10', refX:9, refY:5, markerWidth:8, markerHeight:8, orient:'auto'},[
     S('path',{d:'M1,1 L9,5 L1,9', style:'fill:none;stroke:var(--edge-network);stroke-width:1.6;stroke-linejoin:round;stroke-linecap:round'})
   ]));
-  defs.appendChild(S('marker',{id:'marker-arrow-fk', viewBox:'0 0 10 10', refX:9, refY:5, markerWidth:8, markerHeight:8, orient:'auto'},[
-    S('path',{d:'M1,1 L9,5 L1,9', style:'fill:none;stroke:var(--accent);stroke-width:1.6;stroke-linejoin:round;stroke-linecap:round'})
-  ]));
   const minor = S('pattern',{id:'gridMinor', width:24, height:24, patternUnits:'userSpaceOnUse'},[
     S('path',{d:'M0,24 L0,0 L24,0', style:'fill:none;stroke:var(--canvas-grid);stroke-width:1'})
   ]);
@@ -8130,7 +7939,7 @@ function initStageEvents(){
       // instead of staying pinned there forever — until now the only way
       // back in was the "Destino automático" button in the inspector.
       const rDrag = state.relationships.find(x=>x.id===anchorDrag.relId);
-      if(rDrag && anchorDrag.end==='dst' && MERGE_FAMILIES.has(relFamily(rDrag.type)) && rDrag.dstAnchor){
+      if(rDrag && anchorDrag.end==='dst' && MERGE_FAMILIES.has(rDrag.type) && rDrag.dstAnchor){
         const rects = {};
         state.classes.forEach(c=>{ c.w=c.w||classWidth(c); c.h=c.h||classHeight(c); rects[c.id]={x:c.x,y:c.y,w:c.w,h:c.h}; });
         const bRect = rects[rDrag.targetId];
@@ -8315,56 +8124,23 @@ const REL_HINTS = {
 function renderRelControls(){
   const hint = document.getElementById('relHint');
   if(hint) hint.textContent = REL_HINTS[relMode.type][0];
-  // Round U item 9 ("em adicionar relacionamento, ao clicar em associação,
-  // há uma explicação sobre cardinalidade logo abaixo, pode tirar e deixe
-  // na mesma lógica dos outros"): association used to get this extra
-  // "como ler a cardinalidade" mini box here, on top of the plain relHint
-  // text every other type gets — removed so association follows the same
-  // logic as every other type (just the hint sentence above). The reading
-  // example now lives in the properties panel instead (buildRelInspector /
-  // relReadingExample, item 10), same place association's own cardinality
-  // example (buildCardHint) has always lived.
-  const mini = document.getElementById('relCardHintMini');
-  if(mini) mini.innerHTML = '';
 }
 
-/* ---------- cardinality hint (visual explainer for relationship multiplicities) ---------- */
-// Round D item 3: the old hint text ("Cada B se relaciona com N A's") read as
-// backwards to the user even though it followed strict UML multiplicity
-// semantics — replaced with a direct reading of "N instances of A relate to
-// M instances of B" using the cardinalities exactly as printed next to each
-// class, plus the same sentence inverted, so both directions are spelled out.
-function cardDesc(v){
-  switch(v){
-    case '1': return 'exatamente 1';
-    case '0..1': return '0 ou 1';
-    case '0..*': return '0..* (zero ou vários)';
-    case '1..*': return '1..* (um ou vários)';
-    default: return v;
-  }
-}
+/* ---------- leitura da cardinalidade (painel do relacionamento) ----------
+   Convenção da UML: a multiplicidade escrita PERTO de uma classe diz quantas
+   instâncias DELA se ligam a UMA instância da classe do outro lado
+   (Cliente 1 —— 0..* Pedido: cada pedido tem 1 cliente; cada cliente tem
+   0..* pedidos). Por isso a frase de leitura usa só a cardinalidade do outro
+   lado, e é mostrada nos dois sentidos. */
 function cardCount(v){
   switch(v){
     case '1': return '1';
     case '0..1': return '0 a 1';
     case '0..*': return '0 ou mais';
     case '1..*': return '1 ou mais';
-    default: return v;
+    default: return escapeXml(v);   // vai para HTML (buildCardHint)
   }
 }
-// UML's own convention (per Fowler's "Multiplicity Not Cardinality" and every
-// standard class-diagram tutorial): the multiplicity written NEAR a class
-// says how many instances of THAT class associate with ONE instance of the
-// class at the OTHER end — e.g. Customer 1 —— 0..* Order reads as "each
-// ORDER has exactly 1 customer" (the "1" sits by Customer but counts
-// customers per order) and "each CUSTOMER has 0..* orders" (the "0..*" sits
-// by Order but counts orders per customer). So the class being iterated
-// ("cada instância de X") is always a plain, uncounted single instance —
-// putting a number in front of it never makes sense, and reads as nonsense
-// at the "0" boundary ("cada 0 instâncias" — there's nothing to have one of,
-// of a set with none). The earlier template put cardFrom there anyway; this
-// drops it and keeps only cardTo, the multiplicity that actually belongs in
-// this sentence (the one nearer the OTHER class, counting its instances).
 function cardReading(nameFrom, nameTo, cardTo){
   const wordTo = cardTo==='1' ? 'instância' : 'instâncias';
   return `Cada instância de <b>${escapeXml(nameFrom)}</b> se relaciona com <b>${cardCount(cardTo)}</b> ${wordTo} de <b>${escapeXml(nameTo)}</b>.`;
@@ -8384,13 +8160,6 @@ function buildCardHint(nameA, cardA, nameB, cardB){
       E('div',{class:'ln'},[E('span',{class:'dot'}), E('span',{html:cardReading(nameA,nameB,cardB)})]),
       E('div',{class:'ln'},[E('span',{class:'dot'}), E('span',{html:'Leitura invertida: '+cardReading(nameB,nameA,cardA)})])
     ])
-  ]);
-}
-function buildCardHintMini(labelA, cardA, labelB, cardB){
-  return E('div',{class:'card-hint-mini'},[
-    E('div',{class:'chm-title'},['Como ler a cardinalidade']),
-    E('div',{html:cardReading(labelA,labelB,cardB)}),
-    E('div',{style:'margin-top:4px;'},[E('span',{html:'Leitura invertida: '+cardReading(labelB,labelA,cardA)})])
   ]);
 }
 
@@ -9110,7 +8879,7 @@ function relReadingExample(r, a, b){
       ? (a.name+' se conecta a si mesma, formando uma rede arco-arco recursiva ("'+(r.name||'Rede')+'").')
       : (a.name+' conecta-se a '+b.name+' na rede "'+(r.name||'Rede')+'".');
   }
-  if(relFamily(r.type)==='generalization' || r.type==='cartographicGeneralization'){
+  if(r.type==='generalization' || r.type==='cartographicGeneralization'){
     const siblingNames = state.relationships
       .filter(o=> o.targetId===r.targetId && o.type===r.type)
       .map(o=>{ const s=state.classes.find(x=>x.id===o.sourceId); return s?s.name:null; })
@@ -9130,7 +8899,7 @@ function relReadingExample(r, a, b){
       : (r.disjoint ? 'nem toda instância da superclasse tem subclasse correspondente, e cada uma pertence a no máximo uma' : 'nem toda instância da superclasse tem subclasse correspondente, e pode pertencer a mais de uma');
     return b.name+' é a superclasse; '+names.join(', ')+' '+(many?'são as subclasses':'é a subclasse')+' ('+covTxt+', '+(r.disjoint?'elementos disjuntos':'elementos sobrepostos')+' — '+constraintTxt+').';
   }
-  if(relFamily(r.type)==='aggregation'){
+  if(r.type==='aggregation'){
     const base = a.name+' (todo) é composto por '+b.name+' (parte)';
     return r.spatial
       ? (base+' — agregação espacial: as partes devem ser disjuntas ou se tocar, cobrindo exatamente o todo.')
@@ -9197,7 +8966,7 @@ function buildRelInspector(r){
       fieldSelect('Card. destino', r.cardTarget, CARDINALITIES.map(x=>({id:x,label:x})), v=>{ r.cardTarget=v; touch(); })
     ]));
     scroll.appendChild(buildCardHint(a?a.name:'?', r.cardSource, b?b.name:'?', r.cardTarget));
-  } else if(relFamily(r.type)==='generalization'){
+  } else if(r.type==='generalization'){
     scroll.appendChild(fieldSeg('Cobertura', r.total?'total':'partial', [{id:'total',label:'Total'},{id:'partial',label:'Parcial'}], v=>{ r.total=(v==='total'); syncMergeGroupSiblings(r,['total','disjoint']); touch(); }));
     // Round P item 9 ("Sobreposição" era o nome errado para esse campo —
     // renomeado para "Elementos de Restrição", com Sobreposto antes de
@@ -9210,7 +8979,7 @@ function buildRelInspector(r){
     // every relationship converging on the same target class (item 15).
     scroll.appendChild(fieldSeg('Tipo', r.kind==='scale'?'scale':'shape', [{id:'shape',label:'Forma'},{id:'scale',label:'Escala'}], v=>{ r.kind=v; syncMergeGroupSiblings(r,['kind','disjoint']); touch(); }));
     scroll.appendChild(fieldSeg('Elementos de Restrição', r.disjoint?'disjoint':'overlap', [{id:'overlap',label:'Sobreposto'},{id:'disjoint',label:'Disjunto'}], v=>{ r.disjoint=(v==='disjoint'); syncMergeGroupSiblings(r,['kind','disjoint']); touch(); }));
-  } else if(relFamily(r.type)==='aggregation'){
+  } else if(r.type==='aggregation'){
     // Round Q item 5: aggregation has no cardinality field — it's always a
     // fixed whole/part structure (1 whole to many parts), not a configurable
     // N:M like association.
@@ -9947,57 +9716,30 @@ function ensureJsPdf(){
 async function exportCanvasImage(kind){
   const bbox = canvasContentBBox();
   if(!bbox){ toast('Adicione ao menos uma classe ao modelo antes de exportar uma imagem.', true); return; }
-  const base = safeDownloadName(sqlIdent(state.meta.name||'modelo')+'_diagrama', kind==='jpeg'?'jpg':kind);
+  const base = sqlIdent(state.meta.name||'modelo')+'_diagrama', ext = kind==='jpeg' ? 'jpg' : kind;
   try{
     if(kind==='pdf'){
       try{ await ensureJsPdf(); }catch(e){ toast('Não foi possível carregar o gerador de PDF (verifique a conexão).', true); return; }
     }
     const canvas = await rasterizeCanvas(bbox);
     if(kind==='png'){
-      canvas.toBlob(b=>{ if(b) saveBinaryFile(base, b); else toast('Não foi possível gerar a imagem.', true); }, 'image/png');
+      canvas.toBlob(b=>{ if(b) saveFile(base, ext, b); else toast('Não foi possível gerar a imagem.', true); }, 'image/png');
     } else if(kind==='jpeg'){
-      canvas.toBlob(b=>{ if(b) saveBinaryFile(base, b); else toast('Não foi possível gerar a imagem.', true); }, 'image/jpeg', 0.94);
+      canvas.toBlob(b=>{ if(b) saveFile(base, ext, b); else toast('Não foi possível gerar a imagem.', true); }, 'image/jpeg', 0.94);
     } else {
       const imgData = canvas.toDataURL('image/jpeg', 0.95);
       const { jsPDF } = window.jspdf;
       const wPt = bbox.w*0.75, hPt = bbox.h*0.75; // 96dpi px -> 72dpi pt
       const doc = new jsPDF({ orientation: wPt>=hPt?'landscape':'portrait', unit:'pt', format:[wPt,hPt] });
       doc.addImage(imgData, 'JPEG', 0, 0, wPt, hPt);
-      saveBinaryFile(base, doc.output('blob'));
+      saveFile(base, ext, doc.output('blob'));
     }
   }catch(err){
     toast('Não foi possível exportar a imagem: '+(err && err.message ? err.message : err), true);
   }
 }
-async function saveBinaryFile(filename, blob){
-  let ns = null;
-  try{ if(window.claude && window.claude.use) ns = await window.claude.use('downloads'); }catch(e){ ns = null; }
-  if(ns){
-    try{
-      await ns.save({filename, data:blob});
-      toast('Arquivo salvo: '+filename);
-      return;
-    }catch(err){
-      const code = err && err.code;
-      if(code==='declined') return;
-      if(code==='rejected_extension' || code==='extension_not_enabled'){
-        toast('Este formato não pode ser salvo diretamente aqui.', true);
-        return;
-      }
-    }
-  }
-  try{
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = filename;
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(()=>URL.revokeObjectURL(url), 2000);
-  }catch(e){
-    toast('Não foi possível baixar o arquivo.', true);
-  }
-}
 function saveJsonModel(){
-  saveFile(sqlIdent(state.meta.name||'modelo')+'.json', JSON.stringify(persistableState(), null, 2));
+  saveFile(sqlIdent(state.meta.name||'modelo'), 'json', JSON.stringify(persistableState(), null, 2));
 }
 function initExportMenu(){
   const btn = document.getElementById('btnExport');
@@ -10115,7 +9857,7 @@ function initTopbar(){
   if(btnExample){
     btnExample.addEventListener('click', (e)=>{
       const run = ()=>{
-        loadModel(JSON.parse(JSON.stringify(EXAMPLE_MODEL)));
+        loadModel(JSON.parse(document.getElementById('exampleModel').textContent));
         setActiveModel('logical');
         try{ fitView(); }catch(_){}
         toast('Exemplo carregado: Teste completo GDB.');
@@ -10206,7 +9948,6 @@ function boot(){
   historyInit();
   initHistoryControls();
 }
-boot();
 
 /* ============================================================
    Organizar diagrama (layout automático em camadas — Sugiyama)
@@ -10595,6 +10336,6 @@ function runAutoLayout(){
   toast('Diagrama organizado. Ctrl+Z desfaz.');
 }
 
-/* Modelo de exemplo para teste massivo no ArcGIS Pro (botão "Exemplo"). */
-const EXAMPLE_MODEL = {"meta":{"name":"Exemplo — Teste completo GDB","srid":31982,"schema":"public","workspaceName":"Teste_OMTG","srsAuthority":"EPSG"},"classes":[{"id":"chnamfbj","name":"Município","kind":"conventional","geoType":null,"primitive":null,"attributes":[{"id":"a1_g8xy","name":"Código IBGE"},{"id":"a2_oor4","name":"Nome"},{"id":"a3_dgw2","name":"UF"},{"id":"a4_1o0d","name":"População"}],"x":810,"y":60,"w":208,"h":143},{"id":"c4sp9j9r","name":"Limite Municipal","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a5_q5lw","name":"Código IBGE"},{"id":"a6_wbcc","name":"Área (km²)"}],"x":650,"y":350,"w":208,"h":97},{"id":"c2toiaao","name":"Sede Municipal","kind":"geo","geoType":"object","primitive":"point","attributes":[{"id":"a7_8v8y","name":"ID"},{"id":"a8_fe3m","name":"Município"}],"x":970,"y":350,"w":208,"h":97},{"id":"csnt8y6p","name":"Bairro","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a9_mqnz","name":"ID"},{"id":"a10_z1ap","name":"Nome"},{"id":"a11_9fnz","name":"Município"}],"x":770,"y":600,"w":208,"h":120},{"id":"cv1nekxh","name":"Quadra","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a12_6zg1","name":"Código"},{"id":"a13_fsxu","name":"Bairro"},{"id":"a14_0t7q","name":"Área verde (m²)"}],"x":1090,"y":870,"w":208,"h":120},{"id":"cprqd1m6","name":"Lote","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a15_59yl","name":"Inscrição"},{"id":"a16_juqw","name":"Quadra"},{"id":"a17_m0vp","name":"Situação"},{"id":"a18_854d","name":"Uso"},{"id":"a19_mqcb","name":"Área (m²)"},{"id":"a20_g6cf","name":"Perímetro (m)"},{"id":"a21_49ab","name":"Testada (m)"},{"id":"a22_gnid","name":"Murado"},{"id":"a23_84x1","name":"Data do cadastro"},{"id":"a24_17tk","name":"Foto"},{"id":"a25_79yo","name":"Matrícula digitalizada"}],"x":850,"y":1140,"w":208,"h":304},{"id":"cal02eq2","name":"Edificação","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a26_upgt","name":"ID"},{"id":"a27_w8jy","name":"Lote"},{"id":"a28_5vru","name":"Pavimentos"},{"id":"a29_ra8l","name":"Área construída (m²)"}],"x":350,"y":1590,"w":208,"h":143},{"id":"cqo5xyup","name":"Edificação Residencial","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a30_nq30","name":"ID"},{"id":"a31_hf5r","name":"Unidades"}],"x":210,"y":1960,"w":208,"h":97},{"id":"c4s9fl74","name":"Edificação Comercial","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a32_zyse","name":"ID"},{"id":"a33_dppz","name":"CNAE"}],"x":530,"y":1960,"w":208,"h":97},{"id":"cl2zqg7f","name":"Proprietário","kind":"conventional","geoType":null,"primitive":null,"attributes":[{"id":"a34_40p3","name":"CPF/CNPJ"},{"id":"a35_4ct1","name":"Nome"},{"id":"a36_1072","name":"E-mail"},{"id":"a37_k7mo","name":"Tipo de pessoa"}],"x":670,"y":1590,"w":208,"h":143},{"id":"c2msfvli","name":"Matrícula","kind":"conventional","geoType":null,"primitive":null,"attributes":[{"id":"a38_g7w7","name":"Número"},{"id":"a39_laxs","name":"Cartório"},{"id":"a40_4tuq","name":"Lote"}],"x":60,"y":1140,"w":208,"h":120},{"id":"cqzzxelk","name":"IPTU","kind":"conventional","geoType":null,"primitive":null,"attributes":[{"id":"a41_ncv3","name":"Inscrição imobiliária"},{"id":"a42_di9y","name":"Lote"},{"id":"a43_jd4i","name":"Exercício"},{"id":"a44_su59","name":"Valor territorial"},{"id":"a45_7ovq","name":"Valor predial"},{"id":"a46_26he","name":"Valor venal"},{"id":"a47_djue","name":"Situação"}],"x":990,"y":1590,"w":208,"h":212},{"id":"c0y16ffx","name":"Linha de Transmissão","kind":"geo","geoType":"object","primitive":"line","attributes":[{"id":"a48_9210","name":"Código"},{"id":"a49_hjeb","name":"Tensão (kV)"},{"id":"a50_wwcc","name":"Extensão (km)"}],"x":1770,"y":1590,"w":208,"h":120},{"id":"c377nwuw","name":"Torre","kind":"geo","geoType":"object","primitive":"point","attributes":[{"id":"a51_j4m4","name":"Número"},{"id":"a52_9g5d","name":"Linha"},{"id":"a53_vhik","name":"Altura (m)"}],"x":1560,"y":1960,"w":208,"h":120},{"id":"cjsstqes","name":"Faixa de Servidão","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a54_v0ia","name":"Código"},{"id":"a55_ogr5","name":"Linha"},{"id":"a56_k4p3","name":"Largura (m)"}],"x":1310,"y":1590,"w":208,"h":120},{"id":"ct8vo7jl","name":"Contrato de Servidão","kind":"conventional","geoType":null,"primitive":null,"attributes":[{"id":"a57_2xa0","name":"Número"},{"id":"a58_6lcg","name":"Proprietário"},{"id":"a59_zhju","name":"Faixa"},{"id":"a60_493h","name":"Data de assinatura"},{"id":"a61_f5hi","name":"Indenização (R$)"},{"id":"a62_aosd","name":"Contrato assinado"}],"x":1010,"y":1960,"w":208,"h":189},{"id":"cplu26pi","name":"Marco Geodésico","kind":"geo","geoType":"object","primitive":"point","attributes":[{"id":"a63_y3wc","name":"Código"},{"id":"a64_cr7r","name":"Altitude (m)"},{"id":"a65_7iai","name":"Tipo"}],"x":380,"y":1140,"w":208,"h":120},{"id":"cxwwnrbl","name":"Trecho de Rede de Água","kind":"geo","geoType":"object","primitive":"unidirectional","attributes":[{"id":"a66_btzd","name":"ID"},{"id":"a67_z6jl","name":"Diâmetro (mm)"}],"x":1440,"y":1140,"w":218,"h":97},{"id":"c028i06c","name":"Nó da Rede","kind":"geo","geoType":"object","primitive":"node","attributes":[{"id":"a68_wssu","name":"ID"},{"id":"a69_9epy","name":"Tipo"}],"x":2270,"y":1140,"w":208,"h":97},{"id":"c3jcup8r","name":"Curva de Nível","kind":"geo","geoType":"field","primitive":"isoline","attributes":[{"id":"a70_bi2f","name":"ID"},{"id":"a71_6q33","name":"Cota (m)"}],"x":60,"y":2330,"w":208,"h":97},{"id":"cgpdd8xz","name":"Zoneamento","kind":"geo","geoType":"field","primitive":"partition","attributes":[{"id":"a72_w8rf","name":"Código"},{"id":"a73_afg2","name":"Zona"}],"x":770,"y":870,"w":208,"h":97},{"id":"cark5a9c","name":"Amostra de Solo","kind":"geo","geoType":"field","primitive":"sample","attributes":[{"id":"a74_x11g","name":"ID"},{"id":"a75_mdy7","name":"pH"}],"x":380,"y":2330,"w":208,"h":97},{"id":"cd3f0wzb","name":"Modelo Digital de Terreno","kind":"geo","geoType":"field","primitive":"tin","attributes":[{"id":"a76_apdk","name":"ID"}],"x":700,"y":2330,"w":231,"h":74},{"id":"cj2s9esi","name":"Imagem de Satélite","kind":"geo","geoType":"field","primitive":"tessellation","attributes":[{"id":"a77_a7ud","name":"ID"}],"x":1040,"y":2330,"w":208,"h":74}],"relationships":[{"id":"rcanq5zp","type":"aggregation","sourceId":"c4sp9j9r","targetId":"csnt8y6p","name":"É formado por","spatial":true,"spatialAggKind":"union"},{"id":"rd5ittaq","type":"aggregation","sourceId":"cv1nekxh","targetId":"cprqd1m6","name":"Subdividida em","spatial":true,"spatialAggKind":"subdivision"},{"id":"rhh4ewda","type":"association","sourceId":"csnt8y6p","targetId":"cv1nekxh","name":"Contém quadras","cardSource":"1","cardTarget":"1..*"},{"id":"r9kzxkmu","type":"association","sourceId":"cprqd1m6","targetId":"cal02eq2","name":"Tem edificações","cardSource":"1","cardTarget":"0..*","nameInverse":"Está no lote"},{"id":"rqnfyy7z","type":"association","sourceId":"cprqd1m6","targetId":"cl2zqg7f","name":"Pertence a","cardSource":"1..*","cardTarget":"1..*","nameInverse":"É dono de"},{"id":"ryxzlfte","type":"association","sourceId":"cprqd1m6","targetId":"c2msfvli","name":"Registrado em","cardSource":"1","cardTarget":"1"},{"id":"rco67fav","type":"association","sourceId":"cprqd1m6","targetId":"cqzzxelk","name":"Tributado por","cardSource":"1","cardTarget":"0..1"},{"id":"rkx94ht4","type":"association","sourceId":"cl2zqg7f","targetId":"ct8vo7jl","name":"Assina","cardSource":"1","cardTarget":"0..*"},{"id":"rsaga3uf","type":"association","sourceId":"cjsstqes","targetId":"ct8vo7jl","name":"Objeto de","cardSource":"1","cardTarget":"0..*"},{"id":"rnvplgdd","type":"association","sourceId":"c0y16ffx","targetId":"c377nwuw","name":"Sustentada por","cardSource":"1","cardTarget":"1..*"},{"id":"rizbnevk","type":"association","sourceId":"c0y16ffx","targetId":"cjsstqes","name":"Protegida por","cardSource":"1","cardTarget":"1"},{"id":"rn60673z","type":"generalization","sourceId":"cqo5xyup","targetId":"cal02eq2","name":"Residencial","total":true,"disjoint":true},{"id":"rh2nvjic","type":"generalization","sourceId":"c4s9fl74","targetId":"cal02eq2","name":"Comercial","total":true,"disjoint":true},{"id":"roysevc2","type":"cartographicGeneralization","sourceId":"c4sp9j9r","targetId":"chnamfbj","name":"Representa limite","kind":"scale","disjoint":false},{"id":"rvtyapdo","type":"cartographicGeneralization","sourceId":"c2toiaao","targetId":"chnamfbj","name":"Representa sede","kind":"scale","disjoint":false},{"id":"r8iaum6w","type":"network","sourceId":"c028i06c","targetId":"cxwwnrbl","name":"Rede de Água"},{"id":"rutd9eea","type":"network","sourceId":"cxwwnrbl","targetId":"cxwwnrbl","name":"Continuidade"},{"id":"rx7syjt9","type":"spatial","sourceId":"cal02eq2","targetId":"cprqd1m6","name":"Dentro do lote","topoRule":"dentro","nearDistance":null,"cardSource":"0..*","cardTarget":"1"},{"id":"r648ljv0","type":"spatial","sourceId":"cjsstqes","targetId":"c377nwuw","name":"Contém torres","topoRule":"contem","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},{"id":"rzgw4bdp","type":"spatial","sourceId":"cprqd1m6","targetId":"cgpdd8xz","name":"Coincide zona","topoRule":"coincide","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},{"id":"ritqnqj3","type":"spatial","sourceId":"cal02eq2","targetId":"cjsstqes","name":"Fora da faixa","topoRule":"disjunto","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},{"id":"rndwx83q","type":"spatial","sourceId":"cxwwnrbl","targetId":"cv1nekxh","name":"Toca quadra","topoRule":"touches","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},{"id":"rzlklvuq","type":"spatial","sourceId":"cv1nekxh","targetId":"cjsstqes","name":"Vizinha da faixa","topoRule":"adjacente","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},{"id":"r6qmmciq","type":"spatial","sourceId":"c0y16ffx","targetId":"cxwwnrbl","name":"Cruza rede","topoRule":"cruza","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},{"id":"rtl6vmc7","type":"spatial","sourceId":"csnt8y6p","targetId":"cgpdd8xz","name":"Sobrepõe zona","topoRule":"sobrepoe","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},{"id":"r7q8jgs7","type":"spatial","sourceId":"cplu26pi","targetId":"cprqd1m6","name":"Perto do lote","topoRule":"proximo","nearDistance":"50","cardSource":"0..*","cardTarget":"0..*"}],"logical":{"classes":[{"id":"chnamfbj","name":"Município","kind":"conventional","geoType":null,"primitive":null,"attributes":[{"id":"a1_g8xy","name":"Código IBGE","type":"integer","pk":true,"required":true,"intDigits":"7"},{"id":"a2_oor4","name":"Nome","type":"text","length":"80","required":true,"unique":true},{"id":"a3_dgw2","name":"UF","type":"list","listDomain":[{"key":"SC","value":"Santa Catarina"},{"key":"PR","value":"Paraná"},{"key":"RS","value":"Rio Grande do Sul"}],"defaultValue":"SC","listBox":{"x":920,"y":60}},{"id":"a4_1o0d","name":"População","type":"integer","intDigits":"8","minValue":"0"}],"x":660,"y":60,"w":208,"h":143},{"id":"c4sp9j9r","name":"Limite Municipal","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a5_q5lw","name":"Código IBGE","type":"integer","pk":true,"required":true,"intDigits":"7","fk":true,"fkRefClassId":"chnamfbj","fkRefAttrId":"a1_g8xy","refIntegrity":"cascade"},{"id":"a6_wbcc","name":"Área (km²)","type":"double","precision":"12","scale":"3","calculated":true,"calculatedExpr":"ARRED(AREA([SHAPE]) / 1000000, 3)"}],"x":800,"y":350,"w":272,"h":120,"operations":[],"srid":"31982","calcNote":{"x":1120,"y":350}},{"id":"c2toiaao","name":"Sede Municipal","kind":"geo","geoType":"object","primitive":"point","attributes":[{"id":"a7_8v8y","name":"ID","type":"integer","pk":true,"required":true,"intDigits":"6"},{"id":"a8_fe3m","name":"Município","type":"integer","fk":true,"fkRefClassId":"chnamfbj","fkRefAttrId":"a1_g8xy","intDigits":"7","refIntegrity":"cascade","required":true,"unique":true}],"x":440,"y":350,"w":251,"h":120,"operations":[],"srid":"31982"},{"id":"csnt8y6p","name":"Bairro","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a9_mqnz","name":"ID","type":"integer","pk":true,"required":true,"intDigits":"6"},{"id":"a10_z1ap","name":"Nome","type":"text","length":"60","required":true},{"id":"a11_9fnz","name":"Município","type":"integer","fk":true,"fkRefClassId":"c4sp9j9r","fkRefAttrId":"a5_q5lw","intDigits":"4","refIntegrity":"cascade","required":true}],"x":1040,"y":620,"w":208,"h":143,"operations":[],"srid":"31982","editTracking":true},{"id":"cv1nekxh","name":"Quadra","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a12_6zg1","name":"Código","type":"text","pk":true,"required":true,"length":"10"},{"id":"a13_fsxu","name":"Bairro","type":"integer","fk":true,"fkRefClassId":"csnt8y6p","fkRefAttrId":"a9_mqnz","intDigits":"6","refIntegrity":"restrict","required":true},{"id":"a14_0t7q","name":"Área verde (m²)","type":"double","precision":"12","scale":"2","minValue":"0"}],"x":1200,"y":920,"w":231,"h":143,"operations":[],"srid":"31982"},{"id":"cprqd1m6","name":"Lote","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a15_59yl","name":"Inscrição","type":"text","pk":true,"required":true,"length":"20"},{"id":"a16_juqw","name":"Quadra","type":"text","fk":true,"fkRefClassId":"cv1nekxh","fkRefAttrId":"a12_6zg1","length":"10","refIntegrity":"setNull"},{"id":"a17_m0vp","name":"Situação","type":"list","listDomain":[{"key":"1","value":"Regular"},{"key":"2","value":"Irregular"},{"key":"3","value":"Em regularização"}],"required":true,"defaultValue":"3","listBox":{"x":1010,"y":1300}},{"id":"a18_854d","name":"Uso","type":"list","listDomain":[{"key":"R","value":"Residencial"},{"key":"C","value":"Comercial"},{"key":"I","value":"Industrial"},{"key":"M","value":"Misto"}],"listBox":{"x":1010,"y":1450}},{"id":"a19_mqcb","name":"Área (m²)","type":"double","precision":"12","scale":"2","calculated":true,"calculatedExpr":"ARRED(AREA([SHAPE]), 2)"},{"id":"a20_g6cf","name":"Perímetro (m)","type":"double","precision":"10","scale":"2","calculated":true,"calculatedExpr":"ARRED(PERIMETRO([SHAPE]), 2)"},{"id":"a21_49ab","name":"Testada (m)","type":"double","precision":"8","scale":"2","minValue":"0","maxValue":"500"},{"id":"a22_gnid","name":"Murado","type":"boolean","required":true,"defaultValue":"0"},{"id":"a23_84x1","name":"Data do cadastro","type":"date"},{"id":"a24_17tk","name":"Foto","type":"blob"},{"id":"a25_79yo","name":"Matrícula digitalizada","type":"blob"}],"x":740,"y":1210,"w":222,"h":327,"operations":[],"srid":"31982","editTracking":true,"calcNote":{"x":1010,"y":1210}},{"id":"cal02eq2","name":"Edificação","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a26_upgt","name":"ID","type":"integer","pk":true,"required":true,"intDigits":"8"},{"id":"a27_w8jy","name":"Lote","type":"text","fk":true,"fkRefClassId":"cprqd1m6","fkRefAttrId":"a15_59yl","length":"20","refIntegrity":"setDefault","defaultValue":"SEM-LOTE"},{"id":"a28_5vru","name":"Pavimentos","type":"integer","intDigits":"2","minValue":"1","maxValue":"60","defaultValue":"1"},{"id":"a29_ra8l","name":"Área construída (m²)","type":"double","precision":"10","scale":"2","minValue":"0"}],"x":1180,"y":1750,"w":256,"h":166,"operations":[],"srid":"31982","hasZ":true},{"id":"cqo5xyup","name":"Edificação Residencial","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a30_nq30","name":"ID","type":"integer","pk":true,"required":true,"intDigits":"8","fk":true,"fkRefClassId":"cal02eq2","fkRefAttrId":"a26_upgt","refIntegrity":"cascade"},{"id":"a31_hf5r","name":"Unidades","type":"integer","intDigits":"3","minValue":"1"}],"x":1310,"y":2110,"w":331,"h":120,"operations":[],"srid":"31982"},{"id":"c4s9fl74","name":"Edificação Comercial","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a32_zyse","name":"ID","type":"integer","pk":true,"required":true,"intDigits":"8","fk":true,"fkRefClassId":"cal02eq2","fkRefAttrId":"a26_upgt","refIntegrity":"cascade"},{"id":"a33_dppz","name":"CNAE","type":"text","length":"10"}],"x":890,"y":2110,"w":318,"h":120,"operations":[],"srid":"31982"},{"id":"cl2zqg7f","name":"Proprietário","kind":"conventional","geoType":null,"primitive":null,"attributes":[{"id":"a34_40p3","name":"CPF/CNPJ","type":"text","pk":true,"required":true,"length":"14"},{"id":"a35_4ct1","name":"Nome","type":"text","length":"120","required":true},{"id":"a36_1072","name":"E-mail","type":"text","length":"100","unique":true},{"id":"a37_k7mo","name":"Tipo de pessoa","type":"list","listDomain":[{"key":"1","value":"Física"},{"key":"2","value":"Jurídica"}],"required":true,"listBox":{"x":1810,"y":1750}}],"x":1550,"y":1750,"w":208,"h":143,"editTracking":true},{"id":"c2msfvli","name":"Matrícula","kind":"conventional","geoType":null,"primitive":null,"attributes":[{"id":"a38_g7w7","name":"Número","type":"text","pk":true,"required":true,"length":"20"},{"id":"a39_laxs","name":"Cartório","type":"text","length":"80","required":true},{"id":"a40_4tuq","name":"Lote","type":"text","fk":true,"fkRefClassId":"cprqd1m6","fkRefAttrId":"a15_59yl","length":"20","refIntegrity":"restrict","required":true,"unique":true}],"x":60,"y":2110,"w":208,"h":120},{"id":"cqzzxelk","name":"IPTU","kind":"conventional","geoType":null,"primitive":null,"attributes":[{"id":"a41_ncv3","name":"Inscrição imobiliária","type":"text","pk":true,"required":true,"length":"25"},{"id":"a42_di9y","name":"Lote","type":"text","fk":true,"fkRefClassId":"cprqd1m6","fkRefAttrId":"a15_59yl","length":"20","refIntegrity":"cascade","required":true},{"id":"a43_jd4i","name":"Exercício","type":"integer","intDigits":"4","minValue":"2000","maxValue":"2100","required":true},{"id":"a44_su59","name":"Valor territorial","type":"double","precision":"14","scale":"2","minValue":"0","defaultValue":"0"},{"id":"a45_7ovq","name":"Valor predial","type":"double","precision":"14","scale":"2","minValue":"0","defaultValue":"0"},{"id":"a46_26he","name":"Valor venal","type":"double","precision":"14","scale":"2","calculated":true,"calculatedExpr":"[Valor territorial] + [Valor predial]"},{"id":"a47_djue","name":"Situação","type":"text","length":"20","calculated":true,"calculatedExpr":"SE([Valor venal] > 0, \"Lançado\", \"Isento\")"}],"x":340,"y":1750,"w":246,"h":212,"calcNote":{"x":640,"y":1750}},{"id":"c0y16ffx","name":"Linha de Transmissão","kind":"geo","geoType":"object","primitive":"line","attributes":[{"id":"a48_9210","name":"Código","type":"text","pk":true,"required":true,"length":"15"},{"id":"a49_hjeb","name":"Tensão (kV)","type":"integer","intDigits":"3","minValue":"13","maxValue":"800","required":true},{"id":"a50_wwcc","name":"Extensão (km)","type":"double","precision":"10","scale":"3","calculated":true,"calculatedExpr":"ARRED(COMPRIMENTO([SHAPE]) / 1000, 3)"}],"x":2220,"y":1210,"w":329,"h":143,"operations":[],"srid":"31982","editTracking":true,"calcNote":{"x":2600,"y":1210}},{"id":"c377nwuw","name":"Torre","kind":"geo","geoType":"object","primitive":"point","attributes":[{"id":"a51_j4m4","name":"Número","type":"text","pk":true,"required":true,"length":"10"},{"id":"a52_9g5d","name":"Linha","type":"text","fk":true,"fkRefClassId":"c0y16ffx","fkRefAttrId":"a48_9210","length":"15","refIntegrity":"restrict","required":true},{"id":"a53_vhik","name":"Altura (m)","type":"double","precision":"6","scale":"2","minValue":"0"}],"x":2180,"y":2110,"w":208,"h":143,"operations":[],"srid":"31982","hasZ":true},{"id":"cjsstqes","name":"Faixa de Servidão","kind":"geo","geoType":"object","primitive":"polygon","attributes":[{"id":"a54_v0ia","name":"Código","type":"text","pk":true,"required":true,"length":"20"},{"id":"a55_ogr5","name":"Linha","type":"text","fk":true,"fkRefClassId":"c0y16ffx","fkRefAttrId":"a48_9210","length":"15","refIntegrity":"cascade","required":true},{"id":"a56_k4p3","name":"Largura (m)","type":"double","precision":"6","scale":"2","minValue":"1","maxValue":"200","required":true}],"x":2060,"y":1750,"w":283,"h":143,"operations":[],"srid":"31982"},{"id":"ct8vo7jl","name":"Contrato de Servidão","kind":"conventional","geoType":null,"primitive":null,"attributes":[{"id":"a57_2xa0","name":"Número","type":"text","pk":true,"required":true,"length":"20"},{"id":"a58_6lcg","name":"Proprietário","type":"text","fk":true,"fkRefClassId":"cl2zqg7f","fkRefAttrId":"a34_40p3","length":"14","refIntegrity":"restrict","required":true},{"id":"a59_zhju","name":"Faixa","type":"text","fk":true,"fkRefClassId":"cjsstqes","fkRefAttrId":"a54_v0ia","length":"20","refIntegrity":"restrict","required":true},{"id":"a60_493h","name":"Data de assinatura","type":"date","required":true},{"id":"a61_f5hi","name":"Indenização (R$)","type":"double","precision":"14","scale":"2","minValue":"0"},{"id":"a62_aosd","name":"Contrato assinado","type":"blob"}],"x":1780,"y":2110,"w":283,"h":189},{"id":"cplu26pi","name":"Marco Geodésico","kind":"geo","geoType":"object","primitive":"point","attributes":[{"id":"a63_y3wc","name":"Código","type":"text","pk":true,"required":true,"length":"12"},{"id":"a64_cr7r","name":"Altitude (m)","type":"double","precision":"8","scale":"3"},{"id":"a65_7iai","name":"Tipo","type":"list","listDomain":[{"key":"1","value":"SAT"},{"key":"2","value":"RN"},{"key":"3","value":"VT"}],"listBox":{"x":1960,"y":1210}}],"x":1640,"y":1210,"w":272,"h":143,"operations":[],"srid":"4674","hasZ":true,"hasM":true},{"id":"cxwwnrbl","name":"Trecho de Rede de Água","kind":"geo","geoType":"object","primitive":"unidirectional","attributes":[{"id":"a66_btzd","name":"ID","type":"integer","pk":true,"required":true,"intDigits":"8"},{"id":"a67_z6jl","name":"Diâmetro (mm)","type":"integer","intDigits":"4","minValue":"20","maxValue":"2000"}],"x":2440,"y":920,"w":365,"h":120,"operations":[],"srid":"31982"},{"id":"c028i06c","name":"Nó da Rede","kind":"geo","geoType":"object","primitive":"node","attributes":[{"id":"a68_wssu","name":"ID","type":"integer","pk":true,"required":true,"intDigits":"8"},{"id":"a69_9epy","name":"Tipo","type":"list","listDomain":[{"key":"1","value":"Registro"},{"key":"2","value":"Hidrante"},{"key":"3","value":"Junção"}],"listBox":{"x":1800,"y":920}}],"x":1540,"y":920,"w":212,"h":120,"operations":[],"srid":"31982"},{"id":"c3jcup8r","name":"Curva de Nível","kind":"geo","geoType":"field","primitive":"isoline","attributes":[{"id":"a70_bi2f","name":"ID","type":"integer","pk":true,"required":true,"intDigits":"8"},{"id":"a71_6q33","name":"Cota (m)","type":"integer","intDigits":"4","required":true}],"x":60,"y":2480,"w":252,"h":120,"operations":[],"srid":"31982","hasZ":true},{"id":"cgpdd8xz","name":"Zoneamento","kind":"geo","geoType":"field","primitive":"partition","attributes":[{"id":"a72_w8rf","name":"Código","type":"text","pk":true,"required":true,"length":"10"},{"id":"a73_afg2","name":"Zona","type":"list","listDomain":[{"key":"ZR","value":"Residencial"},{"key":"ZC","value":"Comercial"},{"key":"ZI","value":"Industrial"},{"key":"ZEIS","value":"Interesse social"}],"required":true,"listBox":{"x":950,"y":920}}],"x":690,"y":920,"w":208,"h":120,"operations":[],"srid":"31982"},{"id":"cark5a9c","name":"Amostra de Solo","kind":"geo","geoType":"field","primitive":"sample","attributes":[{"id":"a74_x11g","name":"ID","type":"integer","pk":true,"required":true,"intDigits":"6"},{"id":"a75_mdy7","name":"pH","type":"double","precision":"4","scale":"2","minValue":"0","maxValue":"14"}],"x":420,"y":2480,"w":268,"h":120,"operations":[],"srid":"31982"},{"id":"cd3f0wzb","name":"Modelo Digital de Terreno","kind":"geo","geoType":"field","primitive":"tin","attributes":[{"id":"a76_apdk","name":"ID","type":"integer","pk":true,"required":true,"intDigits":"6"}],"x":800,"y":2480,"w":382,"h":97,"operations":[],"srid":"31982"},{"id":"cj2s9esi","name":"Imagem de Satélite","kind":"geo","geoType":"field","primitive":"tessellation","attributes":[{"id":"a77_a7ud","name":"ID","type":"integer","pk":true,"required":true,"intDigits":"6"}],"x":1290,"y":2480,"w":297,"h":97,"operations":[],"srid":"31982"}],"relationships":[{"id":"rcanq5zp","type":"aggregation","sourceId":"c4sp9j9r","targetId":"csnt8y6p","name":"É formado por","spatial":true,"spatialAggKind":"union"},{"id":"rd5ittaq","type":"aggregation","sourceId":"cv1nekxh","targetId":"cprqd1m6","name":"Subdividida em","spatial":true,"spatialAggKind":"subdivision"},{"id":"rhh4ewda","type":"association","sourceId":"csnt8y6p","targetId":"cv1nekxh","name":"Contém quadras","cardSource":"1","cardTarget":"1..*"},{"id":"r9kzxkmu","type":"association","sourceId":"cprqd1m6","targetId":"cal02eq2","name":"Tem edificações","cardSource":"1","cardTarget":"0..*","nameInverse":"Está no lote"},{"id":"rqnfyy7z","type":"association","sourceId":"cprqd1m6","targetId":"cl2zqg7f","name":"Pertence a","cardSource":"1..*","cardTarget":"1..*","nameInverse":"É dono de"},{"id":"ryxzlfte","type":"association","sourceId":"cprqd1m6","targetId":"c2msfvli","name":"Registrado em","cardSource":"1","cardTarget":"1"},{"id":"rco67fav","type":"association","sourceId":"cprqd1m6","targetId":"cqzzxelk","name":"Tributado por","cardSource":"1","cardTarget":"0..1"},{"id":"rkx94ht4","type":"association","sourceId":"cl2zqg7f","targetId":"ct8vo7jl","name":"Assina","cardSource":"1","cardTarget":"0..*"},{"id":"rsaga3uf","type":"association","sourceId":"cjsstqes","targetId":"ct8vo7jl","name":"Objeto de","cardSource":"1","cardTarget":"0..*"},{"id":"rnvplgdd","type":"association","sourceId":"c0y16ffx","targetId":"c377nwuw","name":"Sustentada por","cardSource":"1","cardTarget":"1..*"},{"id":"rizbnevk","type":"association","sourceId":"c0y16ffx","targetId":"cjsstqes","name":"Protegida por","cardSource":"1","cardTarget":"1"},{"id":"rn60673z","type":"generalization","sourceId":"cqo5xyup","targetId":"cal02eq2","name":"Residencial","total":true,"disjoint":true},{"id":"rh2nvjic","type":"generalization","sourceId":"c4s9fl74","targetId":"cal02eq2","name":"Comercial","total":true,"disjoint":true},{"id":"roysevc2","type":"cartographicGeneralization","sourceId":"c4sp9j9r","targetId":"chnamfbj","name":"Representa limite","kind":"scale","disjoint":false},{"id":"rvtyapdo","type":"cartographicGeneralization","sourceId":"c2toiaao","targetId":"chnamfbj","name":"Representa sede","kind":"scale","disjoint":false},{"id":"r8iaum6w","type":"network","sourceId":"c028i06c","targetId":"cxwwnrbl","name":"Rede de Água"},{"id":"rutd9eea","type":"network","sourceId":"cxwwnrbl","targetId":"cxwwnrbl","name":"Continuidade"},{"id":"rx7syjt9","type":"spatial","sourceId":"cal02eq2","targetId":"cprqd1m6","name":"Dentro do lote","topoRule":"dentro","nearDistance":null,"cardSource":"0..*","cardTarget":"1"},{"id":"r648ljv0","type":"spatial","sourceId":"cjsstqes","targetId":"c377nwuw","name":"Contém torres","topoRule":"contem","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},{"id":"rzgw4bdp","type":"spatial","sourceId":"cprqd1m6","targetId":"cgpdd8xz","name":"Coincide zona","topoRule":"coincide","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},{"id":"ritqnqj3","type":"spatial","sourceId":"cal02eq2","targetId":"cjsstqes","name":"Fora da faixa","topoRule":"disjunto","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},{"id":"rndwx83q","type":"spatial","sourceId":"cxwwnrbl","targetId":"cv1nekxh","name":"Toca quadra","topoRule":"touches","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},{"id":"rzlklvuq","type":"spatial","sourceId":"cv1nekxh","targetId":"cjsstqes","name":"Vizinha da faixa","topoRule":"adjacente","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},{"id":"r6qmmciq","type":"spatial","sourceId":"c0y16ffx","targetId":"cxwwnrbl","name":"Cruza rede","topoRule":"cruza","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},{"id":"rtl6vmc7","type":"spatial","sourceId":"csnt8y6p","targetId":"cgpdd8xz","name":"Sobrepõe zona","topoRule":"sobrepoe","nearDistance":null,"cardSource":"0..*","cardTarget":"0..*"},{"id":"r7q8jgs7","type":"spatial","sourceId":"cplu26pi","targetId":"cprqd1m6","name":"Perto do lote","topoRule":"proximo","nearDistance":"50","cardSource":"0..*","cardTarget":"0..*"}]}};
+// Tudo definido: liga a interface e restaura o último modelo salvo.
+boot();
 </script>

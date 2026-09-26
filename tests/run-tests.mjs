@@ -234,6 +234,28 @@ await test('abrir um JSON com classe sem lista de atributos não quebra a tela',
   await page.close();
 });
 
+await test('menu de exportação baixa cada formato com o nome certo', async () => {
+  const page = await openExample();
+  const grab = async fmt => {
+    await page.click('#btnExport');
+    const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#exportMenu button[data-fmt="'+fmt+'"]')]);
+    return dl;
+  };
+  const names = {};
+  for(const fmt of ['json', 'pyt', 'dict', 'jpeg']) names[fmt] = (await grab(fmt)).suggestedFilename();
+  assertEq(names.json, 'exemplo_teste_completo_gdb.json', 'modelo em JSON');
+  assertEq(names.pyt, 'geogeogeo_toolbox.pyt', 'toolbox');
+  assertEq(names.dict, 'exemplo_teste_completo_gdb_dicionario_de_dados.docx', 'dicionário de dados');
+  assertEq(names.jpeg, 'exemplo_teste_completo_gdb_diagrama.jpg', 'imagem do diagrama');
+  // JSON do GDB: pelo menu abre o resumo, e o download sai de lá
+  await page.click('#btnExport');
+  await page.click('#exportMenu button[data-fmt="gdbjson"]');
+  const [gdb] = await Promise.all([page.waitForEvent('download'), page.click('.calc-overlay .btn.primary')]);
+  assertEq(gdb.suggestedFilename(), 'Teste_OMTG_gdb.json', 'JSON do GDB');
+  assertEq(page.errors.join('\n'), '', 'erros na página');
+  await page.close();
+});
+
 await browser.close();
 
 // ---------------------------------------------------------------- resumo

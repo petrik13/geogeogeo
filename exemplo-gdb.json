@@ -1,0 +1,724 @@
+{
+  "formatVersion": 1,
+  "generator": "GeoGeoGeo",
+  "generatedAt": "2026-09-19T15:49:35.066Z",
+  "source": {
+    "model": "Cadastro Fundiário",
+    "from": "logical"
+  },
+  "workspace": {
+    "name": "CadastroFundiario",
+    "type": "fileGeodatabase",
+    "spatialReference": {
+      "authority": "EPSG",
+      "wkid": 31983
+    }
+  },
+  "featureDatasets": [
+    {
+      "name": "Topologia",
+      "spatialReference": {
+        "authority": "EPSG",
+        "wkid": 31983
+      },
+      "items": [
+        "AreaDePreservacao",
+        "Quadra",
+        "Torre",
+        "TipoDeSolo"
+      ]
+    }
+  ],
+  "domains": [
+    {
+      "name": "Situacao",
+      "type": "codedValue",
+      "fieldType": "TEXT",
+      "length": 1,
+      "values": [
+        {
+          "code": "A",
+          "name": "Ativo"
+        },
+        {
+          "code": "I",
+          "name": "Inativo"
+        }
+      ],
+      "omtg": {
+        "classId": "cexgvbnz",
+        "attrId": "l3"
+      }
+    },
+    {
+      "name": "SimNao",
+      "type": "codedValue",
+      "fieldType": "SHORT",
+      "values": [
+        {
+          "code": 1,
+          "name": "Sim"
+        },
+        {
+          "code": 0,
+          "name": "Não"
+        }
+      ],
+      "omtg": null
+    }
+  ],
+  "datasets": [
+    {
+      "name": "AreaDePreservacao",
+      "alias": "Área de Preservação",
+      "kind": "featureClass",
+      "omtg": {
+        "classId": "cexgvbnz",
+        "kind": "geo",
+        "geoType": "object",
+        "primitive": "polygon"
+      },
+      "systemFields": [
+        "OBJECTID",
+        "SHAPE",
+        "GLOBALID"
+      ],
+      "fields": [
+        {
+          "name": "Matricula",
+          "alias": "Matrícula",
+          "omtg": {
+            "attrId": "l1"
+          },
+          "notes": [],
+          "type": "TEXT",
+          "length": 14,
+          "nullable": false,
+          "primaryKey": true
+        },
+        {
+          "name": "AreaHa",
+          "alias": "Área Ha",
+          "omtg": {
+            "attrId": "l2"
+          },
+          "notes": [
+            "precision/scale ignorados em File Geodatabase."
+          ],
+          "type": "DOUBLE",
+          "precision": 12,
+          "scale": 2,
+          "nullable": true,
+          "calculated": true,
+          "calculatedExpression": {
+            "neutral": "ARRED(AREA([SHAPE]) / 10000, 2)",
+            "arcade": "Round(Area($feature) / 10000, 2)",
+            "sql": "round((ST_Area(geom) / 10000)::numeric, 2)"
+          }
+        },
+        {
+          "name": "Situacao",
+          "alias": "Situação",
+          "omtg": {
+            "attrId": "l3"
+          },
+          "notes": [],
+          "type": "TEXT",
+          "length": 1,
+          "domain": "Situacao",
+          "nullable": true
+        },
+        {
+          "name": "Registrado",
+          "alias": "Registrado",
+          "omtg": {
+            "attrId": "l4"
+          },
+          "notes": [
+            "Booleano não existe em File GDB — SHORT com domínio Sim/Não."
+          ],
+          "type": "SHORT",
+          "domain": "SimNao",
+          "nullable": true
+        },
+        {
+          "name": "NumFolha",
+          "alias": "Num Folha",
+          "omtg": {
+            "attrId": "l5"
+          },
+          "notes": [
+            "3 dígitos declarados."
+          ],
+          "type": "SHORT",
+          "nullable": true
+        },
+        {
+          "name": "CodInterno",
+          "alias": "Cod Interno",
+          "omtg": {
+            "attrId": "l6"
+          },
+          "notes": [
+            "Unicidade via Constraint Attribute Rule (File GDB não tem índice único)."
+          ],
+          "type": "TEXT",
+          "length": 8,
+          "nullable": true
+        },
+        {
+          "name": "ProprietarioId",
+          "alias": "Proprietario Id",
+          "omtg": {
+            "attrId": "l7"
+          },
+          "notes": [],
+          "type": "TEXT",
+          "length": 11,
+          "nullable": true,
+          "foreignKey": {
+            "classId": "cgj5zf5w",
+            "attrId": null
+          }
+        }
+      ],
+      "indexes": [
+        {
+          "name": "IDXAreaDePreservacaoMatricula",
+          "fields": [
+            "Matricula"
+          ],
+          "unique": false
+        }
+      ],
+      "notes": [],
+      "geometryType": "POLYGON",
+      "spatialReference": {
+        "authority": "EPSG",
+        "wkid": 31983
+      }
+    },
+    {
+      "name": "Quadra",
+      "alias": "Quadra",
+      "kind": "featureClass",
+      "omtg": {
+        "classId": "c4k4b8xx",
+        "kind": "geo",
+        "geoType": "object",
+        "primitive": "polygon"
+      },
+      "systemFields": [
+        "OBJECTID",
+        "SHAPE"
+      ],
+      "fields": [
+        {
+          "name": "Codigo",
+          "alias": "Código",
+          "omtg": {
+            "attrId": "q1"
+          },
+          "notes": [],
+          "type": "TEXT",
+          "length": 8,
+          "nullable": false,
+          "primaryKey": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "IDXQuadraCodigo",
+          "fields": [
+            "Codigo"
+          ],
+          "unique": false
+        }
+      ],
+      "notes": [],
+      "geometryType": "POLYGON",
+      "spatialReference": {
+        "authority": "EPSG",
+        "wkid": 31983
+      }
+    },
+    {
+      "name": "Proprietario",
+      "alias": "Proprietário",
+      "kind": "table",
+      "omtg": {
+        "classId": "cgj5zf5w",
+        "kind": "conventional",
+        "geoType": null,
+        "primitive": null
+      },
+      "systemFields": [
+        "OBJECTID"
+      ],
+      "fields": [
+        {
+          "name": "CPF",
+          "alias": "CPF",
+          "omtg": {
+            "attrId": "p1"
+          },
+          "notes": [],
+          "type": "TEXT",
+          "length": 11,
+          "nullable": false,
+          "primaryKey": true
+        },
+        {
+          "name": "Situacao",
+          "alias": "Situação",
+          "omtg": {
+            "attrId": "p2"
+          },
+          "notes": [],
+          "type": "TEXT",
+          "length": 1,
+          "domain": "Situacao",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "IDXProprietarioCPF",
+          "fields": [
+            "CPF"
+          ],
+          "unique": false
+        }
+      ],
+      "notes": []
+    },
+    {
+      "name": "TrechoDeLinha",
+      "alias": "Trecho de Linha",
+      "kind": "featureClass",
+      "omtg": {
+        "classId": "cy75ixxa",
+        "kind": "geo",
+        "geoType": "object",
+        "primitive": "unidirectional"
+      },
+      "systemFields": [
+        "OBJECTID",
+        "SHAPE"
+      ],
+      "fields": [
+        {
+          "name": "Codigo",
+          "alias": "Código",
+          "omtg": {
+            "attrId": "t1"
+          },
+          "notes": [],
+          "type": "TEXT",
+          "length": 10,
+          "nullable": false,
+          "primaryKey": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "IDXTrechoDeLinhaCodigo",
+          "fields": [
+            "Codigo"
+          ],
+          "unique": false
+        }
+      ],
+      "notes": [],
+      "geometryType": "POLYLINE",
+      "spatialReference": {
+        "authority": "EPSG",
+        "wkid": 31983
+      }
+    },
+    {
+      "name": "Torre",
+      "alias": "Torre",
+      "kind": "featureClass",
+      "omtg": {
+        "classId": "cumdefyk",
+        "kind": "geo",
+        "geoType": "object",
+        "primitive": "node"
+      },
+      "systemFields": [
+        "OBJECTID",
+        "SHAPE",
+        "GLOBALID"
+      ],
+      "fields": [
+        {
+          "name": "Codigo",
+          "alias": "Código",
+          "omtg": {
+            "attrId": "to1"
+          },
+          "notes": [],
+          "type": "TEXT",
+          "length": 10,
+          "nullable": false,
+          "primaryKey": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "IDXTorreCodigo",
+          "fields": [
+            "Codigo"
+          ],
+          "unique": false
+        }
+      ],
+      "notes": [],
+      "geometryType": "POINT",
+      "spatialReference": {
+        "authority": "EPSG",
+        "wkid": 31983
+      }
+    },
+    {
+      "name": "TipoDeSolo",
+      "alias": "Tipo de Solo",
+      "kind": "featureClass",
+      "omtg": {
+        "classId": "cluk5obu",
+        "kind": "geo",
+        "geoType": "field",
+        "primitive": "partition"
+      },
+      "systemFields": [
+        "OBJECTID",
+        "SHAPE"
+      ],
+      "fields": [
+        {
+          "name": "Codigo",
+          "alias": "Código",
+          "omtg": {
+            "attrId": "s1"
+          },
+          "notes": [],
+          "type": "TEXT",
+          "length": 6,
+          "nullable": false,
+          "primaryKey": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "IDXTipoDeSoloCodigo",
+          "fields": [
+            "Codigo"
+          ],
+          "unique": false
+        }
+      ],
+      "notes": [],
+      "geometryType": "POLYGON",
+      "spatialReference": {
+        "authority": "EPSG",
+        "wkid": 31983
+      }
+    },
+    {
+      "name": "ModeloDeTerreno",
+      "alias": "Modelo de Terreno",
+      "kind": "tinDataset",
+      "omtg": {
+        "classId": "cz7ei55i",
+        "kind": "geo",
+        "geoType": "field",
+        "primitive": "tin"
+      },
+      "systemFields": [
+        "OBJECTID"
+      ],
+      "fields": [
+        {
+          "name": "Codigo",
+          "alias": "Código",
+          "omtg": {
+            "attrId": "m1"
+          },
+          "notes": [],
+          "type": "TEXT",
+          "length": 6,
+          "nullable": false,
+          "primaryKey": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "IDXModeloDeTerrenoCodigo",
+          "fields": [
+            "Codigo"
+          ],
+          "unique": false
+        }
+      ],
+      "notes": [
+        "Precisa de dados de entrada: TIN Dataset não é criado vazio por geoprocessamento."
+      ],
+      "status": "placeholder"
+    }
+  ],
+  "relationshipClasses": [
+    {
+      "name": "PossuiProprietarioAreaDePreser",
+      "origin": "Proprietario",
+      "destination": "AreaDePreservacao",
+      "type": "COMPOSITE",
+      "cardinality": "ONE_TO_MANY",
+      "forwardLabel": "possui",
+      "backwardLabel": "pertence a",
+      "attributed": "NONE",
+      "originPrimaryKey": "CPF",
+      "originForeignKey": "ProprietarioId",
+      "omtg": {
+        "relId": "rp72016w",
+        "type": "association",
+        "cardSource": "1",
+        "cardTarget": "1..*"
+      },
+      "notes": [
+        "Participação mínima (1..*) não é representável no GDB."
+      ]
+    },
+    {
+      "name": "QuadraAreaDePreservacao",
+      "origin": "Quadra",
+      "destination": "AreaDePreservacao",
+      "type": "COMPOSITE",
+      "cardinality": "ONE_TO_MANY",
+      "forwardLabel": "é composto por",
+      "backwardLabel": "faz parte de",
+      "attributed": "NONE",
+      "originPrimaryKey": "Codigo",
+      "originForeignKey": null,
+      "omtg": {
+        "relId": "rc2w4ilu",
+        "type": "aggregation",
+        "cardSource": null,
+        "cardTarget": null
+      },
+      "notes": [
+        "Agregação todo-parte → relationship class composta.",
+        "Nenhum atributo FK declarado no destino apontando para a origem."
+      ]
+    },
+    {
+      "name": "AreaDePreservacaoTorre",
+      "origin": "AreaDePreservacao",
+      "destination": "Torre",
+      "type": "SIMPLE",
+      "cardinality": "ONE_TO_MANY",
+      "forwardLabel": "dentro",
+      "backwardLabel": "contém",
+      "attributed": "NONE",
+      "originPrimaryKey": "Matricula",
+      "originForeignKey": null,
+      "omtg": {
+        "relId": "rez6310m",
+        "type": "spatial",
+        "cardSource": "0..*",
+        "cardTarget": "1"
+      },
+      "notes": [
+        "Nenhum atributo FK declarado no destino apontando para a origem."
+      ]
+    },
+    {
+      "name": "TorreQuadra",
+      "origin": "Torre",
+      "destination": "Quadra",
+      "type": "SIMPLE",
+      "cardinality": "ONE_TO_MANY",
+      "forwardLabel": "próximo",
+      "backwardLabel": "está próximo de",
+      "attributed": "NONE",
+      "originPrimaryKey": "Codigo",
+      "originForeignKey": null,
+      "omtg": {
+        "relId": "rzlfbnc2",
+        "type": "spatial",
+        "cardSource": "1",
+        "cardTarget": "0..*"
+      },
+      "notes": [
+        "Nenhum atributo FK declarado no destino apontando para a origem."
+      ]
+    }
+  ],
+  "topologies": [
+    {
+      "name": "Regras",
+      "featureDataset": "Topologia",
+      "clusterTolerance": "default",
+      "featureClasses": [
+        "AreaDePreservacao",
+        "Quadra",
+        "Torre",
+        "TipoDeSolo"
+      ],
+      "rules": [
+        {
+          "rule": "Must Not Overlap",
+          "origin": "AreaDePreservacao",
+          "destination": "AreaDePreservacao",
+          "omtg": {
+            "relId": "rc2w4ilu",
+            "aggKind": "subdivision"
+          }
+        },
+        {
+          "rule": "Must Not Have Gaps",
+          "origin": "AreaDePreservacao",
+          "destination": "AreaDePreservacao",
+          "omtg": {
+            "relId": "rc2w4ilu",
+            "aggKind": "subdivision"
+          }
+        },
+        {
+          "rule": "Area Must Be Covered By Area Class Of",
+          "origin": "Quadra",
+          "destination": "AreaDePreservacao",
+          "omtg": {
+            "relId": "rc2w4ilu",
+            "aggKind": "subdivision"
+          }
+        },
+        {
+          "rule": "Must Be Covered By Feature Class Of",
+          "origin": "Torre",
+          "destination": "AreaDePreservacao",
+          "omtg": {
+            "relId": "rez6310m",
+            "topoRule": "dentro"
+          }
+        },
+        {
+          "rule": "Must Not Overlap",
+          "origin": "TipoDeSolo",
+          "destination": "TipoDeSolo",
+          "omtg": {
+            "classId": "cluk5obu",
+            "primitive": "partition"
+          }
+        },
+        {
+          "rule": "Must Not Have Gaps",
+          "origin": "TipoDeSolo",
+          "destination": "TipoDeSolo",
+          "omtg": {
+            "classId": "cluk5obu",
+            "primitive": "partition"
+          }
+        }
+      ]
+    }
+  ],
+  "networks": [
+    {
+      "featureDataset": "RedeDeTransmissao",
+      "name": "RedeDeTransmissaoND",
+      "edges": [
+        {
+          "class": "TrechoDeLinha",
+          "directionality": "uni"
+        }
+      ],
+      "junctions": [
+        {
+          "class": "Torre"
+        }
+      ],
+      "status": "declaredOnly",
+      "omtg": {
+        "relId": "rvhfyucu"
+      },
+      "notes": [
+        "O Network Dataset não é criado pela toolbox: exige a extensão Network Analyst e configuração de conectividade, custos e direcionalidade, mais Build Network."
+      ]
+    }
+  ],
+  "attributeRules": [
+    {
+      "name": "CalcAreaDePreservacaoAreaHa",
+      "dataset": "AreaDePreservacao",
+      "field": "AreaHa",
+      "type": "calculation",
+      "triggers": [
+        "insert",
+        "update"
+      ],
+      "arcade": "return Round(Area($feature) / 10000, 2);",
+      "description": "Calcula \"Área Ha\".",
+      "omtg": {
+        "classId": "cexgvbnz",
+        "attrId": "l2"
+      }
+    },
+    {
+      "name": "UnicoAreaDePreservacaoCodInterno",
+      "dataset": "AreaDePreservacao",
+      "field": "CodInterno",
+      "type": "constraint",
+      "triggers": [
+        "insert",
+        "update"
+      ],
+      "arcade": "var dup = Filter(FeatureSetByName($datastore, \"AreaDePreservacao\", [\"CodInterno\"], false), \"CodInterno = @CodInterno AND OBJECTID <> @OBJECTID\");\nreturn Count(dup) == 0;",
+      "description": "Garante que \"Cod Interno\" não se repita.",
+      "omtg": {
+        "classId": "cexgvbnz",
+        "attrId": "l6"
+      }
+    },
+    {
+      "name": "EspTorreQuadraProximo",
+      "dataset": "Torre",
+      "field": null,
+      "type": "constraint",
+      "triggers": [
+        "insert",
+        "update"
+      ],
+      "arcade": "var outras = FeatureSetByName($datastore, \"Quadra\", [\"OBJECTID\"], true);\nreturn Count(Filter(outras, \"1=1\")) == 0 || Intersects(Buffer($feature, 50), outras);",
+      "description": "Exige que Torre próximo Quadra.",
+      "omtg": {
+        "relId": "rzlfbnc2",
+        "topoRule": "proximo"
+      }
+    }
+  ],
+  "unmapped": [
+    {
+      "on": "AreaDePreservacao",
+      "omtg": "operacao:centroid",
+      "reason": "Operador OMT-G \"Determinação de centroide\" — gera representação nova, não campo; destino é o modelo de transformação."
+    },
+    {
+      "on": "workspace",
+      "omtg": "meta.schema",
+      "reason": "Conceito do PostGIS; sem equivalente no GDB."
+    }
+  ],
+  "warnings": [
+    {
+      "severity": "warning",
+      "on": "AreaDePreservacao.AreaHa",
+      "message": "precision/scale são ignorados em File Geodatabase (só valem em enterprise). Declarados mesmo assim."
+    },
+    {
+      "severity": "warning",
+      "on": "ModeloDeTerreno",
+      "message": "TIN Dataset declarado como placeholder — a toolbox precisa da fonte de dados para criá-lo."
+    }
+  ]
+}

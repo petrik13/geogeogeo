@@ -1,324 +1,94 @@
 # -*- coding: utf-8 -*-
 """
-GeoGeoGeo — ArcGIS Python Toolbox
-==================================
+GeoGeoGeo — criação de File Geodatabase a partir do JSON do modelo lógico.
 
-Ferramenta para o ArcGIS Pro que lê um modelo OMT-G exportado do GeoGeoGeo
-(o arquivo .json que o botão "Exportar para > JSON" da aplicação gera) e cria
-o esquema correspondente em uma File Geodatabase: feature dataset, classes/
-tabelas com seus campos, classes de relacionamento e — quando o modelo tem
-relações "dentro" ou agregações espaciais — um dataset de Topologia com as
-regras de cobertura correspondentes.
+Esta toolbox consome o arquivo gerado pelo GeoGeoGeo em
+"Migrar > Para o Físico (GDB)" (ou pelo menu do app). O JSON descreve O QUE
+criar; aqui é onde isso vira geodatabase.
 
-Diferente de um script avulso, esta é uma ferramenta de geoprocessamento de
-verdade: adicione este arquivo uma vez ao ArcGIS Pro (Catalog > Toolboxes >
-Add Toolbox, escolha este .pyt) e ela passa a aparecer na caixa de
-ferramentas, com uma interface de parâmetros nativa, pronta para reusar em
-qualquer modelo novo — sem precisar gerar/colar um script a cada vez.
+Escopo, conforme as decisões registradas em mapeamento-logico-para-gdb.md:
+  - Cria a File GDB, domínios, feature datasets, tables/feature classes,
+    campos, índices, relationship classes, topologias e attribute rules.
+  - NÃO cria Network Dataset: o JSON declara a intenção de rede
+    (status "declaredOnly") porque criar exigiria a extensão Network Analyst
+    e a rede nasceria sem conectividade, custos nem direcionalidade. As
+    feature classes participantes e o feature dataset que as agrupa são
+    criados normalmente.
+  - TIN e Raster Dataset vêm marcados como "placeholder": dependem de dados
+    de entrada e não são criados vazios. São reportados, não criados.
 
-Como usar no ArcGIS Pro:
-  1. Painel Catalog > botão direito em "Toolboxes" > Add Toolbox > selecione
-     este arquivo (geogeogeo_toolbox.pyt).
-  2. Abra a ferramenta "Criar Geodatabase (OMT-G)" dentro dela.
-  3. Informe o arquivo .json do modelo, a pasta de destino e o nome da
-     geodatabase a criar (ou reaproveitar, se já existir). Execute.
-
-Formato de entrada esperado (mesmo formato do botão "Exportar para > JSON"
-do GeoGeoGeo, ou seja, o objeto "state" interno da aplicação):
-    {
-      "meta": {"name": str, "srid": int, "workspaceName": str, ...},
-      "classes": [
-        {"id": str, "name": str, "kind": "geo"|"conventional",
-         "primitive": "point"|"node"|"line"|"arc"|"polygon"|"isoline"|
-                      "tin"|"tessellation"|"sample"|"partition"|"complex"|null,
-         "complexKind": "multipoint"|"multiline"|"multipolygon"|"collection"|null,
-         "attributes": [{"name": str, "type": "text"|"integer"|"double"|
-                          "date"|"datetime"|"boolean"|"blob", "pk": bool,
-                          "nullable": bool}, ...]},
-        ...
-      ],
-      "relationships": [
-        {"id": str, "type": "association"|"generalization"|"aggregation"|
-                     "network"|"spatial", "sourceId": str, "targetId": str,
-         "name": str,
-         # association:
-         "cardSource": "1"|"0..1"|"0..*"|"1..*", "cardTarget": same,
-         # generalization:
-         "total": bool, "disjoint": bool,
-         # aggregation:
-         "cardSource": ..., "cardTarget": ..., "spatialControl": bool,
-         # network:
-         "directed": bool,
-         # spatial:
-         "topoRule": "touches"|"dentro"|"disjunto"|"em_frente"|"proximo"|
-                      "sobrepoe"|"cruza"},
-        ...
-      ]
-    }
-
-Limitações conhecidas (as mesmas do exportador de script arcpy do
-GeoGeoGeo, documentadas ali com a mesma justificativa): o vocabulário de
-regras de topologia do ArcGIS é construído quase todo em torno de PROIBIR
-sobreposição/interseção ou EXIGIR cobertura — não existe regra para "deve
-tocar", "deve sobrepor" ou "deve cruzar". Por isso só os predicados OMT-G
-"dentro" (nas combinações área-área, linha-área e ponto-área) e "disjunto"
-(área-área) geram uma regra real de topologia; os demais entram apenas como
-mensagem informativa na execução, não como regra criada. Regras gerais de
-qualidade geométrica (uma classe não sobrepor a si mesma etc.) também não
-são aplicadas automaticamente — dependem de decisão de negócio por classe —
-e só aparecem como sugestão nas mensagens da ferramenta.
+Nada aqui aborta a execução inteira por causa de um item: cada passo que
+falha vira aviso e o resto continua, com um resumo no fim.
 """
 
-import arcpy
-import json
+import io
 import os
-import re
-import unicodedata
+import json
+import arcpy
 
 
-# ============================================================
-# Helpers de identificador — replicam sqlIdent()/pascalIdent() do app.js
-# ============================================================
-
-def sql_ident(s):
-    s = (s or '').strip().lower()
-    s = unicodedata.normalize('NFD', s)
-    s = ''.join(ch for ch in s if not unicodedata.combining(ch))
-    s = re.sub(r'[^a-z0-9_]+', '_', s)
-    s = s.strip('_')
-    s = re.sub(r'^(\d)', r'c\1', s)
-    return s or 'sem_nome'
-
-
-def pascal_ident(s):
-    s = re.sub(r'[^a-zA-Z0-9]+', ' ', (s or '').strip())
-    words = [w for w in s.split(' ') if w]
-    return ''.join(w[0].upper() + w[1:] for w in words) or 'SemNome'
-
-
-# ============================================================
-# Geometria — replicam geomKind()/geomCategory()/arcpyFieldType()/
-# arcpyGeomType() do app.js
-# ============================================================
-
-GEOM_MAP = {
-    'point':        {'esri': 'esriGeometryPoint',    'approx': False},
-    'node':         {'esri': 'esriGeometryPoint',    'approx': False},
-    'line':         {'esri': 'esriGeometryPolyline', 'approx': False},
-    'arc':          {'esri': 'esriGeometryPolyline', 'approx': False},
-    'polygon':      {'esri': 'esriGeometryPolygon',  'approx': False},
-    'isoline':      {'esri': 'esriGeometryPolyline', 'approx': True},
-    'tin':          {'esri': 'esriGeometryPolygon',  'approx': True},
-    'tessellation': {'esri': 'esriGeometryPolygon',  'approx': True},
-    'sample':       {'esri': 'esriGeometryPoint',    'approx': True},
-    'partition':    {'esri': 'esriGeometryPolygon',  'approx': True},
-}
-COMPLEX_MAP = {
-    'multipoint':   {'esri': 'esriGeometryMultipoint', 'approx': False},
-    'multiline':    {'esri': 'esriGeometryPolyline',   'approx': False},
-    'multipolygon': {'esri': 'esriGeometryPolygon',    'approx': False},
-    'collection':   {'esri': 'esriGeometryBag',        'approx': False},
-}
-ARCPY_FIELD_TYPE = {'text': 'TEXT', 'integer': 'LONG', 'double': 'DOUBLE', 'date': 'DATE',
-                     'datetime': 'DATE', 'boolean': 'SHORT', 'blob': 'BLOB'}
-ARCPY_GEOM_TYPE = {'esriGeometryPoint': 'POINT', 'esriGeometryMultipoint': 'MULTIPOINT',
-                    'esriGeometryPolyline': 'POLYLINE', 'esriGeometryPolygon': 'POLYGON'}
-
-TOPO_RULE_LABEL = {
-    'touches': 'toca (touches)',
-    'dentro': 'está dentro de (dentro)',
-    'disjunto': 'é disjunto de (disjunto)',
-    'em_frente': 'está em frente a (em frente)',
-    'proximo': 'está próximo de (próximo)',
-    'sobrepoe': 'sobrepõe (sobrepõe)',
-    'cruza': 'cruza (cruza)',
-}
-
-
-def geom_kind(c):
-    if c.get('kind') != 'geo' or not c.get('primitive'):
-        return None
-    if c.get('primitive') == 'complex':
-        return COMPLEX_MAP.get(c.get('complexKind') or 'multipolygon')
-    return GEOM_MAP.get(c.get('primitive'))
-
-
-def geom_category(c):
-    gk = geom_kind(c)
-    if not gk:
-        return None
-    if gk['esri'] == 'esriGeometryPolygon':
-        return 'area'
-    if gk['esri'] == 'esriGeometryPolyline':
-        return 'line'
-    if gk['esri'] in ('esriGeometryPoint', 'esriGeometryMultipoint'):
-        return 'point'
-    return None
-
-
-def arcpy_field_type(t):
-    return ARCPY_FIELD_TYPE.get(t, 'TEXT')
-
-
-def arcpy_geom_type(gk):
-    if not gk:
-        return None
-    return ARCPY_GEOM_TYPE.get(gk['esri'])
-
-
-def topology_rule_for(predicate, cat_a, cat_b):
-    """Mesma tabela, com a mesma justificativa, de topologyRuleFor() no
-    app.js — só 'dentro' e 'disjunto' têm regra real de ArcGIS mapeada,
-    verificada contra a referência oficial da ferramenta Add Rule To
-    Topology, não adivinhada."""
-    if predicate == 'dentro':
-        if cat_a == 'area' and cat_b == 'area':
-            return {'rule': 'Must Be Covered By Feature Class Of (Area-Area)'}
-        if cat_a == 'line' and cat_b == 'area':
-            return {'rule': 'Must Be Inside (Line-Area)'}
-        if cat_a == 'point' and cat_b == 'area':
-            return {'rule': 'Must Be Properly Inside (Point-Area)'}
-        return None
-    if predicate == 'disjunto':
-        if cat_a == 'area' and cat_b == 'area':
-            return {'rule': 'Must Not Overlap With (Area-Area)',
-                    'caveat': 'permite fronteiras se tocando — não é disjunção estrita'}
-        return None
-    return None
-
-
-def general_topology_suggestion(cat):
-    if cat == 'area':
-        return 'Must Not Overlap (Area)'
-    if cat == 'line':
-        return 'Must Not Self-Intersect (Line) / Must Not Self-Overlap (Line)'
-    return None
-
-
-def pk_field_name(c):
-    """Nome do campo a usar como origin_primary_key de uma classe de
-    relacionamento — o atributo marcado como PK no modelo (normalmente
-    "id"), não o OBJECTID interno do arcpy. O OBJECTID só é atribuído pelo
-    banco na hora da inserção, então não dá pra popular o campo de FK da
-    classe dependente com ele antes de carregar os dados; a chave definida
-    no modelo é estável e é o que já vem preenchido nos seus dados."""
-    pk = next((a for a in (c.get('attributes') or []) if a.get('pk')), None)
-    return sql_ident(pk['name']) if pk else 'id'
-
-
-# ============================================================
-# Campos derivados de relacionamentos — replicam computeExportFields()/
-# associationPlan() do app.js
-# ============================================================
-
-def association_plan(r):
-    def many(v):
-        return v in ('0..*', '1..*')
-
-    def one(v):
-        return v in ('1', '0..1')
-
-    cs, ct = r.get('cardSource'), r.get('cardTarget')
-    if many(cs) and one(ct):
-        return {'mode': 'fk', 'fkOn': r.get('sourceId'), 'refTo': r.get('targetId')}
-    if one(cs) and many(ct):
-        return {'mode': 'fk', 'fkOn': r.get('targetId'), 'refTo': r.get('sourceId')}
-    if one(cs) and one(ct):
-        return {'mode': 'fk', 'fkOn': r.get('sourceId'), 'refTo': r.get('targetId')}
-    return {'mode': 'junction'}
-
-
-def compute_export_fields(c, class_by_id, relationships):
-    fields = []
-    for a in c.get('attributes') or []:
-        fields.append({'name': sql_ident(a.get('name')), 'type': a.get('type'),
-                        'nullable': a.get('nullable'), 'fkTable': None})
-    for r in relationships:
-        rtype = r.get('type')
-        if rtype == 'generalization' and r.get('sourceId') == c['id']:
-            sup = class_by_id.get(r.get('targetId'))
-            if sup:
-                fields.append({'name': sql_ident(sup['name']) + '_id', 'type': 'integer',
-                                'nullable': False, 'fkTable': sql_ident(sup['name'])})
-        if rtype == 'aggregation' and r.get('targetId') == c['id']:
-            whole = class_by_id.get(r.get('sourceId'))
-            if whole:
-                nullable = r.get('cardTarget') in ('0..*', '0..1')
-                fields.append({'name': sql_ident(whole['name']) + '_id', 'type': 'integer',
-                                'nullable': nullable, 'fkTable': sql_ident(whole['name'])})
-        if rtype == 'network' and r.get('targetId') == c['id']:
-            node = class_by_id.get(r.get('sourceId'))
-            if node:
-                base = sql_ident(node['name'])
-                fields.append({'name': base + '_no_origem_id', 'type': 'integer',
-                                'nullable': True, 'fkTable': base})
-                fields.append({'name': base + '_no_destino_id', 'type': 'integer',
-                                'nullable': True, 'fkTable': base})
-        if rtype == 'association':
-            plan = association_plan(r)
-            if plan['mode'] == 'fk' and plan['fkOn'] == c['id']:
-                ref_class = class_by_id.get(plan['refTo'])
-                if ref_class:
-                    own_card = r.get('cardSource') if plan['fkOn'] == r.get('sourceId') else r.get('cardTarget')
-                    nullable = own_card in ('0..*', '0..1')
-                    fields.append({'name': sql_ident(ref_class['name']) + '_id', 'type': 'integer',
-                                    'nullable': nullable, 'fkTable': sql_ident(ref_class['name'])})
-    return fields
-
-
-# ============================================================
+# --------------------------------------------------------------------------
 # Toolbox
-# ============================================================
-
-class Toolbox:
+# --------------------------------------------------------------------------
+class Toolbox(object):
     def __init__(self):
-        self.label = 'GeoGeoGeo'
-        self.alias = 'geogeogeo'
-        self.tools = [CriarGeodatabaseOMTG]
+        self.label = "GeoGeoGeo"
+        self.alias = "geogeogeo"
+        self.tools = [CriarGeodatabase]
 
 
-class CriarGeodatabaseOMTG:
+class CriarGeodatabase(object):
     def __init__(self):
-        self.label = 'Criar Geodatabase (OMT-G)'
+        self.label = "Criar Geodatabase a partir do modelo"
         self.description = (
-            'Lê um modelo OMT-G exportado do GeoGeoGeo (.json) e cria o esquema '
-            'correspondente — feature dataset, classes/tabelas, classes de '
-            'relacionamento e topologia (quando aplicável) — em uma File Geodatabase.'
+            u"Le o JSON exportado pelo GeoGeoGeo (modelo logico) e cria a "
+            u"File Geodatabase correspondente: dominios, datasets, campos, "
+            u"relationship classes, topologias e attribute rules."
         )
-        self.category = 'GeoGeoGeo'
+        self.canRunInBackground = False
 
     def getParameterInfo(self):
         p_json = arcpy.Parameter(
-            displayName='Modelo OMT-G (.json exportado do GeoGeoGeo)',
-            name='in_json',
-            datatype='DEFile',
-            parameterType='Required',
-            direction='Input')
-        p_json.filter.list = ['json']
+            displayName=u"JSON do modelo (gerado pelo GeoGeoGeo)",
+            name="in_json", datatype="DEFile", parameterType="Required", direction="Input")
+        p_json.filter.list = ["json"]
 
         p_folder = arcpy.Parameter(
-            displayName='Pasta de destino',
-            name='out_folder',
-            datatype='DEFolder',
-            parameterType='Required',
-            direction='Input')
+            displayName=u"Pasta de saida",
+            name="out_folder", datatype="DEFolder", parameterType="Required", direction="Input")
 
         p_name = arcpy.Parameter(
-            displayName='Nome da geodatabase (sem .gdb)',
-            name='out_name',
-            datatype='GPString',
-            parameterType='Required',
-            direction='Input')
-        p_name.value = 'ModeloOMTG'
+            displayName=u"Nome da geodatabase (vazio = usa o nome do modelo)",
+            name="gdb_name", datatype="GPString", parameterType="Optional", direction="Input")
 
-        p_out_gdb = arcpy.Parameter(
-            displayName='Geodatabase criada',
-            name='out_gdb',
-            datatype='DEWorkspace',
-            parameterType='Derived',
-            direction='Output')
+        p_rules = arcpy.Parameter(
+            displayName=u"Criar attribute rules (unicidade, calculo, integridade)",
+            name="do_rules", datatype="GPBoolean", parameterType="Optional", direction="Input")
+        p_rules.value = True
 
-        return [p_json, p_folder, p_name, p_out_gdb]
+        p_topo = arcpy.Parameter(
+            displayName=u"Criar topologias",
+            name="do_topology", datatype="GPBoolean", parameterType="Optional", direction="Input")
+        p_topo.value = True
+
+        p_meta = arcpy.Parameter(
+            displayName=u"Preencher metadados (descricao de cada item a partir do modelo OMT-G)",
+            name="do_metadata", datatype="GPBoolean", parameterType="Optional", direction="Input")
+        p_meta.value = True
+
+        p_report = arcpy.Parameter(
+            displayName=u"Schema Report da geodatabase criada (vazio = nao gerar)",
+            name="report_formats", datatype="GPString", parameterType="Optional",
+            direction="Input", multiValue=True)
+        p_report.filter.type = "ValueList"
+        p_report.filter.list = ["HTML", "PDF", "XLSX", "JSON"]
+        p_report.value = ["HTML", "XLSX"]
+
+        p_out = arcpy.Parameter(
+            displayName=u"Geodatabase criada",
+            name="out_gdb", datatype="DEWorkspace", parameterType="Derived", direction="Output")
+
+        return [p_json, p_folder, p_name, p_rules, p_topo, p_meta, p_report, p_out]
 
     def isLicensed(self):
         return True
@@ -330,230 +100,595 @@ class CriarGeodatabaseOMTG:
         return
 
     def execute(self, parameters, messages):
-        in_json = parameters[0].valueAsText
+        json_path = parameters[0].valueAsText
         out_folder = parameters[1].valueAsText
-        out_name = parameters[2].valueAsText
+        gdb_name = parameters[2].valueAsText
+        do_rules = parameters[3].value
+        do_topology = parameters[4].value
+        do_metadata = parameters[5].value
+        fmt_text = parameters[6].valueAsText or ""
+        report_formats = [f.strip().strip("'").upper() for f in fmt_text.split(";") if f.strip()]
 
-        with open(in_json, 'r', encoding='utf-8') as f:
-            model = json.load(f)
+        builder = GdbBuilder(json_path, out_folder, gdb_name, do_rules, do_topology,
+                             do_metadata is not False, report_formats)
+        gdb = builder.run()
+        arcpy.SetParameterAsText(7, gdb)
 
-        classes = model.get('classes')
-        relationships = model.get('relationships')
-        if classes is None or relationships is None:
+
+# --------------------------------------------------------------------------
+# Construcao
+# --------------------------------------------------------------------------
+FIELD_TYPES = set(["TEXT", "SHORT", "LONG", "FLOAT", "DOUBLE", "DATE", "BLOB", "GUID", "RASTER"])
+GEOMETRY_TYPES = set(["POINT", "MULTIPOINT", "POLYLINE", "POLYGON"])
+REL_TYPES = set(["SIMPLE", "COMPOSITE"])
+CARDINALITIES = set(["ONE_TO_ONE", "ONE_TO_MANY", "MANY_TO_MANY"])
+
+
+class GdbBuilder(object):
+
+    def __init__(self, json_path, out_folder, gdb_name, do_rules, do_topology, do_metadata=True,
+                 report_formats=None):
+        self.json_path = json_path
+        self.out_folder = out_folder
+        self.gdb_name = gdb_name
+        self.do_rules = bool(do_rules)
+        self.do_topology = bool(do_topology)
+        self.do_metadata = bool(do_metadata)
+        self.report_formats = [f for f in (report_formats or []) if f in ("HTML", "PDF", "XLSX", "JSON")]
+        self.doc = None
+        self.gdb = None
+        self.created = {"domains": 0, "featureDatasets": 0, "datasets": 0, "fields": 0,
+                        "indexes": 0, "relationshipClasses": 0, "topologies": 0, "rules": 0}
+        self.problems = []
+        self.skipped = []
+        # nome do dataset -> caminho completo na gdb
+        self.paths = {}
+
+    # -- utilitarios ------------------------------------------------------
+    def info(self, msg):
+        arcpy.AddMessage(msg)
+
+    def warn(self, msg):
+        arcpy.AddWarning(msg)
+        self.problems.append(msg)
+
+    def field_type(self, table, field):
+        try:
+            for f in arcpy.ListFields(table):
+                if f.name.lower() == (field or "").lower():
+                    return f.type
+        except Exception:
+            return "?"
+        return None
+
+    def step(self, what, fn):
+        """Executa um passo isolando a falha: um item quebrado nao derruba o resto."""
+        try:
+            fn()
+            return True
+        except Exception as exc:
+            self.warn(u"%s: %s" % (what, exc))
+            return False
+
+    def spatial_ref(self, spec):
+        if not spec:
+            return None
+        wkid = spec.get("wkid")
+        if not wkid:
+            return None
+        try:
+            return arcpy.SpatialReference(int(wkid))
+        except Exception:
+            bad = getattr(self, "_bad_srids", set())
+            self._bad_srids = bad
+            if wkid not in bad:
+                bad.add(wkid)
+                self.warn(u"SRID %s nao existe nesta instalacao do ArcGIS; os dados foram "
+                          u"criados em 4326 (WGS 84). Corrija o SRID no modelo e gere de novo." % wkid)
+            return arcpy.SpatialReference(4326)
+
+    # -- execucao ---------------------------------------------------------
+    def run(self):
+        self.load()
+        self.create_gdb()
+        self.create_domains()
+        self.create_feature_datasets()
+        self.create_datasets()
+        self.create_indexes()
+        self.create_relationship_classes()
+        if self.do_topology:
+            self.create_topologies()
+        if self.do_rules:
+            self.create_attribute_rules()
+        if self.do_metadata:
+            self.write_metadata()
+        if self.report_formats:
+            self.schema_report()
+        self.report()
+        return self.gdb
+
+    def load(self):
+        # utf-8 explicito: no Windows o padrao e cp1252 e os acentos do JSON
+        # viravam "Ã§Ã£o" nas mensagens.
+        with io.open(self.json_path, "r", encoding="utf-8-sig") as fh:
+            self.doc = json.load(fh)
+        version = self.doc.get("formatVersion")
+        if version != 1:
+            self.warn(u"formatVersion %s nao e a esperada (1). Seguindo mesmo assim." % version)
+        gen = self.doc.get("generator")
+        src = (self.doc.get("source") or {}).get("model")
+        self.info(u"Modelo: %s (gerado por %s)" % (src, gen))
+
+    def create_gdb(self):
+        ws = self.doc.get("workspace") or {}
+        name = self.gdb_name or ws.get("name") or "ModeloOMTG"
+        if not name.lower().endswith(".gdb"):
+            name = name + ".gdb"
+        target = os.path.join(self.out_folder, name)
+        if arcpy.Exists(target):
             raise arcpy.ExecuteError(
-                "O arquivo JSON não parece ser um modelo exportado do GeoGeoGeo "
-                "(faltam as chaves 'classes' e/ou 'relationships').")
+                u"Ja existe %s. Apague, renomeie, ou informe outro nome." % target)
+        arcpy.management.CreateFileGDB(self.out_folder, name)
+        self.gdb = target
+        self.info(u"Geodatabase criada: %s" % target)
 
-        meta = model.get('meta') or {}
-        class_by_id = {c['id']: c for c in classes}
-
-        ws_name = pascal_ident(meta.get('workspaceName') or meta.get('name') or 'ModeloOMTG')
-        fds_name = ws_name + '_FD'
-        try:
-            srid = int(meta.get('srid') or 4326)
-        except (TypeError, ValueError):
-            arcpy.AddWarning('SRID do modelo inválido ("%s"); usando 4326 (WGS 84).' % meta.get('srid'))
-            srid = 4326
-
-        gdb_name = out_name if out_name.lower().endswith('.gdb') else out_name + '.gdb'
-        gdb_path = os.path.join(out_folder, gdb_name)
-
-        if not arcpy.Exists(gdb_path):
-            arcpy.management.CreateFileGDB(out_folder, gdb_name)
-            arcpy.AddMessage('Geodatabase criada em: ' + gdb_path)
-        else:
-            arcpy.AddMessage('Geodatabase já existente — reaproveitando: ' + gdb_path)
-
-        try:
-            sr = arcpy.SpatialReference(srid)
-        except Exception as e:
-            arcpy.AddWarning('Não foi possível criar a referência espacial para o SRID %s (%s); '
-                              'usando WGS 84 (4326).' % (srid, e))
-            sr = arcpy.SpatialReference(4326)
-
-        geo_classes = [c for c in classes if c.get('kind') == 'geo']
-        flat_classes = [c for c in classes if c.get('kind') != 'geo']
-
-        fds_path = None
-        if geo_classes:
-            fds_path = os.path.join(gdb_path, fds_name)
-            if not arcpy.Exists(fds_path):
-                arcpy.management.CreateFeatureDataset(gdb_path, fds_name, sr)
-
-        def class_path(c):
-            gt = arcpy_geom_type(geom_kind(c))
-            name = pascal_ident(c['name'])
-            if gt and fds_path:
-                return os.path.join(fds_path, name)
-            return os.path.join(gdb_path, name)
-
-        # ---- Classes e tabelas ----
-        arcpy.AddMessage('---- Classes e tabelas ----')
-        for c in list(geo_classes) + list(flat_classes):
-            gk = geom_kind(c)
-            gt = arcpy_geom_type(gk)
-            name = pascal_ident(c['name'])
-            if gt:
-                if gk.get('approx'):
-                    arcpy.AddWarning(
-                        '%s: primitiva conceitual "%s" não tem equivalente vetorial direto no '
-                        'geodatabase; criada como %s (revise o armazenamento).'
-                        % (c['name'], c.get('primitive'), gt))
-                arcpy.management.CreateFeatureclass(fds_path, name, gt, spatial_reference=sr)
-                target = os.path.join(fds_path, name)
-            else:
-                if c.get('kind') == 'geo':
-                    arcpy.AddWarning(
-                        '%s: primitiva "%s" não tem equivalente direto de geometria no arcpy; '
-                        'criada como tabela — adicione a geometria manualmente se necessário.'
-                        % (c['name'], c.get('primitive')))
-                arcpy.management.CreateTable(gdb_path, name)
-                target = os.path.join(gdb_path, name)
-            for fdef in compute_export_fields(c, class_by_id, relationships):
-                t = arcpy_field_type(fdef['type'])
-                kwargs = {}
-                if t == 'TEXT':
-                    kwargs['field_length'] = 255
-                if fdef.get('nullable') is False:
-                    kwargs['field_is_nullable'] = 'NON_NULLABLE'
-                arcpy.management.AddField(target, fdef['name'], t, **kwargs)
-            arcpy.AddMessage('  ' + c['name'] + ' -> ' + target)
-
-        # ---- Classes de relacionamento ----
-        arcpy.AddMessage('---- Classes de relacionamento ----')
-
-        def create_rel_class(origin, dest, out_rel_name, cardinality, is_composite,
-                              fwd_label, bwd_label, fk_field):
-            kwargs = dict(
-                relationship_type='COMPOSITE' if is_composite else 'SIMPLE',
-                forward_label=fwd_label,
-                backward_label=bwd_label,
-                message_direction='NONE',
-                cardinality=cardinality,
-                attributed='NONE',
-                # com FK explícito, usa a chave definida no modelo (ex.: "id"),
-                # não o OBJECTID interno do arcpy — ele só existe depois da
-                # inserção, então não dá pra preencher a FK com ele antes de
-                # carregar os dados. Sem FK (associação N:N / tabela de
-                # junção), o arcpy gerencia tudo internamente por OBJECTID.
-                origin_primary_key=(pk_field_name(origin) if fk_field else 'OBJECTID'))
-            if fk_field:
-                kwargs['origin_foreign_key'] = fk_field
-            arcpy.management.CreateRelationshipClass(
-                class_path(origin), class_path(dest),
-                os.path.join(gdb_path, out_rel_name), **kwargs)
-            arcpy.AddMessage('  ' + out_rel_name)
-
-        # candidatos de cobertura para a Topologia: relação espacial "dentro"
-        # OU agregação entre duas classes que têm geometria (agregação
-        # espacial) — mesma lógica de buildArcpyScript()/buildEsriXML().
-        coverage_candidates = []
-        for r in relationships:
-            a = class_by_id.get(r.get('sourceId'))
-            b = class_by_id.get(r.get('targetId'))
-            if not a or not b:
+    # -- dominios ---------------------------------------------------------
+    def create_domains(self):
+        for dom in self.doc.get("domains") or []:
+            name = dom.get("name")
+            if not name:
                 continue
-            rtype = r.get('type')
-            if rtype == 'generalization':
-                create_rel_class(b, a, pascal_ident(a['name']) + '_Generaliza_' + pascal_ident(b['name']),
-                                  'ONE_TO_ONE', True, 'é especializada por', 'especializa',
-                                  sql_ident(b['name']) + '_id')
-            elif rtype == 'aggregation':
-                create_rel_class(a, b, pascal_ident(a['name']) + '_Agrega_' + pascal_ident(b['name']),
-                                  'ONE_TO_MANY', True, 'agrega', 'é parte de',
-                                  sql_ident(a['name']) + '_id')
-                if geom_kind(a) and geom_kind(b):
-                    coverage_candidates.append({
-                        'origin': b, 'dest': a, 'predicate': 'dentro',
-                        'label': b['name'] + ' contido em ' + a['name'] + ' (agregação espacial)'})
-            elif rtype == 'network':
-                create_rel_class(a, b, pascal_ident(a['name']) + '_ConectaOrigem_' + pascal_ident(b['name']),
-                                  'ONE_TO_MANY', False, 'é origem de', 'parte de (nó origem)',
-                                  sql_ident(a['name']) + '_no_origem_id')
-                create_rel_class(a, b, pascal_ident(a['name']) + '_ConectaDestino_' + pascal_ident(b['name']),
-                                  'ONE_TO_MANY', False, 'é destino de', 'parte de (nó destino)',
-                                  sql_ident(a['name']) + '_no_destino_id')
-            elif rtype == 'association':
-                plan = association_plan(r)
-                if plan['mode'] == 'junction':
-                    create_rel_class(a, b, pascal_ident(a['name']) + '_' + pascal_ident(b['name']),
-                                      'MANY_TO_MANY', False,
-                                      r.get('name') or 'relaciona-se com',
-                                      r.get('name') or 'relaciona-se com', None)
+
+            def make(dom=dom, name=name):
+                ftype = dom.get("fieldType") or "TEXT"
+                if ftype not in FIELD_TYPES:
+                    ftype = "TEXT"
+                arcpy.management.CreateDomain(
+                    self.gdb, name, dom.get("description") or name, ftype,
+                    "CODED" if (dom.get("type") or "codedValue") == "codedValue" else "RANGE")
+                if (dom.get("type") or "codedValue") == "range":
+                    arcpy.management.SetValueForRangeDomain(
+                        self.gdb, name, dom.get("min"), dom.get("max"))
+                for pair in dom.get("values") or []:
+                    arcpy.management.AddCodedValueToDomain(
+                        self.gdb, name, pair.get("code"), pair.get("name"))
+                self.created["domains"] += 1
+
+            self.step(u"Dominio '%s'" % name, make)
+
+    # -- feature datasets -------------------------------------------------
+    def create_feature_datasets(self):
+        for fd in self.doc.get("featureDatasets") or []:
+            name = fd.get("name")
+            if not name:
+                continue
+
+            def make(fd=fd, name=name):
+                sr = self.spatial_ref(fd.get("spatialReference")) or self.default_sr()
+                arcpy.management.CreateFeatureDataset(self.gdb, name, sr)
+                self.created["featureDatasets"] += 1
+
+            self.step(u"Feature dataset '%s'" % name, make)
+
+    def default_sr(self):
+        return self.spatial_ref((self.doc.get("workspace") or {}).get("spatialReference")) \
+            or arcpy.SpatialReference(4326)
+
+    def dataset_home(self, name):
+        """Se o dataset pertence a um feature dataset, e la que ele nasce."""
+        for fd in self.doc.get("featureDatasets") or []:
+            if name in (fd.get("items") or []):
+                return os.path.join(self.gdb, fd.get("name"))
+        return self.gdb
+
+    # -- datasets e campos ------------------------------------------------
+    def create_datasets(self):
+        for ds in self.doc.get("datasets") or []:
+            name = ds.get("name")
+            kind = ds.get("kind")
+            if not name:
+                continue
+
+            # TIN/Raster/LAS dependem de dados de entrada — reportar, nao criar.
+            if ds.get("status") == "placeholder" or kind in ("tinDataset", "rasterDataset", "lasDataset"):
+                self.skipped.append(
+                    u"%s (%s): nao criado — depende de dados de entrada. %s"
+                    % (name, kind, " ".join(ds.get("notes") or [])))
+                continue
+
+            home = self.dataset_home(name)
+
+            def make(ds=ds, name=name, kind=kind, home=home):
+                if kind == "featureClass":
+                    geom = (ds.get("geometryType") or "POINT").upper()
+                    if geom not in GEOMETRY_TYPES:
+                        self.warn(u"%s: geometria '%s' desconhecida; usando POINT." % (name, geom))
+                        geom = "POINT"
+                    # dentro de um feature dataset o SR e o do dataset
+                    sr = None if home != self.gdb else (
+                        self.spatial_ref(ds.get("spatialReference")) or self.default_sr())
+                    has_m = "ENABLED" if ds.get("hasM") else "DISABLED"
+                    has_z = "ENABLED" if ds.get("hasZ") else "DISABLED"
+                    arcpy.management.CreateFeatureclass(
+                        home, name, geom, None, has_m, has_z, sr)
                 else:
-                    fk_class = class_by_id.get(plan['fkOn'])
-                    ref_class = class_by_id.get(plan['refTo'])
-                    if fk_class and ref_class:
-                        create_rel_class(ref_class, fk_class,
-                                          pascal_ident(ref_class['name']) + '_' + pascal_ident(fk_class['name']),
-                                          'ONE_TO_MANY', False,
-                                          r.get('name') or 'relaciona-se com',
-                                          r.get('name') or 'relaciona-se com',
-                                          sql_ident(ref_class['name']) + '_id')
-            elif rtype == 'spatial':
-                topo_rule = r.get('topoRule')
-                label = a['name'] + ' ' + TOPO_RULE_LABEL.get(topo_rule, topo_rule or '') + ' ' + b['name']
-                if geom_kind(a) and geom_kind(b):
-                    coverage_candidates.append({'origin': a, 'dest': b, 'predicate': topo_rule, 'label': label})
-                else:
-                    coverage_candidates.append({'origin': a, 'dest': b, 'predicate': topo_rule,
-                                                 'label': label, 'noGeom': True})
+                    arcpy.management.CreateTable(home, name)
+                self.paths[name] = os.path.join(home, name)
+                self.created["datasets"] += 1
+                if ds.get("alias"):
+                    try:
+                        arcpy.management.AlterAliasName(self.paths[name], ds.get("alias"))
+                    except Exception:
+                        pass
 
-        # ---- Topologia ----
-        if fds_path and coverage_candidates:
-            arcpy.AddMessage('---- Topologia ----')
-            arcpy.AddMessage(
-                'O vocabulário de regras do ArcGIS é quase todo negativo/de cobertura '
-                '("não pode sobrepor", "deve estar coberto por/dentro de"); não existe regra '
-                'para "deve tocar", "deve sobrepor" ou "deve cruzar" — esses predicados aparecem '
-                'só como aviso abaixo, não como regra criada.')
-            topo_name = fds_name + '_Topology'
-            topo_path = os.path.join(fds_path, topo_name)
-            arcpy.management.CreateTopology(fds_path, topo_name)
-            added = set()
+            if self.step(u"Dataset '%s'" % name, make):
+                self.add_fields(ds)
+                self.add_globalid(ds)
+                self.add_attachments(ds)
+                self.add_editor_tracking(ds)
 
-            def add_fc(c):
-                nm = pascal_ident(c['name'])
-                if nm not in added:
-                    added.add(nm)
-                    arcpy.management.AddFeatureClassToTopology(topo_path, os.path.join(fds_path, nm), 1, 1)
+    def add_fields(self, ds):
+        name = ds.get("name")
+        table = self.paths.get(name)
+        if not table:
+            return
+        for f in ds.get("fields") or []:
+            fname = f.get("name")
+            if not fname:
+                continue
 
-            for cand in coverage_candidates:
-                if not cand.get('noGeom'):
-                    add_fc(cand['origin'])
-                    add_fc(cand['dest'])
+            def make(f=f, fname=fname, table=table, name=name):
+                ftype = (f.get("type") or "TEXT").upper()
+                if ftype not in FIELD_TYPES:
+                    self.warn(u"%s.%s: tipo '%s' desconhecido; usando TEXT." % (name, fname, ftype))
+                    ftype = "TEXT"
+                arcpy.management.AddField(
+                    table, fname, ftype,
+                    f.get("precision"), f.get("scale"), f.get("length"),
+                    f.get("alias") or fname,
+                    "NULLABLE" if f.get("nullable", True) else "NON_NULLABLE",
+                    "NON_REQUIRED",
+                    f.get("domain"))
+                self.created["fields"] += 1
+                default = f.get("default")
+                if default not in (None, ""):
+                    arcpy.management.AssignDefaultToField(table, fname, default)
 
-            for cand in coverage_candidates:
-                if cand.get('noGeom'):
-                    arcpy.AddWarning(cand['label'] + ' — uma das classes não tem geometria; sem regra de topologia.')
+            self.step(u"Campo '%s.%s'" % (name, fname), make)
+
+    def add_globalid(self, ds):
+        # GlobalID existe so para as attribute rules (exigencia do ArcGIS,
+        # ERROR 002710). Sem regras, nao cria.
+        if not self.do_rules:
+            return
+        if "GLOBALID" not in [s.upper() for s in (ds.get("systemFields") or [])]:
+            return
+        table = self.paths.get(ds.get("name"))
+        if not table:
+            return
+        self.step(u"GlobalID em '%s'" % ds.get("name"),
+                  lambda: arcpy.management.AddGlobalIDs(table))
+
+    def add_attachments(self, ds):
+        """Atributo Blob do modelo logico = anexos no GDB (tabela __ATTACH)."""
+        att = ds.get("attachments")
+        table = self.paths.get(ds.get("name"))
+        if not att or not table:
+            return
+
+        def make():
+            arcpy.management.EnableAttachments(table)
+            self.created["attachments"] = self.created.get("attachments", 0) + 1
+            self.info(u"  %s: anexos habilitados (%s)." % (ds.get("name"), ", ".join(att.get("fields") or [])))
+
+        self.step(u"Anexos em '%s'" % ds.get("name"), make)
+
+    def add_editor_tracking(self, ds):
+        """Controle de edicoes do modelo logico = Editor Tracking."""
+        et = ds.get("editorTracking")
+        table = self.paths.get(ds.get("name"))
+        if not et or not table:
+            return
+
+        def make():
+            arcpy.management.EnableEditorTracking(
+                table, et.get("creatorField"), et.get("creationDateField"),
+                et.get("lastEditorField"), et.get("lastEditDateField"),
+                "ADD_FIELDS", et.get("recordDatesIn") or "UTC")
+            self.created["editorTracking"] = self.created.get("editorTracking", 0) + 1
+
+        self.step(u"Controle de edicoes em '%s'" % ds.get("name"), make)
+
+    def create_indexes(self):
+        for ds in self.doc.get("datasets") or []:
+            table = self.paths.get(ds.get("name"))
+            if not table:
+                continue
+            for idx in ds.get("indexes") or []:
+                fields = idx.get("fields") or []
+                if not fields:
                     continue
-                cat_a = geom_category(cand['origin'])
-                cat_b = geom_category(cand['dest'])
-                mapped = topology_rule_for(cand['predicate'], cat_a, cat_b)
-                if mapped:
-                    arcpy.management.AddRuleToTopology(
-                        topo_path, mapped['rule'],
-                        os.path.join(fds_path, pascal_ident(cand['origin']['name'])), '',
-                        os.path.join(fds_path, pascal_ident(cand['dest']['name'])), '')
-                    msg = 'Regra de topologia: ' + cand['label']
-                    if mapped.get('caveat'):
-                        msg += ' (' + mapped['caveat'] + ')'
-                    arcpy.AddMessage(msg)
+
+                def make(idx=idx, fields=fields, table=table):
+                    # Indice unico so existe em enterprise geodatabase; em File
+                    # GDB a unicidade vem da attribute rule (ver create_attribute_rules).
+                    arcpy.management.AddIndex(
+                        table, fields, idx.get("name"), "NON_UNIQUE", "NON_ASCENDING")
+                    self.created["indexes"] += 1
+
+                self.step(u"Indice '%s'" % idx.get("name"), make)
+
+    # -- relationship classes ---------------------------------------------
+    def create_relationship_classes(self):
+        for rc in self.doc.get("relationshipClasses") or []:
+            name = rc.get("name")
+            origin = self.paths.get(rc.get("origin"))
+            dest = self.paths.get(rc.get("destination"))
+            if not name:
+                continue
+            if not origin or not dest:
+                self.warn(u"Relationship class '%s': origem ou destino nao foi criado (%s -> %s)."
+                          % (name, rc.get("origin"), rc.get("destination")))
+                continue
+            opk = rc.get("originPrimaryKey")
+            ofk = rc.get("originForeignKey")
+            card = (rc.get("cardinality") or "ONE_TO_MANY").upper()
+            dpk = rc.get("destinationPrimaryKey")
+            dfk = rc.get("destinationForeignKey")
+            if card == "MANY_TO_MANY":
+                # Num M:N nao ha chave estrangeira direta: o ArcGIS cria a
+                # tabela intermediaria e origin/destination foreign key sao as
+                # COLUNAS DELA. O que precisa existir sao as duas PKs.
+                if not opk or not dpk:
+                    self.warn(u"Relationship class '%s' (M:N) nao criada: as duas classes "
+                              u"precisam de PK (origem='%s', destino='%s')." % (name, opk, dpk))
+                    continue
+            elif not opk or not ofk:
+                self.warn(u"Relationship class '%s' nao criada: falta chave (PK='%s', FK='%s'). "
+                          u"Defina a PK na classe de origem e o atributo FK no destino."
+                          % (name, opk, ofk))
+                continue
+
+            if card != "MANY_TO_MANY":
+                # O ArcGIS so liga PK e FK do mesmo tipo; sem isso o erro e o
+                # obscuro ERROR 000800 "The value is not a member of ...".
+                t_pk = self.field_type(origin, opk)
+                t_fk = self.field_type(dest, ofk)
+                if t_pk is None or t_fk is None:
+                    self.warn(u"Relationship class '%s' nao criada: campo '%s' em '%s' ou '%s' em '%s' nao existe."
+                              % (name, opk, rc.get("origin"), ofk, rc.get("destination")))
+                    continue
+                if t_pk != t_fk:
+                    self.warn(u"Relationship class '%s' nao criada: a PK %s.%s e %s e a FK %s.%s e %s — "
+                              u"precisam ter o mesmo tipo." % (name, rc.get("origin"), opk, t_pk,
+                                                                rc.get("destination"), ofk, t_fk))
+                    continue
+
+            def make(rc=rc, name=name, origin=origin, dest=dest,
+                     opk=opk, ofk=ofk, dpk=dpk, dfk=dfk, card=card):
+                rtype = (rc.get("type") or "SIMPLE").upper()
+                if rtype not in REL_TYPES:
+                    rtype = "SIMPLE"
+                if card not in CARDINALITIES:
+                    card = "ONE_TO_MANY"
+                # Atribuivel so quando o JSON pede. No M:N a tabela
+                # intermediaria existe de qualquer forma; atributos proprios
+                # da relacao sao modelados como classe intermediaria.
+                attributed = "ATTRIBUTED" if rc.get("attributed") == "ATTRIBUTED" else "NONE"
+                arcpy.management.CreateRelationshipClass(
+                    origin, dest, os.path.join(self.gdb, name), rtype,
+                    rc.get("forwardLabel") or name,
+                    rc.get("backwardLabel") or name,
+                    "NONE", card, attributed, opk, ofk, dpk, dfk)
+                self.created["relationshipClasses"] += 1
+                for n in rc.get("notes") or []:
+                    self.info(u"  %s: %s" % (name, n))
+
+            self.step(u"Relationship class '%s'" % name, make)
+
+    # -- topologias --------------------------------------------------------
+    def create_topologies(self):
+        for topo in self.doc.get("topologies") or []:
+            name = topo.get("name")
+            fd_name = topo.get("featureDataset")
+            if not name or not fd_name:
+                continue
+            fd = os.path.join(self.gdb, fd_name)
+            if not arcpy.Exists(fd):
+                self.warn(u"Topologia '%s': feature dataset '%s' nao existe." % (name, fd_name))
+                continue
+
+            created = []
+
+            def make(topo=topo, name=name, fd=fd, created=created):
+                tol = topo.get("clusterTolerance")
+                if tol in (None, "", "default"):
+                    arcpy.management.CreateTopology(fd, name)
                 else:
-                    arcpy.AddWarning(cand['label'] + ' — predicado sem regra de topologia equivalente no ArcGIS.')
+                    arcpy.management.CreateTopology(fd, name, tol)
+                created.append(os.path.join(fd, name))
+                self.created["topologies"] += 1
 
-            arcpy.management.ValidateTopology(topo_path, 'Full_Extent')
+            if not self.step(u"Topologia '%s'" % name, make):
+                continue
+            topo_path = created[0]
 
-            # sugestões de qualidade geométrica — nunca aplicadas automaticamente,
-            # é decisão de negócio por classe (mesmo raciocínio de
-            # generalTopologyRules() no app.js)
-            area_line = [c for c in geo_classes if geom_category(c) in ('area', 'line')]
-            if area_line:
-                arcpy.AddMessage(
-                    'Sugestão (não aplicada automaticamente — avalie caso a caso na aba '
-                    'Topologia do ArcGIS Pro): ' + ', '.join(
-                        c['name'] + ' (' + general_topology_suggestion(geom_category(c)) + ')'
-                        for c in area_line))
+            for fc_name in topo.get("featureClasses") or []:
+                fc = self.paths.get(fc_name)
+                if not fc:
+                    self.warn(u"Topologia '%s': '%s' nao foi criada." % (name, fc_name))
+                    continue
+                self.step(u"Topologia '%s' + '%s'" % (name, fc_name),
+                          lambda fc=fc: arcpy.management.AddFeatureClassToTopology(topo_path, fc, 1, 1))
 
-        parameters[3].value = gdb_path
-        arcpy.AddMessage('Esquema criado com sucesso em: ' + gdb_path)
+            for rule in topo.get("rules") or []:
+                rtype = rule.get("rule")
+                fc1 = self.paths.get(rule.get("origin"))
+                fc2 = self.paths.get(rule.get("destination"))
+                if not rtype or not fc1:
+                    continue
+
+                def add_rule(rtype=rtype, fc1=fc1, fc2=fc2, rule=rule):
+                    # regra de uma classe so (Must Not Overlap, Must Not Have Gaps)
+                    # nao leva a segunda feature class
+                    if fc2 and fc2 != fc1:
+                        arcpy.management.AddRuleToTopology(topo_path, rtype, fc1, "", fc2, "")
+                    else:
+                        arcpy.management.AddRuleToTopology(topo_path, rtype, fc1)
+
+                self.step(u"Regra '%s' (%s -> %s)" % (rtype, rule.get("origin"), rule.get("destination")),
+                          add_rule)
+
+            self.step(u"Validar topologia '%s'" % name,
+                      lambda: arcpy.management.ValidateTopology(topo_path))
+
+    # -- attribute rules ---------------------------------------------------
+    def create_attribute_rules(self):
+        for rule in self.doc.get("attributeRules") or []:
+            name = rule.get("name")
+            table = self.paths.get(rule.get("dataset"))
+            script = rule.get("arcade")
+            if not name or not table or not script:
+                continue
+            if script.strip().startswith("//"):
+                # marcador do gerador para um caso sem equivalente executavel
+                self.skipped.append(u"Attribute rule '%s': %s" % (name, script.strip()))
+                continue
+
+            def make(rule=rule, name=name, table=table, script=script):
+                rtype = (rule.get("type") or "CONSTRAINT").upper()
+                if rtype not in ("CALCULATION", "CONSTRAINT", "VALIDATION"):
+                    rtype = "CONSTRAINT"
+                triggers = [t.upper() for t in (rule.get("triggers") or ["INSERT", "UPDATE"])]
+                kwargs = dict(
+                    in_table=table, name=name, type=rtype, script_expression=script,
+                    description=rule.get("description") or name)
+                # Validation roda em lote (Validate -> Error Inspector): nao tem
+                # eventos de disparo.
+                if rtype == "VALIDATION":
+                    kwargs["batch"] = "BATCH"
+                    kwargs["error_number"] = 9998
+                    # obrigatorio em validation rule: 1 (mais grave) a 5
+                    kwargs["severity"] = int(rule.get("severity") or 3)
+                    kwargs["error_message"] = rule.get("description") or name
+                else:
+                    kwargs["triggering_events"] = triggers
+                # So a regra de calculo aceita campo associado; em constraint
+                # o ArcGIS recusa (ERROR 002543).
+                if rtype == "CALCULATION" and rule.get("field"):
+                    kwargs["field"] = rule.get("field")
+                if rtype == "CONSTRAINT":
+                    kwargs["error_number"] = 9999
+                    kwargs["error_message"] = rule.get("description") or name
+                elif rtype == "CALCULATION":
+                    kwargs["is_editable"] = "NONEDITABLE"
+                arcpy.management.AddAttributeRule(**kwargs)
+                self.created["rules"] += 1
+
+            self.step(u"Attribute rule '%s'" % name, make)
+
+    # -- relatorio ---------------------------------------------------------
+    # -- metadados -----------------------------------------------------------
+    def apply_metadata(self, label, path, meta):
+        """Preenche o Item Description (titulo, resumo, descricao, tags,
+        creditos) de um item. Falha isolada: vira aviso e segue."""
+        if not meta or not path:
+            return
+        if not arcpy.Exists(path):
+            return
+
+        def make():
+            from arcpy import metadata as md
+            m = md.Metadata(path)
+            if meta.get("title"):
+                m.title = meta["title"]
+            if meta.get("summary"):
+                m.summary = meta["summary"]
+            if meta.get("description"):
+                m.description = meta["description"]
+            tags = meta.get("tags") or []
+            if tags:
+                m.tags = u", ".join([t for t in tags if t])
+            if meta.get("credits"):
+                m.credits = meta["credits"]
+            m.save()
+            self.created["metadata"] = self.created.get("metadata", 0) + 1
+
+        self.step(u"Metadados de %s" % label, make)
+
+    # -- Schema Report (a ferramenta da propria Esri, sobre a GDB criada) ----
+    def schema_report(self):
+        fn = getattr(arcpy.management, "GenerateSchemaReport", None)
+        if fn is None:
+            self.warn(u"Schema Report nao gerado: a ferramenta Generate Schema Report "
+                      u"so existe a partir do ArcGIS Pro 3.1.")
+            return
+        base = os.path.splitext(os.path.basename(self.gdb))[0] + "_SchemaReport"
+
+        def make():
+            fn(self.gdb, self.out_folder, base, self.report_formats)
+            self.info(u"Schema Report (%s): %s" % (", ".join(self.report_formats),
+                                                   os.path.join(self.out_folder, base)))
+
+        self.step(u"Schema Report", make)
+
+    def write_metadata(self):
+        self.apply_metadata(u"'%s' (geodatabase)" % os.path.basename(self.gdb), self.gdb,
+                            (self.doc.get("workspace") or {}).get("metadata"))
+        for fd in self.doc.get("featureDatasets") or []:
+            self.apply_metadata(u"'%s'" % fd.get("name"), os.path.join(self.gdb, fd.get("name") or ""),
+                                fd.get("metadata"))
+        for ds in self.doc.get("datasets") or []:
+            self.apply_metadata(u"'%s'" % ds.get("name"), self.paths.get(ds.get("name")), ds.get("metadata"))
+        for rc in self.doc.get("relationshipClasses") or []:
+            self.apply_metadata(u"'%s'" % rc.get("name"), os.path.join(self.gdb, rc.get("name") or ""),
+                                rc.get("metadata"))
+        for t in self.doc.get("topologies") or []:
+            self.apply_metadata(u"'%s'" % t.get("name"),
+                                os.path.join(self.gdb, t.get("featureDataset") or "", t.get("name") or ""),
+                                t.get("metadata"))
+
+    def report(self):
+        self.info(u"")
+        self.info(u"===== Resumo =====")
+        for key, label in [("domains", u"dominios"), ("featureDatasets", u"feature datasets"),
+                           ("datasets", u"datasets"), ("fields", u"campos"),
+                           ("indexes", u"indices"), ("relationshipClasses", u"relationship classes"),
+                           ("topologies", u"topologias"), ("rules", u"attribute rules"),
+                           ("attachments", u"classes com anexos"),
+                           ("editorTracking", u"controle de edicoes"),
+                           ("metadata", u"itens com metadados")]:
+            self.info(u"  %-22s %d" % (label, self.created.get(key, 0)))
+
+        nets = self.doc.get("networks") or []
+        if nets:
+            self.info(u"")
+            self.info(u"Redes declaradas (nao criadas — exigem Network Analyst e configuracao):")
+            for net in nets:
+                arcos = ", ".join([e.get("class", "") for e in net.get("edges") or []])
+                juncs = ", ".join([j.get("class", "") for j in net.get("junctions") or []])
+                self.info(u"  %s | arcos: %s | juncoes: %s" % (net.get("name"), arcos, juncs))
+
+        if self.skipped:
+            self.info(u"")
+            self.info(u"Itens nao criados:")
+            for s in self.skipped:
+                self.info(u"  - %s" % s)
+
+        warnings = self.doc.get("warnings") or []
+        if warnings:
+            self.info(u"")
+            self.info(u"Avisos vindos do modelo (o que nao coube 1:1 no GDB):")
+            for w in warnings:
+                self.info(u"  - %s: %s" % (w.get("on"), w.get("message")))
+
+        unmapped = self.doc.get("unmapped") or []
+        if unmapped:
+            self.info(u"")
+            self.info(u"Sem equivalente no GDB:")
+            for u in unmapped:
+                self.info(u"  - %s (%s): %s" % (u.get("on"), u.get("omtg"), u.get("reason")))
+
+        if self.problems:
+            self.info(u"")
+            self.warn(u"%d item(ns) falharam — veja os avisos acima." % len(self.problems))

@@ -455,12 +455,12 @@
   .seg button:last-child{ border-right:none; }
   .seg button.active{ background:var(--accent); color:var(--accent-ink); }
 
-  .attr-table{ width:100%; border-collapse:collapse; margin-top:4px; }
+  .attr-table{ width:100%; border-collapse:collapse; margin-top:4px; table-layout:auto; }
   .attr-table th{ text-align:left; font-size:12.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; padding:0 4px 4px; font-weight:600;}
   .attr-table td{ padding:3px 3px; vertical-align:middle; }
-  .attr-table input[type=text]{ font-size:13px; padding:5px 6px; }
-  .attr-table select{ font-size:12.5px; padding:5px 4px; }
-  .attr-table input[type=checkbox]{ width:15px; height:15px; }
+  .attr-table input[type=text]{ font-size:13px; padding:5px 6px; width:100%; min-width:64px; box-sizing:border-box; }
+  .attr-table select{ font-size:12.5px; padding:5px 3px; width:100%; min-width:58px; box-sizing:border-box; }
+  .attr-table input[type=checkbox]{ width:15px; height:15px; margin:0; display:block; }
   .attr-add{ width:100%; margin-top:8px; justify-content:center; }
   .inspector-empty{ padding:30px 18px; text-align:center; color:var(--muted); font-size:12.5px; line-height:1.6; }
   .inspector-empty .ic{ width:30px; height:30px; margin:0 auto 10px; opacity:.5; }
@@ -524,6 +524,8 @@
       <button class="btn ghost icon-only" id="btnRedo" title="Refazer (Ctrl+Shift+Z)" disabled>↷</button>
     </div>
     <button class="btn ghost" id="btnValidate" title="Verificar o modelo (desenho + regras do OMT-G)">✓ Validação</button>
+    <button class="btn ghost active" id="btnConceptualModel" title="Modelo Conceitual">Modelo Conceitual</button>
+    <button class="btn ghost" id="btnLogicalModel" title="Modelo Lógico">Modelo Lógico</button>
     <div class="spacer"></div>
     <div class="btnrow">
       <button class="btn ghost" id="btnGrid" title="Mostrar/ocultar grade">Grid</button>
@@ -701,14 +703,15 @@ function sqlIdent(s){ return String(s||'').trim().toLowerCase().normalize('NFD')
 function pascalIdent(s){ return String(s||'').trim().replace(/[^a-zA-Z0-9]+/g,' ').split(' ').filter(Boolean).map(w=>w[0].toUpperCase()+w.slice(1)).join('') || 'SemNome'; }
 
 /* ---------- domain constants ---------- */
+// Round BB item 2a: the exact 5 types requested for Lógico attributes —
+// only used by buildAttrTable's Lógico branch (Conceitual attributes have
+// no type field at all).
 const ATTR_TYPES = [
   {id:'text', label:'Texto'},
   {id:'integer', label:'Inteiro'},
   {id:'double', label:'Decimal'},
-  {id:'date', label:'Data'},
-  {id:'datetime', label:'Data/Hora'},
   {id:'boolean', label:'Booleano'},
-  {id:'blob', label:'Binário (blob)'}
+  {id:'date', label:'Data'}
 ];
 const ATTR_TYPE_LABEL = Object.fromEntries(ATTR_TYPES.map(t=>[t.id,t.label]));
 
@@ -737,6 +740,59 @@ const GEO_FIELD_PRIMITIVES = [
   {id:'partition', label:'Subdivisão Planar', short:'Subdivisão Planar', hint:'Geo-campo representado por polígonos que particionam o espaço sem sobreposição nem lacunas (ex.: zoneamento, tipos de solo).'}
 ];
 const ALL_PRIMITIVE_LABEL = Object.fromEntries([...GEO_OBJECT_PRIMITIVES, ...GEO_FIELD_PRIMITIVES].map(p=>[p.id,p.label]));
+/* Round CC items 7/8 ("Operações", per OMT-G): the 21 "transformation to
+   representation" operators from Borges/Davis/Laender, Table 5 — 7 Geometric
+   + 7 Map Generalization + 7 Spatial Analysis operators, in the paper's own
+   order. Each operator's `primitives` list restricts which geometric
+   primitives it applies to. The paper itself does NOT provide an explicit
+   operator→primitive compatibility table — this mapping is our own
+   inference from each operator's textual definition in Table 5, not a
+   table transcribed from the document. */
+const ALL_GEO_PRIMITIVE_IDS = [...GEO_OBJECT_PRIMITIVES, ...GEO_FIELD_PRIMITIVES].map(p=>p.id);
+const OPERATION_GROUPS = [
+  {id:'geometric', label:'Operadores Geométricos'},
+  {id:'generalization', label:'Generalização Cartográfica'},
+  {id:'analysis', label:'Análise Espacial'}
+];
+const OPERATIONS = [
+  // --- Geometric Operators ---
+  {id:'centroid', label:'Determinação de centroide', group:'geometric', primitives:['polygon']},
+  {id:'convexhull', label:'Fecho convexo', group:'geometric', primitives:['point','line','polygon']},
+  {id:'delaunay', label:'Triangulação de Delaunay', group:'geometric', primitives:['point']},
+  {id:'isoline', label:'Geração de isolinhas', group:'geometric', primitives:['tin','tessellation','sample']},
+  {id:'polytriangulation', label:'Triangulação de polígonos', group:'geometric', primitives:['polygon']},
+  {id:'skeletonization', label:'Esqueletização', group:'geometric', primitives:['polygon']},
+  {id:'voronoi', label:'Diagrama de Voronoi', group:'geometric', primitives:['point']},
+  // --- Map Generalization Operators ---
+  {id:'aggregation', label:'Agregação', group:'generalization', primitives:['point']},
+  {id:'amalgamation', label:'Amalgamação', group:'generalization', primitives:['polygon']},
+  {id:'collapse', label:'Colapso', group:'generalization', primitives:['polygon','line']},
+  {id:'linemerge', label:'Fusão de linhas', group:'generalization', primitives:['line','unidirectional','bidirectional']},
+  {id:'refinement', label:'Refinamento', group:'generalization', primitives:['point','line','polygon']},
+  {id:'simplification', label:'Simplificação', group:'generalization', primitives:['line','polygon','unidirectional','bidirectional']},
+  {id:'smoothing', label:'Suavização', group:'generalization', primitives:['line','polygon','unidirectional','bidirectional']},
+  // --- Spatial Analysis Operators ---
+  {id:'buffer', label:'Construção de buffer', group:'analysis', primitives:['point','line','polygon']},
+  {id:'classification', label:'Classificação', group:'analysis', primitives:[...ALL_GEO_PRIMITIVE_IDS]},
+  {id:'gridanalysis', label:'Análise de grade', group:'analysis', primitives:['tessellation','sample']},
+  {id:'polyoverlay', label:'Sobreposição de polígonos', group:'analysis', primitives:['polygon','partition']},
+  {id:'selection', label:'Seleção', group:'analysis', primitives:[...ALL_GEO_PRIMITIVE_IDS]},
+  {id:'interpolation', label:'Interpolação espacial', group:'analysis', primitives:['sample','tin']},
+  {id:'surfaceanalysis', label:'Análise de superfície', group:'analysis', primitives:['tin','tessellation']}
+];
+function operationsForPrimitive(primitive){
+  return OPERATIONS.filter(op=>op.primitives.includes(primitive));
+}
+const OPERATION_LABEL = Object.fromEntries(OPERATIONS.map(o=>[o.id,o.label]));
+// Items 5/6 ("campos obrigatórios podem aparecer com o asterisco no nome...
+// campos únicos pode usar um caractere também... faça o mesmo com campos que
+// não podem ser nulo"): one small mark per independent Lógico flag, reused
+// identically on the canvas card and as the toggle buttons in the attribute
+// table (buildAttrTable) so the two stay visually tied together. Never shown
+// for the PK attribute itself — a PK is always required+unique+não nulo by
+// rule (see pkChk), so the three marks there would just repeat what the key
+// glyph already says.
+const ATTR_FLAG_MARK = { required:'*', unique:'†', notNull:'‡' };
 /* The 9 official OMT-G spatial relations (Borges/Davis/Laender, Table 2):
    5 basic (touch, in, cross, overlap, disjoint) + 4 special cases (adjacent
    to, coincide, contain, near) derived from them. "em frente" (in front of)
@@ -1083,12 +1139,67 @@ let spaceHeld = false; // Space held = the background-drag gesture pans instead 
 let activeRightTab = 'prop';
 let gridVisible = true; // Round U item 15: toggled by #btnGrid ("Grid")
 // Round X item 1 ("apaga tudo que tem do lógico... vou recriar ela"): the
-// Lógica page (tables, columns, PK/FK, FK-drag, evolveToLogical, the whole
-// logical/* state and every function under "logical canvas" below) has
-// been removed entirely, at the user's explicit request, rather than left
-// half-disabled — this app is conceptual-only until it's rebuilt from
-// scratch. activePage/logicalSelection/colDrag/logicalColRects and every
-// state.logical reference are gone with it.
+// old Lógica page (tables, columns, PK/FK, FK-drag, evolveToLogical, the
+// whole logical/* state and its own canvas/rails) was removed entirely, at
+// the user's explicit request, rather than left half-disabled.
+// Round Y ("Modelo Lógico" button, ao lado de Validação): explicitly NOT a
+// rebuild of that old page. The user was clear this has to stay IDENTICAL
+// to the conceptual model in every visual/behavioral way — same geo-objeto/
+// convencional cards, same relationship types/rules/hover/reading examples,
+// same sizes, same arrows, "tudo é tudo". renderClassList/renderRelList/
+// renderCanvas/renderInspector still ignore logicalMode completely — no
+// rendering branch exists for it anywhere.
+// Round AA ("quero que eles fiquem independentes, o que eu mudar no lógico
+// não se reflete no conceitual"): what DOES change now is the DATA each mode
+// edits. state.classes/state.relationships always hold whichever model is
+// currently on screen — every function that reads/writes them (there are
+// dozens: buildNode, addClassAt, deleteClass, drag handlers, connDrag,
+// createRelationship, validation...) keeps working completely unmodified,
+// unaware anything changed. conceptualModel/logicalModel below stash the
+// SIDE NOT currently active; setLogicalMode() swaps state.classes/
+// state.relationships to point at the other side's arrays on every switch,
+// re-capturing whichever arrays are live at that moment first (so deletions
+// that reassign state.classes = state.classes.filter(...) aren't lost).
+// logicalModel starts null and is created once, the first time the user
+// ever switches into Lógico, as a deep clone of the conceptual data at that
+// exact moment — from then on the two evolve completely independently
+// (editing a class/attribute/relationship on one side never touches the
+// other). Persistence (autosave + "Exportar para > JSON") always uses the
+// CONCEPTUAL side regardless of which mode is on screen — see
+// persistableState() near scheduleAutosave — so for now Lógico's
+// independent edits are a same-session sandbox: they don't survive a page
+// reload and aren't included in the exported .json. Switching modes also
+// resets undo/redo (historyInit()) so you can't undo across the boundary
+// into the other model's unrelated history.
+let logicalMode = false;
+let conceptualModel = null; // {classes, relationships} — stashed here while logicalMode is true
+let logicalModel = null; // {classes, relationships} — stashed here while logicalMode is false; null until first entered
+function syncModeButtons(){
+  const bl = document.getElementById('btnLogicalModel');
+  const bc = document.getElementById('btnConceptualModel');
+  if(bl) bl.classList.toggle('active', logicalMode);
+  if(bc) bc.classList.toggle('active', !logicalMode);
+}
+function setLogicalMode(v){
+  if(v===logicalMode){ renderClassList(); renderRelList(); renderCanvas(); renderInspector(); return; }
+  if(v){
+    conceptualModel = {classes: state.classes, relationships: state.relationships};
+    if(!logicalModel){
+      logicalModel = {classes: JSON.parse(JSON.stringify(state.classes)), relationships: JSON.parse(JSON.stringify(state.relationships))};
+    }
+    state.classes = logicalModel.classes;
+    state.relationships = logicalModel.relationships;
+  } else {
+    logicalModel = {classes: state.classes, relationships: state.relationships};
+    state.classes = conceptualModel.classes;
+    state.relationships = conceptualModel.relationships;
+  }
+  logicalMode = v;
+  selection = {type:null,id:null}; multiSelect = new Set(); connDrag = null; anchorDrag = null; marquee = null;
+  syncModeButtons();
+  touch(); fitView();
+  historyInit();
+}
 
 /* ---------- undo/redo history ---------- */
 // Snapshots are whole-state JSON strings. historyBaseline is the state as of
@@ -1192,6 +1303,12 @@ function addClassAt(kind, x, y, geoType, primitive){
 function deleteClass(id){
   state.classes = state.classes.filter(c=>c.id!==id);
   state.relationships = state.relationships.filter(r=>r.sourceId!==id && r.targetId!==id);
+  // Round BB: drop any Lógico FK attribute that referenced this now-deleted
+  // class (a.fkRefClassId only exists on Lógico attributes — see
+  // buildAttrTable — so this is a no-op for Conceitual classes).
+  state.classes.forEach(c=> (c.attributes||[]).forEach(a=>{
+    if(a.fkRefClassId===id){ a.fk=false; a.fkRefClassId=null; a.fkRefAttrId=null; }
+  }));
   if(selection.type==='class' && selection.id===id) selection = {type:null,id:null};
   touch();
 }
@@ -1268,8 +1385,20 @@ function syncMergeGroupSiblings(r, fields){
 }
 function selectClass(id){ selection = {type:'class', id}; multiSelect = new Set(); switchRightTab('prop'); touch(); }
 
-/* ---------- copy / paste (item 5, 2nd round) ---------- */
+/* ---------- copy / paste (item 5, 2nd round; extended Round CC item 1) ---------- */
 let classClipboard = []; // deep-cloned class objects (ids kept, but re-issued on paste)
+// Round CC item 1 ("quero usar isso para levar coisas do conceitual para o
+// lógico"): Ctrl+C/Ctrl+V already worked across modes with no change needed
+// — copySelection/pasteClipboard only ever read/write whichever array
+// state.classes currently points at (Conceitual or Lógico — see the
+// "independent models" comment by `let logicalMode`), and the clipboard
+// itself lives outside `state`, so copying while on Conceitual and pasting
+// after switching to Lógico already carried a class over. What's new here:
+// copying now also brings along any relationship whose BOTH ends are among
+// the copied classes, so selecting two related classes and pasting them
+// into Lógico brings the relationship between them too, not just two
+// disconnected boxes.
+let relClipboard = []; // deep-cloned relationships whose both ends were in the copied class set
 function classesForClipboard(){
   if(multiSelect.size>=2) return [...multiSelect].map(id=>state.classes.find(c=>c.id===id)).filter(Boolean);
   if(selection.type==='class'){ const c = state.classes.find(x=>x.id===selection.id); return c ? [c] : []; }
@@ -1278,28 +1407,66 @@ function classesForClipboard(){
 function copySelection(){
   const cs = classesForClipboard();
   if(!cs.length) return;
+  const idSet = new Set(cs.map(c=>c.id));
   classClipboard = cs.map(c=>JSON.parse(JSON.stringify(c)));
-  toast(cs.length>1 ? (cs.length+' classes copiadas.') : 'Classe copiada.');
+  relClipboard = state.relationships.filter(r=> idSet.has(r.sourceId) && idSet.has(r.targetId)).map(r=>JSON.parse(JSON.stringify(r)));
+  let msg = cs.length>1 ? (cs.length+' classes copiadas.') : 'Classe copiada.';
+  if(relClipboard.length) msg += ' ('+relClipboard.length+' relacionamento'+(relClipboard.length>1?'s':'')+' junto'+(relClipboard.length>1?'s':'')+')';
+  toast(msg);
 }
 function pasteClipboard(){
   if(!classClipboard.length) return;
   // Same "base name" / "base name 2" dedupe as creating a brand-new class
   // (item 1) — a pasted class is named against whatever already exists.
+  const idMap = {}; // old class id -> new class id, for classes in THIS paste batch only
+  const attrIdMap = {}; // old attribute id -> new attribute id, same scope
   const newIds = [];
   classClipboard.forEach(src=>{
     const existing = new Set(state.classes.map(c=>c.name));
     const nc = JSON.parse(JSON.stringify(src));
+    const oldClassId = nc.id;
     nc.id = uid('c');
+    idMap[oldClassId] = nc.id;
     nc.name = uniqueName(src.name, existing);
     nc.x = (src.x||0) + 32; nc.y = (src.y||0) + 32;
-    nc.attributes = (nc.attributes||[]).map(a=>({...a, id:uid('a')}));
+    nc.attributes = (nc.attributes||[]).map(a=>{
+      const na = Object.assign({}, a);
+      const oldAttrId = na.id;
+      na.id = uid('a');
+      attrIdMap[oldAttrId] = na.id;
+      return na;
+    });
     state.classes.push(nc);
     newIds.push(nc.id);
+  });
+  // A Lógico attribute's FK pointing at ANOTHER class in this same paste
+  // batch is remapped to the new copy (so the copy references the copy, not
+  // the original); a reference to a class outside the batch — the original,
+  // still sitting untouched wherever it was — is left exactly as it was.
+  newIds.forEach(id=>{
+    const nc = state.classes.find(x=>x.id===id);
+    (nc.attributes||[]).forEach(a=>{
+      if(a.fkRefClassId && idMap[a.fkRefClassId]){
+        a.fkRefClassId = idMap[a.fkRefClassId];
+        a.fkRefAttrId = (a.fkRefAttrId && attrIdMap[a.fkRefAttrId]) ? attrIdMap[a.fkRefAttrId] : null;
+      }
+    });
+  });
+  let pastedRels = 0;
+  relClipboard.forEach(r=>{
+    const srcId = idMap[r.sourceId], tgtId = idMap[r.targetId];
+    if(!srcId || !tgtId) return;
+    const nr = JSON.parse(JSON.stringify(r));
+    nr.id = uid('r'); nr.sourceId = srcId; nr.targetId = tgtId;
+    state.relationships.push(nr);
+    pastedRels++;
   });
   if(newIds.length===1){ selection = {type:'class', id:newIds[0]}; multiSelect = new Set(); }
   else { selection = {type:null,id:null}; multiSelect = new Set(newIds); }
   touch();
-  toast(newIds.length>1 ? (newIds.length+' classes coladas.') : 'Classe colada.');
+  let msg = newIds.length>1 ? (newIds.length+' classes coladas.') : 'Classe colada.';
+  if(pastedRels) msg += ' ('+pastedRels+' relacionamento'+(pastedRels>1?'s':'')+' junto'+(pastedRels>1?'s':'')+')';
+  toast(msg);
 }
 function selectRel(id){ selection = {type:'rel', id}; switchRightTab('prop'); touch(); }
 
@@ -1660,10 +1827,23 @@ function revealConceptual(kind, id){
 }
 /* ---------- canvas rendering ---------- */
 const CARD_HEAD_H = 34;
-const CARD_ROW_H = 19;
+// Item 4 ("pode espaçar um pouco mais os atributos"): 19 -> 23.
+const CARD_ROW_H = 23;
+// Item 7 ("faltou o espaço abaixo dos atributos na classe para apresentar os
+// operadores"): OMT-G's own class notation has a third compartment —
+// name / attributes / operations — below the attributes list, same as a
+// classic UML class box. Only geo classes carry operations (they're derived
+// from the primitive), and it always reserves at least 1 row (showing
+// "(sem operações)") so the compartment's presence is consistent rather than
+// popping in only once something is picked — matching how the Atributos
+// compartment already behaves when a class has none yet.
+function classOperationsRows(c){
+  return c.kind==='geo' ? Math.max(1, (c.operations||[]).length) : 0;
+}
 function classHeight(c){
   const rows = Math.max(1, c.attributes.length);
-  return CARD_HEAD_H + rows*CARD_ROW_H + 11;
+  const opRows = classOperationsRows(c);
+  return CARD_HEAD_H + rows*CARD_ROW_H + opRows*CARD_ROW_H + 11;
 }
 const CARD_W = 208;
 const CARD_W_MAX = 560; // safety cap so one absurdly long name can't blow up the whole layout
@@ -1688,13 +1868,60 @@ function classWidth(c){
   const nameReserve = c.kind==='geo' ? (CARD_HEAD_H + 10 + 12) : PAD;
   let maxW = measureTextWidth(c.name||'', '700 15px "IBM Plex Sans"') + nameReserve;
   c.attributes.forEach(a=>{
-    const w = measureTextWidth(a.name||'', '13px "IBM Plex Mono"') + PAD;
+    // Round CC item 4: Lógico's row also carries " : Tipo" plus, for a
+    // PK/FK attribute, a small key glyph — both need room too, or the text
+    // would overflow the card. Conceitual's measurement (name only) is
+    // unchanged. Items 5/6 add the */†/‡ flag marks to the measured label
+    // too, so a required/unique/não-nulo attribute never gets clipped.
+    let marks = '';
+    if(logicalMode && !a.pk){
+      if(a.required) marks += ATTR_FLAG_MARK.required;
+      if(a.unique) marks += ATTR_FLAG_MARK.unique;
+      if(a.nullable===false) marks += ATTR_FLAG_MARK.notNull;
+    }
+    const label = logicalMode ? (a.name||'')+marks+' : '+(ATTR_TYPE_LABEL[a.type||'text']||'Texto') : (a.name||'');
+    // Item 3 ("os símbolos das chaves... quero todos deslocados então, os
+    // atributos devem ficar alinhados igualmente"): the icon slot is now
+    // reserved for every row regardless of pk/fk (see buildNode), so it must
+    // be measured for every row too, not just the ones that actually draw a
+    // key glyph.
+    const iconReserve = logicalMode ? 13 : 0;
+    const w = measureTextWidth(label, '13px "IBM Plex Mono"') + PAD + iconReserve;
     if(w>maxW) maxW = w;
   });
+  // Item 7: the Operações compartment's own labels can be the widest thing
+  // on the card (several of the 21 names run long), so they need to be
+  // measured too or the card would clip them.
+  if(c.kind==='geo'){
+    (c.operations||[]).forEach(opId=>{
+      const label = OPERATION_LABEL[opId] || opId;
+      const w = measureTextWidth(label, '13px "IBM Plex Mono"') + PAD;
+      if(w>maxW) maxW = w;
+    });
+    if(!(c.operations||[]).length){
+      const w = measureTextWidth('(sem operações)', 'italic 13px "IBM Plex Mono"') + PAD;
+      if(w>maxW) maxW = w;
+    }
+  }
   return Math.max(CARD_W, Math.min(CARD_W_MAX, Math.round(maxW)));
 }
 function topRoundedRectPath(w,h,r){
   return 'M0,'+r+' A'+r+','+r+' 0 0 1 '+r+',0 H'+(w-r)+' A'+r+','+r+' 0 0 1 '+w+','+r+' V'+h+' H0 Z';
+}
+// Round CC item 4 ("se é PK deve aparecer um desenho de chave, se FK
+// também... pode variar no símbolo da chave, cor ou forma"): one small key
+// silhouette (circle bow + shaft + tooth), solid amber for PK and a hollow
+// steel-blue outline for FK so the two read apart at a glance without
+// needing a legend. Only ever drawn in Lógico (see buildNode).
+function keyIcon(isPk){
+  const color = isPk ? '#c9971c' : '#5b8def';
+  const strokeStyle = 'stroke:'+color+';stroke-width:1.15;stroke-linecap:round';
+  const g = S('g',{});
+  g.appendChild(S('circle',{cx:0,cy:0,r:2.6, style: isPk ? ('fill:'+color) : ('fill:none;'+strokeStyle)}));
+  g.appendChild(S('line',{x1:1.8,y1:1.8,x2:7,y2:7, style:strokeStyle}));
+  g.appendChild(S('line',{x1:7,y1:7,x2:7,y2:9.3, style:strokeStyle}));
+  g.appendChild(S('line',{x1:5.3,y1:5.3,x2:5.3,y2:7.5, style:strokeStyle}));
+  return g;
 }
 function buildNode(c){
   const isSel = (selection.type==='class' && selection.id===c.id) || multiSelect.has(c.id);
@@ -1778,13 +2005,74 @@ function buildNode(c){
   g.appendChild(S('text',{class:'cname', x:nameX, y:22},[c.name]));
   g.appendChild(S('line',{class:'card-divider', x1:0,y1:CARD_HEAD_H,x2:c.w,y2:CARD_HEAD_H}));
   const attrX = 12; // conceptual attributes are just names — no key/required marker slot needed, and always start at the card's own left inset regardless of the header's icon cell
+  const attrRows = Math.max(1, c.attributes.length); // must match classHeight()'s own row count, or this divider and the ops compartment below it drift out of sync with the card's actual height
   if(!c.attributes.length){
     g.appendChild(S('text',{class:'cattr', x:attrX, y:CARD_HEAD_H+CARD_ROW_H-6, style:'fill:var(--muted);font-style:italic;'},['(sem atributos)']));
   } else {
     c.attributes.forEach((a,i)=>{
-      const y = CARD_HEAD_H + CARD_ROW_H*(i+1) - 6;
-      g.appendChild(S('text',{class:'cattr', x:attrX, y:y},[a.name]));
+      const rowTop = CARD_HEAD_H + CARD_ROW_H*i;
+      const y = rowTop + CARD_ROW_H - 6;
+      // Item 6 ("os atributos... separados por uma linha tênue"): a faint
+      // divider between consecutive attribute rows, in both modes.
+      if(i>0) g.appendChild(S('line',{x1:6, y1:rowTop, x2:c.w-6, y2:rowTop, style:'stroke:var(--border);stroke-width:1;opacity:.6;'}));
+      if(!logicalMode){
+        g.appendChild(S('text',{class:'cattr', x:attrX, y:y},[a.name || '(sem nome)']));
+        return;
+      }
+      // Round CC item 4: Lógico-only — "Nome : Tipo" (tipo mais apagado) plus
+      // a key glyph for PK/FK. The underlying pk/fk/type fields only ever
+      // exist on Lógico's own independent attributes (see buildAttrTable) —
+      // this branch never runs for a Conceitual class.
+      // Item 3 ("os símbolos das chaves... deslocam o texto. Eu quero todos
+      // deslocados então, os atributos devem ficar alinhados igualmente"):
+      // the icon slot is now reserved on EVERY row, not just pk/fk ones, so
+      // every attribute name starts at the same X regardless of whether this
+      // particular row actually draws a key glyph.
+      const textX = attrX + 13;
+      if(a.pk || a.fk){
+        const icon = keyIcon(!!a.pk);
+        icon.setAttribute('transform','translate('+(attrX+3)+','+(y-4)+')');
+        g.appendChild(icon);
+      }
+      // Items 5/6 ("campos obrigatórios podem aparecer com o asterisco...
+      // campos únicos... e faça o mesmo com campos que não podem ser
+      // nulo"): one mark per independent flag, reusing ATTR_FLAG_MARK so the
+      // canvas and the attribute-table toggle buttons agree on the same
+      // symbols. Never shown for the PK itself — see ATTR_FLAG_MARK comment.
+      let marks = '';
+      if(!a.pk){
+        if(a.required) marks += ATTR_FLAG_MARK.required;
+        if(a.unique) marks += ATTR_FLAG_MARK.unique;
+        if(a.nullable===false) marks += ATTR_FLAG_MARK.notNull;
+      }
+      const typeLabel = ATTR_TYPE_LABEL[a.type||'text'] || 'Texto';
+      const t = S('text',{class:'cattr', x:textX, y:y});
+      t.appendChild(S('tspan',{},[(a.name || '(sem nome)')+marks]));
+      t.appendChild(S('tspan',{style:'fill:var(--muted);'},[' : '+typeLabel]));
+      g.appendChild(t);
     });
+  }
+  // Item 7 ("faltou o espaço abaixo dos atributos na classe para apresentar
+  // os operadores"): a third compartment below Atributos listing this
+  // class's selected OMT-G operations — mirrors OMT-G's own class notation
+  // (nome / atributos / operações), the same shape as a classic UML class
+  // box. c.operations is shared between Conceitual and Lógico (it's a
+  // primitive-derived class property, not a Lógico-only field like pk/fk/
+  // type), so this renders identically in both modes.
+  if(c.kind==='geo'){
+    const opsTop = CARD_HEAD_H + attrRows*CARD_ROW_H;
+    g.appendChild(S('line',{class:'card-divider', x1:0,y1:opsTop,x2:c.w,y2:opsTop}));
+    const ops = c.operations||[];
+    if(!ops.length){
+      g.appendChild(S('text',{class:'cattr', x:attrX, y:opsTop+CARD_ROW_H-6, style:'fill:var(--muted);font-style:italic;'},['(sem operações)']));
+    } else {
+      ops.forEach((opId,i)=>{
+        const rowTop = opsTop + CARD_ROW_H*i;
+        const y = rowTop + CARD_ROW_H - 6;
+        if(i>0) g.appendChild(S('line',{x1:6, y1:rowTop, x2:c.w-6, y2:rowTop, style:'stroke:var(--border);stroke-width:1;opacity:.6;'}));
+        g.appendChild(S('text',{class:'cattr', x:attrX, y:y},[OPERATION_LABEL[opId]||opId]));
+      });
+    }
   }
   // connection handles — one on each side, hidden until hover; drag from one
   // to another class to create a relationship (of the type currently picked
@@ -4209,24 +4497,211 @@ function fieldCheck(label, checked, onChange){
   if(checked) inp.checked = true;
   return E('label',{class:'chk'},[inp, label]);
 }
+function buildOperationsSection(c){
+  const wrap = E('div',{class:'field', style:'margin-top:2px;'});
+  wrap.appendChild(E('label',{},['Operações']));
+  const compat = operationsForPrimitive(c.primitive);
+  if(!c.operations) c.operations = [];
+  // Defensive prune: if the primitive changed elsewhere (or was loaded from
+  // an older save) and left operations selected that no longer apply to the
+  // current primitive, drop them instead of showing stale/invisible state.
+  const compatIds = new Set(compat.map(o=>o.id));
+  const pruned = c.operations.filter(id=>compatIds.has(id));
+  if(pruned.length !== c.operations.length){ c.operations = pruned; scheduleAutosave(); }
+  if(!compat.length){
+    wrap.appendChild(E('div',{style:'color:var(--muted);font-size:11.5px;'},['Nenhuma operação prevista para esta primitiva.']));
+    return wrap;
+  }
+  OPERATION_GROUPS.forEach(g=>{
+    const ops = compat.filter(o=>o.group===g.id);
+    if(!ops.length) return;
+    wrap.appendChild(E('div',{style:'color:var(--muted);font-size:11px;margin:6px 0 2px;'},[g.label]));
+    const grid = E('div',{style:'display:flex;flex-direction:column;gap:3px;'});
+    ops.forEach(op=>{
+      const chk = E('input',{type:'checkbox', onchange:(e)=>{
+        const on = e.target.checked;
+        const set = new Set(c.operations);
+        if(on) set.add(op.id); else set.delete(op.id);
+        c.operations = [...set];
+        touch();
+      }});
+      if(c.operations.includes(op.id)) chk.checked = true;
+      grid.appendChild(E('label',{class:'chk', style:'margin-bottom:0;'},[chk, op.label]));
+    });
+    wrap.appendChild(grid);
+  });
+  return wrap;
+}
 function readout(label, value){
   return E('div',{class:'field'},[E('label',{},[label]), E('div',{class:'mono', style:'padding:6px 8px;background:var(--surface-2);border-radius:6px;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'},[value])]);
 }
 
 function buildAttrTable(c){
   const table = E('table',{class:'attr-table'});
-  table.appendChild(E('tr',{},[E('th',{},['Nome']),E('th',{})]));
+  // Round BB item 2 ("vamos implementar as coisas a mais do lógico, isso
+  // não mexe no conceitual"): the extra attribute properties — Tipo, PK,
+  // FK, Obrigatório, Permite nulo, Único — only exist while logicalMode is
+  // true, and only ever edit the Lógico model's own independent attribute
+  // objects (see the "independent models" comment by `let logicalMode`).
+  // Conceitual's attribute table below is untouched from before.
+  if(!logicalMode){
+    table.appendChild(E('tr',{},[E('th',{},['Nome']),E('th',{})]));
+    c.attributes.forEach(a=>{
+      const nameInp = E('input',{type:'text', value:a.name, placeholder:'Novo Atributo', oninput:(e)=>{ a.name=e.target.value; touch(true); }});
+      // No confirmation here (item 4, 2nd round: "para excluir atributo não
+      // precisa de confirmação") — unlike every other delete button, this one
+      // deletes immediately on a single click. Undo (Ctrl+Z) covers a mis-click.
+      const delBtn = E('button',{class:'del-x', title:'Remover atributo', html:ICONS.trash, onclick:()=>{
+        c.attributes = c.attributes.filter(x=>x.id!==a.id); touch();
+      }});
+      table.appendChild(E('tr',{},[
+        E('td',{},[nameInp]), E('td',{},[delBtn])
+      ]));
+    });
+    return table;
+  }
+  // Item 2 ("não gostei da solução de mais opções, prefiro que seja lado a
+  // lado de PK, FK"): Obrigatório/Único/Não nulo are three more columns in
+  // the SAME row as PK/FK — reusing the */†/‡ marks (ATTR_FLAG_MARK) as the
+  // column headers themselves, so the header doubles as the legend for what
+  // shows up on the canvas card. No collapsible section, no separate row.
+  // The 5 flag columns (PK/FK/*/†/‡) plus the delete button only ever hold a
+  // single small checkbox/icon each — `width:1%;white-space:nowrap` shrinks
+  // each of those columns down to that content instead of the browser's
+  // default even-split, so Nome/Tipo (the two columns that actually need
+  // room) get whatever width is left in the panel instead of the table
+  // overflowing it.
+  const narrowTh = {style:'width:1%;white-space:nowrap;text-align:center;'};
+  table.appendChild(E('tr',{},[
+    E('th',{},['Nome']), E('th',{},['Tipo']),
+    E('th',Object.assign({title:'Chave primária'},narrowTh),['PK']), E('th',Object.assign({title:'Chave estrangeira'},narrowTh),['FK']),
+    E('th',Object.assign({title:'Obrigatório'},narrowTh),[ATTR_FLAG_MARK.required]),
+    E('th',Object.assign({title:'Único'},narrowTh),[ATTR_FLAG_MARK.unique]),
+    E('th',Object.assign({title:'Não permite nulo'},narrowTh),[ATTR_FLAG_MARK.notNull]),
+    E('th',{style:'width:1%;'},[])
+  ]));
   c.attributes.forEach(a=>{
-    const nameInp = E('input',{type:'text', value:a.name, oninput:(e)=>{ a.name=e.target.value; touch(true); }});
+    const nameInp = E('input',{type:'text', value:a.name, placeholder:'Novo Atributo', oninput:(e)=>{ a.name=e.target.value; touch(true); }});
+    // Item 2e ("PK só pode ser Texto e Inteiro, o mesmo para FK"): the type
+    // dropdown itself only offers those two options while pk or fk is set —
+    // not just a validation message — so it's structurally impossible to
+    // pick an invalid type for a key attribute.
+    const restrictType = a.pk || a.fk;
+    const typeOptions = restrictType ? ATTR_TYPES.filter(t=>t.id==='text'||t.id==='integer') : ATTR_TYPES;
+    const curType = a.type || 'text';
+    const typeSel = E('select',{onchange:(e)=>{ a.type = e.target.value; touch(); }});
+    typeOptions.forEach(t=> typeSel.appendChild(E('option',{value:t.id, selected:(t.id===curType)?'':null},[t.label])));
+    // Item 2b/2g ("cada classe deve ter apenas uma PK"; "PK deve ser único,
+    // não nulo, obrigatório"): checking PK here unchecks any other PK on
+    // this same class (only one allowed) and force-sets unique/required/
+    // not-nulo on this attribute — the three checkboxes below are then
+    // disabled so they can't be turned off again while PK stays checked.
+    const pkChk = E('input',{type:'checkbox', onchange:(e)=>{
+      if(e.target.checked){
+        c.attributes.forEach(other=>{ if(other!==a) other.pk=false; });
+        a.pk = true; a.unique = true; a.nullable = false; a.required = true;
+        if(a.type!=='text' && a.type!=='integer') a.type = 'text';
+      } else {
+        a.pk = false;
+      }
+      touch();
+    }});
+    if(a.pk) pkChk.checked = true;
+    const fkChk = E('input',{type:'checkbox', onchange:(e)=>{
+      a.fk = e.target.checked;
+      if(a.fk){
+        if(a.type!=='text' && a.type!=='integer') a.type = 'text';
+        if(!a.fkRefClassId){
+          const other = state.classes.find(x=>x.id!==c.id);
+          if(other){ a.fkRefClassId = other.id; const pk = other.attributes.find(at=>at.pk); a.fkRefAttrId = pk?pk.id:null; }
+        }
+      } else {
+        a.fkRefClassId = null; a.fkRefAttrId = null;
+      }
+      touch();
+    }});
+    if(a.fk) fkChk.checked = true;
     // No confirmation here (item 4, 2nd round: "para excluir atributo não
     // precisa de confirmação") — unlike every other delete button, this one
     // deletes immediately on a single click. Undo (Ctrl+Z) covers a mis-click.
+    // Also drops any FK elsewhere in this class's own model that referenced
+    // this attribute as its PK target, so deleting a PK doesn't leave a
+    // dangling reference.
     const delBtn = E('button',{class:'del-x', title:'Remover atributo', html:ICONS.trash, onclick:()=>{
-      c.attributes = c.attributes.filter(x=>x.id!==a.id); touch();
+      c.attributes = c.attributes.filter(x=>x.id!==a.id);
+      state.classes.forEach(cc=> cc.attributes.forEach(other=>{
+        if(other.fkRefAttrId===a.id){ other.fk=false; other.fkRefClassId=null; other.fkRefAttrId=null; }
+      }));
+      touch();
     }});
+    // Item 2c/2d/2f: Obrigatório / Permite nulo / Único — independent flags
+    // (not derived from each other), forced+locked whenever this attribute
+    // is the PK (item 2g). Item 1/2 fix: these are plain checkboxes right in
+    // the attribute's own row, next to PK/FK — no disclosure to expand, and
+    // no separate caption row for PK either, so every attribute row has the
+    // same shape and toggling one never reflows the rows around it.
+    const reqChk = E('input',{type:'checkbox', title:'Obrigatório', onchange:(e)=>{ a.required = e.target.checked; touch(); }});
+    if(a.required || a.pk) reqChk.checked = true;
+    if(a.pk) reqChk.disabled = true;
+    // "Não permite nulo" reads more naturally as a positive toggle here
+    // (checked = not-null) than the inverted "Permite nulo" checkbox used
+    // to — it also matches the ‡ mark's own meaning directly.
+    const notNullChk = E('input',{type:'checkbox', title:'Não permite nulo', onchange:(e)=>{ a.nullable = e.target.checked ? false : true; touch(); }});
+    if(a.nullable===false || a.pk) notNullChk.checked = true;
+    if(a.pk) notNullChk.disabled = true;
+    const uniqChk = E('input',{type:'checkbox', title:'Único', onchange:(e)=>{ a.unique = e.target.checked; touch(); }});
+    if(a.unique || a.pk) uniqChk.checked = true;
+    if(a.pk) uniqChk.disabled = true;
+    const narrowTd = 'width:1%;white-space:nowrap;text-align:center;';
     table.appendChild(E('tr',{},[
-      E('td',{},[nameInp]), E('td',{},[delBtn])
+      E('td',{},[nameInp]), E('td',{},[typeSel]),
+      E('td',{style:narrowTd},[pkChk]), E('td',{style:narrowTd},[fkChk]),
+      E('td',{style:narrowTd},[reqChk]), E('td',{style:narrowTd},[uniqChk]), E('td',{style:narrowTd},[notNullChk]),
+      E('td',{style:'width:1%;'},[delBtn])
     ]));
+    if(a.fk){
+      const classSel = E('select',{onchange:(e)=>{
+        a.fkRefClassId = e.target.value;
+        const rc = state.classes.find(x=>x.id===a.fkRefClassId);
+        const pk = rc ? rc.attributes.find(at=>at.pk) : null;
+        a.fkRefAttrId = pk ? pk.id : null;
+        touch();
+      }});
+      state.classes.filter(x=>x.id!==c.id).forEach(rc=> classSel.appendChild(E('option',{value:rc.id, selected:(rc.id===a.fkRefClassId)?'':null},[rc.name])));
+      const refClass = state.classes.find(x=>x.id===a.fkRefClassId);
+      const pkAttrs = refClass ? refClass.attributes.filter(at=>at.pk) : [];
+      // Item 5 bug fix ("a PK referenciada não carrega em tempo real... só
+      // leu quando exclui a configuração e criei novamente"): a.fkRefAttrId
+      // used to only ever get (re)assigned inside classSel/attrSel's own
+      // onchange handlers — so a PK created on the referenced class AFTER
+      // this FK was already pointed at it (without touching either select)
+      // never got picked up; the dropdown just silently fell back to the
+      // browser's own default (first option), which never fires onchange
+      // and so never actually wrote a.fkRefAttrId. Self-heal on every render
+      // instead: if the currently stored id isn't one of the class's CURRENT
+      // pk attributes (missing, stale, or was null because there was no pk
+      // yet), pick the first available one now.
+      if(pkAttrs.length){
+        if(!pkAttrs.some(pk=>pk.id===a.fkRefAttrId)){ a.fkRefAttrId = pkAttrs[0].id; scheduleAutosave(); }
+      } else if(a.fkRefAttrId){
+        a.fkRefAttrId = null; scheduleAutosave();
+      }
+      const attrSel = E('select',{onchange:(e)=>{ a.fkRefAttrId = e.target.value; touch(); }});
+      if(!pkAttrs.length){
+        attrSel.appendChild(E('option',{value:''},['(classe sem PK)']));
+        attrSel.disabled = true;
+      } else {
+        pkAttrs.forEach(pk=> attrSel.appendChild(E('option',{value:pk.id, selected:(pk.id===a.fkRefAttrId)?'':null},[pk.name])));
+      }
+      table.appendChild(E('tr',{class:'fk-picker-row'},[
+        E('td',{colspan:'8'},[
+          E('div',{class:'field-row'},[
+            E('div',{class:'field'},[E('label',{},['Referencia a classe']), classSel]),
+            E('div',{class:'field'},[E('label',{},['PK referenciada']), attrSel])
+          ])
+        ])
+      ]));
+    }
   });
   return table;
 }
@@ -4267,15 +4742,45 @@ function buildClassInspector(c){
       c.geoType=v; c.primitive = v==='object' ? 'point' : 'isoline'; touch();
     }));
     const prims = c.geoType==='object' ? GEO_OBJECT_PRIMITIVES : GEO_FIELD_PRIMITIVES;
-    scroll.appendChild(fieldSelect('Primitiva geométrica', c.primitive, prims, v=>{ c.primitive=v; touch(); }));
+    scroll.appendChild(fieldSelect('Primitiva geométrica', c.primitive, prims, v=>{
+      c.primitive=v;
+      // Round CC item 8: operations are restricted per primitive, so
+      // switching primitive drops any selected operation that no longer
+      // applies rather than leaving stale/incompatible ids in c.operations.
+      if(c.operations && c.operations.length){
+        const compat = new Set(operationsForPrimitive(v).map(o=>o.id));
+        c.operations = c.operations.filter(id=>compat.has(id));
+      }
+      touch();
+    }));
+    // Round CC items 7/8 ("Abaixo dos atributos pode criar um novo espaço
+    // para as Operações... abaixo da primitiva geométrica e antes dos
+    // atributos"): sits between primitive and attributes, shared by both
+    // Conceitual and Lógico (it's a primitive-derived class property, not a
+    // Lógico-specific one like Round BB's PK/FK/type attribute rules).
+    scroll.appendChild(buildOperationsSection(c));
   }
   scroll.appendChild(E('hr'));
   scroll.appendChild(E('div',{class:'rail-label'},['Atributos']));
   scroll.appendChild(buildAttrTable(c));
   scroll.appendChild(E('button',{class:'btn attr-add', onclick:()=>{
-    const existing = new Set(c.attributes.map(a=>a.name));
-    c.attributes.push({id:uid('a'), name: uniqueName('Novo Atributo', existing)});
+    // Round CC item 3 ("pode deixar isso só com placeholder, mas não quero
+    // precisar apagar para digitar o novo campo"): a new attribute starts
+    // with an EMPTY name — "Novo Atributo" only ever shows as the input's
+    // placeholder (see buildAttrTable), never as real text you have to
+    // select-and-delete first.
+    const attr = {id:uid('a'), name: ''};
+    // Round BB: a Lógico attribute is born with explicit defaults for its
+    // extra properties (Conceitual attributes never get these fields at all).
+    if(logicalMode){ attr.type='text'; attr.pk=false; attr.fk=false; attr.required=false; attr.nullable=true; attr.unique=false; }
+    c.attributes.push(attr);
     touch();
+    // focus the freshly added row's name input so typing starts right away
+    requestAnimationFrame(()=>{
+      const inputs = document.querySelectorAll('.attr-table input[type=text]');
+      const last = inputs[inputs.length-1];
+      if(last) last.focus();
+    });
   }},['+ Adicionar atributo']));
   root.appendChild(scroll);
   root.appendChild(E('div',{class:'inspector-actions'},[
@@ -4439,7 +4944,21 @@ function buildRelInspector(r){
 
 function renderInspector(){
   const panel = document.getElementById('panelProp');
+  // Fix ("ao clicar em algumas das opções... ele pula a configuração para o
+  // topo"): buildClassInspector/buildRelInspector rebuild the whole
+  // '.inspector-scroll' element from scratch on every touch() — a fresh
+  // element always starts at scrollTop 0, so any checkbox/select change
+  // further down a long attribute list visibly snapped the panel back to
+  // the top. Capture the outgoing scroll position before clearing the panel
+  // and restore it onto whichever '.inspector-scroll' comes out the other
+  // side, so editing something below the fold no longer moves the viewport.
+  const prevScroll = panel.querySelector('.inspector-scroll');
+  const savedTop = prevScroll ? prevScroll.scrollTop : 0;
   panel.innerHTML = '';
+  const restoreScroll = ()=>{
+    const s = panel.querySelector('.inspector-scroll');
+    if(s && savedTop) s.scrollTop = savedTop;
+  };
   if(multiSelect.size>=2){
     panel.appendChild(E('div',{class:'inspector-empty'},[
       E('div',{class:'ic', html:ICONS.conventional}),
@@ -4451,10 +4970,12 @@ function renderInspector(){
     const c = state.classes.find(x=>x.id===selection.id);
     if(!c){ selection={type:null,id:null}; renderInspector(); return; }
     panel.appendChild(buildClassInspector(c));
+    restoreScroll();
   } else if(selection.type==='rel'){
     const r = state.relationships.find(x=>x.id===selection.id);
     if(!r){ selection={type:null,id:null}; renderInspector(); return; }
     panel.appendChild(buildRelInspector(r));
+    restoreScroll();
   } else {
     panel.appendChild(E('div',{class:'inspector-empty'},[
       E('div',{class:'ic', html:ICONS.empty}),
@@ -4542,8 +5063,25 @@ function renderLegendOnce(){
    ============================================================ */
 const STORAGE_KEY = 'omtg-prancheta-model-v2';
 const LAYOUT_KEY = 'omtg-prancheta-layout-v1';
+// Round BB (item 1: "o exportar tem que funcionar no lógico também...
+// pensa que é como se fosse duas abas do Excel... mas estão sob o mesmo
+// xlsx"): autosave and the "Exportar para > JSON" save now bundle BOTH
+// independent models into one document — state.classes/relationships (the
+// conceptual "aba") plus a `logical` key (the Lógico "aba"), each read from
+// whichever isn't currently the live state.classes/relationships (see the
+// "independent models" comment by `let logicalMode`). A document that never
+// diverged (logicalModel still null) simply omits the `logical` key, so old
+// exports/autosaves stay readable. loadModel()/boot() reverse this on the
+// way back in.
+function persistableState(){
+  const conceptual = logicalMode ? conceptualModel : {classes: state.classes, relationships: state.relationships};
+  const logical = logicalMode ? {classes: state.classes, relationships: state.relationships} : logicalModel;
+  const out = Object.assign({}, state, {classes: conceptual.classes, relationships: conceptual.relationships});
+  if(logical) out.logical = {classes: logical.classes, relationships: logical.relationships};
+  return out;
+}
 const scheduleAutosave = debounce(()=>{
-  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){}
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(persistableState())); }catch(e){}
   commitHistory();
 }, 600);
 function loadAutosave(){
@@ -4610,11 +5148,24 @@ function normalizeState(s){
   return s;
 }
 function loadModel(m){
+  // Round BB: pull out the bundled Lógico "aba" (if this document has one —
+  // see persistableState) BEFORE normalizing, then strip it off `state` so
+  // it doesn't linger as a stray, out-of-sync property on the live object.
+  const incomingLogical = m && m.logical ? m.logical : null;
   state = normalizeState(m);
+  if(state.logical) delete state.logical;
   if(!state.meta) state.meta = emptyModel().meta;
   selection = {type:null, id:null};
   multiSelect = new Set();
   connDrag = null;
+  // A freshly loaded/new/sample document always opens on Conceitual;
+  // logicalModel is repopulated from the document's own bundled Lógico data
+  // when present, or cleared (so the next switch to Lógico clones fresh from
+  // THIS document) when it isn't.
+  conceptualModel = null;
+  logicalModel = incomingLogical ? normalizeState({classes: incomingLogical.classes||[], relationships: incomingLogical.relationships||[]}) : null;
+  logicalMode = false;
+  syncModeButtons();
   document.getElementById('modelName').value = state.meta.name || '';
   renderRelControls(); renderConnDragOverlay();
   touch();
@@ -4894,7 +5445,7 @@ async function saveBinaryFile(filename, blob){
   }
 }
 function saveJsonModel(){
-  saveFile(sqlIdent(state.meta.name||'modelo')+'.json', JSON.stringify(state, null, 2));
+  saveFile(sqlIdent(state.meta.name||'modelo')+'.json', JSON.stringify(persistableState(), null, 2));
 }
 function initExportMenu(){
   const btn = document.getElementById('btnExport');
@@ -4927,6 +5478,15 @@ function initTopbar(){
   document.getElementById('btnCloseValidation').addEventListener('click', ()=>{
     document.getElementById('validationPanel').hidden = true;
   });
+
+  // Round Y/Z/AA: "Modelo Conceitual" / "Modelo Lógico" buttons — the actual
+  // mode-switch logic (setLogicalMode/syncModeButtons) lives up by `let
+  // logicalMode`, this just wires the two buttons to it.
+  const btnConceptualModel = document.getElementById('btnConceptualModel');
+  const btnLogicalModel = document.getElementById('btnLogicalModel');
+  syncModeButtons();
+  if(btnLogicalModel) btnLogicalModel.addEventListener('click', ()=> setLogicalMode(true));
+  if(btnConceptualModel) btnConceptualModel.addEventListener('click', ()=> setLogicalMode(false));
 
   // Round U item 15: "Grid" toggles the background grid on/off — same grid
   // layer used by both pages and by the SVG export (buildCanvasSvgString
@@ -5008,8 +5568,15 @@ function boot(){
   initExportMenu();
   initStageEvents();
   const saved = loadAutosave();
+  // Round BB: an autosave may carry a bundled Lógico "aba" too (see
+  // persistableState) — pull it into logicalModel the same way loadModel()
+  // does for an opened .json, so a page reload doesn't drop Lógico's
+  // independent edits.
+  const incomingLogical = saved && saved.logical ? saved.logical : null;
   state = normalizeState(saved || emptyModel());
+  if(state.logical) delete state.logical;
   if(!state.meta) state.meta = emptyModel().meta;
+  logicalModel = incomingLogical ? normalizeState({classes: incomingLogical.classes||[], relationships: incomingLogical.relationships||[]}) : null;
   document.getElementById('modelName').value = state.meta.name || '';
   renderRelControls();
   renderLegendOnce();

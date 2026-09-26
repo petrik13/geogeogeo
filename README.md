@@ -1,64 +1,106 @@
-# Prancheta OMT-G
+# GeoGeoGeo
 
-Ferramenta interativa de modelagem conceitual de bancos de dados geográficos em notação **OMT-G** (Borges, Davis & Laender). Roda inteiramente no navegador — sem backend, sem build, um único arquivo HTML.
+Editor de modelos de dados geográficos na notação **OMT-G** (Borges, Davis Jr. & Laender).
+Roda inteiro no navegador: um único `index.html`, sem backend e sem build.
 
-## O que faz
+O objetivo é levar um modelo do desenho conceitual até a geodatabase pronta no ArcGIS:
 
-- Classes convencionais e geo-referenciadas (geo-objeto e geo-campo, com as primitivas geométricas do OMT-G).
-- Relacionamentos: associação, generalização/especialização, agregação (todo-parte), rede e relações espaciais/topológicas.
-- Roteamento ortogonal dos conectores no diagrama, com desvio automático de obstáculos.
-- Exportação para:
-  - **Script Python (arcpy)** — recomendado para ArcGIS: cria o esquema chamando a API oficial do ArcGIS (`CreateFeatureclass`, `AddField`, `CreateRelationshipClass`).
-  - **Esri Geodatabase XML** (XML Workspace Document) — formato interno do ArcGIS, mais frágil de importar; use o script Python acima quando possível.
-  - **GeoPackage** (DDL SQL).
-  - **PostGIS** (DDL SQL, com esquema opcional de topologia).
-
-## Por que hospedar fora do Claude
-
-A versão publicada como Claude Artifact só consegue baixar arquivos com um conjunto fixo de extensões (não inclui `.xml` nem `.sql`), então esses exports saíam renomeados para `.txt`. Hospedado como um site comum (GitHub Pages, Vercel, Netlify, ou qualquer servidor estático), o download usa o mecanismo nativo do navegador e funciona com qualquer extensão sem nenhuma mudança de código — o botão de exportar já foi escrito para isso.
-
-## Como rodar localmente
-
-Não precisa de nada instalado além de um navegador — é um HTML autocontido.
-
-```bash
-# qualquer servidor estático simples serve, por exemplo:
-python3 -m http.server 8000
-# depois abra http://localhost:8000
+```
+Conceitual  ──migrar──▶  Lógico  ──gerar──▶  Físico (GDB): JSON  ──toolbox .pyt──▶  File Geodatabase
 ```
 
-Ou simplesmente abra `index.html` direto no navegador (duplo clique).
+- **Conceitual.** O diagrama de classes OMT-G: classes convencionais, geo-objeto e
+  geo-campo com suas primitivas, e os relacionamentos (associação, espacial, rede,
+  generalização, generalização cartográfica e agregação).
+- **Lógico.** O mesmo diagrama com o que o banco precisa:
+  - tipos, PK/FK, obrigatório, único, faixa de valores, listas (domínios) e campos
+    calculados;
+  - SRID, Z/M e controle de edições por classe;
+  - integridade referencial e operações OMT-G.
 
-## Como publicar no GitHub Pages
+  O Conceitual e o Lógico são modelos independentes. "Migrar" copia um para o outro
+  sem apagar o que só existe no destino.
+- **Físico (GDB).** Uma vista, não um modelo editável. Mostra o JSON de criação da
+  geodatabase gerado a partir do Lógico, com contagens, avisos e o que não tem
+  equivalente no GDB.
+- **Toolbox `geogeogeo_toolbox.pyt`.** Uma Python Toolbox do ArcGIS Pro que lê esse JSON
+  e cria a File Geodatabase: domínios, feature datasets, tabelas e feature classes,
+  relationship classes, topologias, attribute rules (Arcade) e metadados.
 
-1. Suba este repositório para o GitHub (veja os comandos abaixo).
-2. No GitHub, vá em **Settings → Pages**.
-3. Em "Build and deployment", escolha **Deploy from a branch**, selecione a branch `main` e a pasta `/ (root)`.
-4. Salve. Em alguns minutos o site fica disponível em `https://<seu-usuário>.github.io/<nome-do-repositório>/`.
+## Arquivos
 
-Qualquer novo `git push` para `main` atualiza o site automaticamente.
+| Arquivo | O que é |
+| --- | --- |
+| `index.html` | O aplicativo inteiro (HTML + CSS + JS). Também traz o modelo Exemplo e uma cópia da toolbox, que se baixa pelo menu. |
+| `geogeogeo_toolbox.pyt` | A toolbox ArcGIS. É a fonte; a cópia dentro do `index.html` é sincronizada por script. |
+| `mapeamento-logico-para-gdb.md` | Especificação: o que cada elemento do Lógico vira no GDB, e por quê. |
+| `exemplo-gdb.json` | JSON gerado a partir do modelo Exemplo. Serve de referência (golden) para os testes. |
+| `tests/` | Testes automáticos do app (Playwright) e da toolbox (arcpy simulado). |
+| `tools/embed-toolbox.mjs` | Copia o `.pyt` para dentro do `index.html`. |
+| `docs/contexto-pesquisa-mestrado.md` | Contexto acadêmico do projeto (mestrado) e o roteiro de longo prazo. |
+| `annotator.html` | Ferramenta antiga de revisão visual, usada numa fase do projeto. Não é mantida. |
+| `CLAUDE.md` | Guia para quem for continuar o desenvolvimento, seja pessoa ou agente. |
 
-## Comandos para subir este repositório
+## Como usar
 
-Rodando de dentro desta pasta (onde estão `index.html` e este `README.md`):
+Abra o `index.html` no navegador (duplo clique serve) ou sirva a pasta:
 
 ```bash
-git init
-git add index.html README.md
-git commit -m "Prancheta OMT-G: ferramenta de modelagem conceitual geográfica"
-git branch -M main
-git remote add origin https://github.com/petrik13/geogeogeo.git
-git push -u origin main
+python3 -m http.server 8000   # e abra http://localhost:8000
 ```
 
-Se o repositório `petrik13/geogeogeo` já tiver conteúdo (por exemplo, um README criado pelo próprio GitHub), troque o `git push` acima por:
+Fluxo típico:
+
+1. Desenhe o modelo na aba **Conceitual**, arrastando os botões de classe e de
+   relacionamento para o canvas.
+2. **Migrar → Para o Lógico** e complete tipos, chaves, SRID etc. No Lógico, sem nada
+   selecionado, o painel da direita mostra o SRID padrão e o nome da geodatabase.
+3. **Validação** aponta problemas de desenho, de regra OMT-G e o que não vai caber no
+   GDB.
+4. **Migrar → Para o Físico (GDB)** gera o JSON. Baixe o JSON e a toolbox nessa tela ou
+   no menu **Exportar**.
+5. No ArcGIS Pro, adicione a toolbox, rode **Criar Geodatabase a partir do modelo** e
+   aponte para o JSON.
+
+O botão **Exemplo** carrega um modelo que exercita todas as transformações
+(24 classes, 24 relationship classes, 61 attribute rules, topologia e redes).
+Ele serve para conferir tudo no ArcGIS Pro.
+
+**Exportar** também gera a imagem do diagrama (JPEG/PDF), o JSON do modelo e o
+dicionário de dados em Word (.docx).
+
+### Onde os dados ficam
+
+O modelo é salvo automaticamente no `localStorage` do navegador (chave
+`omtg-prancheta-model-v2`). Esse armazenamento é por navegador e por máquina. Para
+levar o modelo a outro lugar, use **Exportar → JSON do modelo** e depois **Abrir**. O
+JSON guarda o Conceitual e o Lógico juntos.
+
+## Desenvolvimento
+
+Não há build. Edite o `index.html` e recarregue a página.
+
+Para os testes, você precisa de Node 18+ e Python 3; o Playwright é baixado pelo
+`npm install`.
 
 ```bash
-git pull origin main --allow-unrelated-histories
-# resolva conflitos se aparecerem, depois:
-git push -u origin main
+npm install            # só na primeira vez
+npm test               # roda todos os testes
+npm run test:update    # regrava exemplo-gdb.json depois de uma mudança INTENCIONAL no gerador
+npm run embed-toolbox  # depois de editar geogeogeo_toolbox.pyt
 ```
 
-## Estado dos dados
+Os testes cobrem:
+- o gerador, comparado com o `exemplo-gdb.json` e com as invariantes do formato;
+- a toolbox rodando sobre esse JSON com um arcpy simulado;
+- o tradutor de cálculo;
+- o CSS (nenhuma regra descartada);
+- vários comportamentos de interface, como atalhos, troca de tipo e downloads.
 
-Tudo fica salvo no `localStorage` do navegador (autosave a cada edição). Isso é por navegador/dispositivo — não sincroniza entre máquinas. Use "Salvar .json" para exportar o modelo e "Abrir" para importar em outro lugar.
+Os detalhes para quem vai mexer no código estão no [`CLAUDE.md`](CLAUDE.md).
+
+## Publicar
+
+É um site estático. No GitHub Pages: **Settings → Pages → Deploy from a branch**,
+branch `main` e pasta `/ (root)`. Os downloads usam o mecanismo normal do navegador, e
+qualquer extensão funciona.

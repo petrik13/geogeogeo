@@ -1399,11 +1399,6 @@ class GdbBuilder(object):
       <div class="name">GeoGeoGeo<small>Modelagem geográfica</small></div>
     </div>
     <input id="modelName" class="model-name" type="text" value="Novo modelo" aria-label="Nome do modelo">
-    <!-- Round U items 2/3/4/5/6/16: reordered — Novo/Abrir first (left,
-         right after brand/nome), then Desfazer/Refazer, then Validação,
-         then Conceitual/Lógica; removed "Exemplo" and "Evoluir para o
-         lógico" entirely (the Conceitual/Lógica tabs already switch pages —
-         item 16 supersedes item 2's original "move it" ask). -->
     <div class="btnrow">
       <button class="btn ghost" id="btnNew" title="Novo modelo em branco">Novo</button>
       <button class="btn ghost" id="btnOpen" title="Abrir modelo (.json)">Abrir</button>
@@ -1414,14 +1409,8 @@ class GdbBuilder(object):
       <button class="btn ghost icon-only" id="btnRedo" title="Refazer (Ctrl+Shift+Z)" disabled>↷</button>
     </div>
     <button class="btn ghost" id="btnValidate" title="Verificar o modelo (desenho + regras do OMT-G)">✓ Validação</button>
-    <!-- Follow-up round ("quero só mudar de aba... no futuro ainda vai ter
-         outras opções aí"): the old pair of full-width "Modelo Conceitual" /
-         "Modelo Lógico" buttons became a compact pill tab-bar (reusing the
-         already-defined but previously unused .pagetabs/.pagetab styles) so
-         there's room to add more controls beside it later. The migrate
-         button is separate on purpose — switching tabs never touches data
-         (unchanged behavior), migrating is an explicit, separately-confirmed
-         action. -->
+    <!-- Abas dos modelos. Trocar de aba nunca mexe nos dados; migrar é a ação
+         separada do botão "Migrar". -->
     <div class="model-switch">
       <div class="pagetabs">
         <button type="button" class="pagetab active" id="btnModel_conceptual" title="Modelo Conceitual">Conceitual</button>
@@ -1438,9 +1427,8 @@ class GdbBuilder(object):
       <button class="btn ghost" id="btnLayout" title="Organizar o diagrama automaticamente (Ctrl+Z desfaz)">Organizar</button>
       <button class="btn ghost" id="btnGrid" title="Mostrar/ocultar grade">Grid</button>
       <button class="btn ghost" id="btnExample" title="Carregar o modelo de exemplo que testa todas as transformações OMT-G → GDB">Exemplo</button>
-      <!-- Round SS item 6: "Exportar para ▾" virou o menu hamburguer, e o
-           menu ganhou seções — a imagem do diagrama e o modelo em si são
-           coisas diferentes e agora aparecem separadas. -->
+      <!-- Menu de exportação, em seções: imagem do diagrama, modelo,
+           documentação e ferramenta. -->
       <div class="dl-menu-wrap">
         <button class="btn icon-only" id="btnExport" title="Exportar" aria-label="Exportar">
           <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2.5 4h11M2.5 8h11M2.5 12h11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
@@ -1537,8 +1525,8 @@ class GdbBuilder(object):
     </aside>
   </div>
 
-  <!-- Round TT: a aba Físico (GDB) não é um diagrama — é o JSON que alimenta
-       a toolbox. Ocupa o lugar do .layout quando ativa. -->
+  <!-- A aba Físico (GDB) não é um diagrama: é o JSON que alimenta a toolbox.
+       Ocupa o lugar do .layout quando ativa. -->
   <div class="gdb-screen" id="gdbScreen" hidden>
     <div class="gdb-screen-head">
       <div>
@@ -2725,7 +2713,7 @@ function downloadGdbJson(doc){
   saveFile(gdbSanitize(d.workspace.name)+'_gdb', 'json', JSON.stringify(d, null, 2));
 }
 /* ============================================================
-   Round HHH: Dicionário de dados em Word (.docx)
+   Dicionário de dados em Word (.docx)
    Gerado inteiramente no navegador: um .docx é um ZIP de XMLs
    (WordprocessingML). Escrevemos o ZIP sem compressão (método
    "store") com CRC32 próprio — nenhuma biblioteca externa, então
@@ -2948,10 +2936,10 @@ function generateGdbJson(){
 }
 
 /* ===================== Construtor de cálculo =====================
-   Round PP. O campo calculado deixou de ser texto documental e passou a
-   carregar expressão real. A linguagem é NEUTRA de propósito: o modelo
-   lógico nunca se prendeu a um software, então a expressão é escrita numa
-   sintaxe própria e cada destino traduz — Arcade no ArcGIS, SQL no PostGIS.
+   O campo calculado carrega uma expressão real, numa linguagem NEUTRA de
+   propósito: o modelo lógico não se prende a um software, então a expressão
+   é escrita numa sintaxe própria e cada destino traduz — Arcade no ArcGIS,
+   SQL no PostGIS.
    Escrever Arcade direto seria mais rápido hoje e amarraria o lógico ao
    ArcGIS amanhã.
 
@@ -6033,13 +6021,10 @@ function buildOrthoPathD(points, hopsPerSegment){
   }
   return d;
 }
-/* network relationships render as two parallel dashed lines (OMT-G "rede" notation)
-   rather than a single line — offset the whole polyline perpendicular to its
-   direction, properly MITERED at each bend (Round L: offsetting every segment
-   independently left a gap or crossing "+" at each corner, since neither
-   segment's own offset line knows where its neighbor's offset line actually
-   ends up — the two "rails" didn't meet, and the ports didn't land flush on
-   the class border either). */
+/* Rede (notação OMT-G) são duas linhas paralelas tracejadas: a polilinha
+   inteira é deslocada na perpendicular, com junção em meia-esquadria em cada
+   dobra. Deslocar cada segmento sozinho deixaria um vão ou um "+" nas
+   quinas, e as pontas não encostariam na borda da classe. */
 function buildNetworkParallelPaths(points, hopsPerSegment, gap){
   const n = points.length;
   // Perpendicular offset PER SEGMENT (rotate its own direction 90°) — used
@@ -6075,17 +6060,10 @@ function buildNetworkParallelPaths(points, hopsPerSegment, gap){
   }
   return {dA, dB};
 }
-/* Perpendicular clear-direction for a label sitting near a point on an
-   axis-aligned (orthogonal) segment: always the axis the segment ISN'T
-   running along, so pushing a label along it actually clears the line
-   sideways instead of sliding further along it.
-   A box's own port-outward normal (this used to derive clearDir from
-   which border of the box a point sat on) is exactly PARALLEL to that
-   segment — every orthogonal route leaves a box perpendicular to its
-   border, e.g. straight down from a bottom port — so offsetting "outward"
-   from the box never actually cleared the line, it just slid the label
-   further along the same line (Round D item 2: cardinality sitting right
-   on top of the relationship line). */
+/* Direção para afastar um rótulo de um segmento ortogonal: o eixo em que o
+   segmento NÃO corre. A normal da borda da caixa não serve: a rota sai da
+   caixa perpendicular à borda, então essa normal é paralela ao segmento e
+   só escorregaria o rótulo ao longo da linha. */
 function perpClearDir(dx, dy){
   return Math.abs(dx) >= Math.abs(dy) ? {x:0,y:-1} : {x:1,y:0};
 }

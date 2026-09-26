@@ -79,6 +79,27 @@ await test('toolbox processa o exemplo-gdb.json (arcpy simulado)', async () => {
   assertEq(py.status, 0, (py.stdout + py.stderr).trim());
 });
 
+// ---------------------------------------------------------------- CSS
+await test('nenhuma regra do CSS é descartada pelo navegador', async () => {
+  // Um "*/" dentro de um comentário fecha o comentário antes da hora; o resto
+  // do texto vira parte do seletor seguinte e a regra inteira é ignorada, sem
+  // erro nenhum. Aqui cada seletor (lido como o navegador lê) precisa ser válido.
+  const page = await openApp();
+  const bad = await page.evaluate(() => {
+    const css = document.querySelector('style').textContent.replace(/\/\*[\s\S]*?\*\//g, '');
+    const out = [];
+    for(const m of css.matchAll(/([^{}]+)\{/g)){
+      const sel = m[1].trim();
+      if(!sel || sel.startsWith('@') || /^(from|to|[\d.]+%)$/.test(sel)) continue;
+      try { document.querySelectorAll(sel.replace(/::?-webkit-[\w-]+|::?-moz-[\w-]+/g, '')); }
+      catch { out.push(sel.slice(0, 120)); }
+    }
+    return out;
+  });
+  assertEq(bad.join('\n'), '', 'seletores inválidos (comentário mal fechado?)');
+  await page.close();
+});
+
 // ---------------------------------------------------------------- gerador do GDB
 await test('o app abre e carrega o Exemplo sem erro de JavaScript', async () => {
   const page = await openExample();

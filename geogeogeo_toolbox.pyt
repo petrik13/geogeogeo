@@ -123,6 +123,17 @@ GEOMETRY_TYPES = set(["POINT", "MULTIPOINT", "POLYLINE", "POLYGON"])
 REL_TYPES = set(["SIMPLE", "COMPOSITE"])
 CARDINALITIES = set(["ONE_TO_ONE", "ONE_TO_MANY", "MANY_TO_MANY"])
 
+# Contadores do resumo final, na ordem em que aparecem.
+SUMMARY_ITEMS = [
+    ("domains", u"dominios"), ("featureDatasets", u"feature datasets"),
+    ("datasets", u"datasets"), ("fields", u"campos"),
+    ("indexes", u"indices"), ("relationshipClasses", u"relationship classes"),
+    ("topologies", u"topologias"), ("rules", u"attribute rules"),
+    ("attachments", u"classes com anexos"),
+    ("editorTracking", u"controle de edicoes"),
+    ("metadata", u"itens com metadados"),
+]
+
 
 class GdbBuilder(object):
 
@@ -137,10 +148,11 @@ class GdbBuilder(object):
         self.report_formats = [f for f in (report_formats or []) if f in ("HTML", "PDF", "XLSX", "JSON")]
         self.doc = None
         self.gdb = None
-        self.created = {"domains": 0, "featureDatasets": 0, "datasets": 0, "fields": 0,
-                        "indexes": 0, "relationshipClasses": 0, "topologies": 0, "rules": 0}
-        self.problems = []
+        self.created = dict((key, 0) for key, _ in SUMMARY_ITEMS)
+        self.warnings = []   # tudo que foi avisado
+        self.failures = []   # passos que falharam (subconjunto dos avisos)
         self.skipped = []
+        self._bad_srids = set()
         # nome do dataset -> caminho completo na gdb
         self.paths = {}
 
@@ -150,7 +162,7 @@ class GdbBuilder(object):
 
     def warn(self, msg):
         arcpy.AddWarning(msg)
-        self.problems.append(msg)
+        self.warnings.append(msg)
 
     def field_type(self, table, field):
         try:
@@ -167,7 +179,9 @@ class GdbBuilder(object):
             fn()
             return True
         except Exception as exc:
-            self.warn(u"%s: %s" % (what, exc))
+            msg = u"%s: %s" % (what, exc)
+            self.failures.append(msg)
+            self.warn(msg)
             return False
 
     def spatial_ref(self, spec):
@@ -179,10 +193,8 @@ class GdbBuilder(object):
         try:
             return arcpy.SpatialReference(int(wkid))
         except Exception:
-            bad = getattr(self, "_bad_srids", set())
-            self._bad_srids = bad
-            if wkid not in bad:
-                bad.add(wkid)
+            if wkid not in self._bad_srids:
+                self._bad_srids.add(wkid)
                 self.warn(u"SRID %s nao existe nesta instalacao do ArcGIS; os dados foram "
                           u"criados em 4326 (WGS 84). Corrija o SRID no modelo e gere de novo." % wkid)
             return arcpy.SpatialReference(4326)
@@ -378,7 +390,7 @@ class GdbBuilder(object):
 
         def make():
             arcpy.management.EnableAttachments(table)
-            self.created["attachments"] = self.created.get("attachments", 0) + 1
+            self.created["attachments"] += 1
             self.info(u"  %s: anexos habilitados (%s)." % (ds.get("name"), ", ".join(att.get("fields") or [])))
 
         self.step(u"Anexos em '%s'" % ds.get("name"), make)
@@ -395,7 +407,7 @@ class GdbBuilder(object):
                 table, et.get("creatorField"), et.get("creationDateField"),
                 et.get("lastEditorField"), et.get("lastEditDateField"),
                 "ADD_FIELDS", et.get("recordDatesIn") or "UTC")
-            self.created["editorTracking"] = self.created.get("editorTracking", 0) + 1
+            self.created["editorTracking"] += 1
 
         self.step(u"Controle de edicoes em '%s'" % ds.get("name"), make)
 
@@ -548,10 +560,15 @@ class GdbBuilder(object):
             name = rule.get("name")
             table = self.paths.get(rule.get("dataset"))
             script = rule.get("arcade")
-            if not name or not table or not script:
+            if not name or not script:
+                continue
+            if not table:
+                self.skipped.append(u"Attribute rule '%s': o dataset '%s' nao foi criado."
+                                    % (name, rule.get("dataset")))
                 continue
             if script.strip().startswith("//"):
-                # marcador do gerador para um caso sem equivalente executavel
+                # JSON de versoes antigas do gerador marcava assim um caso sem
+                # equivalente executavel; hoje isso vai para "unmapped".
                 self.skipped.append(u"Attribute rule '%s': %s" % (name, script.strip()))
                 continue
 
@@ -587,7 +604,6 @@ class GdbBuilder(object):
 
             self.step(u"Attribute rule '%s'" % name, make)
 
-    # -- relatorio ---------------------------------------------------------
     # -- metadados -----------------------------------------------------------
     def apply_metadata(self, label, path, meta):
         """Preenche o Item Description (titulo, resumo, descricao, tags,
@@ -612,7 +628,7 @@ class GdbBuilder(object):
             if meta.get("credits"):
                 m.credits = meta["credits"]
             m.save()
-            self.created["metadata"] = self.created.get("metadata", 0) + 1
+            self.created["metadata"] += 1
 
         self.step(u"Metadados de %s" % label, make)
 
@@ -648,17 +664,12 @@ class GdbBuilder(object):
                                 os.path.join(self.gdb, t.get("featureDataset") or "", t.get("name") or ""),
                                 t.get("metadata"))
 
+    # -- relatorio ---------------------------------------------------------
     def report(self):
         self.info(u"")
         self.info(u"===== Resumo =====")
-        for key, label in [("domains", u"dominios"), ("featureDatasets", u"feature datasets"),
-                           ("datasets", u"datasets"), ("fields", u"campos"),
-                           ("indexes", u"indices"), ("relationshipClasses", u"relationship classes"),
-                           ("topologies", u"topologias"), ("rules", u"attribute rules"),
-                           ("attachments", u"classes com anexos"),
-                           ("editorTracking", u"controle de edicoes"),
-                           ("metadata", u"itens com metadados")]:
-            self.info(u"  %-22s %d" % (label, self.created.get(key, 0)))
+        for key, label in SUMMARY_ITEMS:
+            self.info(u"  %-22s %d" % (label, self.created[key]))
 
         nets = self.doc.get("networks") or []
         if nets:
@@ -667,7 +678,8 @@ class GdbBuilder(object):
             for net in nets:
                 arcos = ", ".join([e.get("class", "") for e in net.get("edges") or []])
                 juncs = ", ".join([j.get("class", "") for j in net.get("junctions") or []])
-                self.info(u"  %s | arcos: %s | juncoes: %s" % (net.get("name"), arcos, juncs))
+                self.info(u"  %s (em %s) | arcos: %s | juncoes: %s"
+                          % (net.get("name"), net.get("featureDataset") or "?", arcos, juncs))
 
         if self.skipped:
             self.info(u"")
@@ -689,6 +701,10 @@ class GdbBuilder(object):
             for u in unmapped:
                 self.info(u"  - %s (%s): %s" % (u.get("on"), u.get("omtg"), u.get("reason")))
 
-        if self.problems:
-            self.info(u"")
-            self.warn(u"%d item(ns) falharam — veja os avisos acima." % len(self.problems))
+        self.info(u"")
+        if self.failures:
+            self.warn(u"%d item(ns) nao foram criados — veja os avisos acima." % len(self.failures))
+        elif self.warnings:
+            self.info(u"Concluido com %d aviso(s) — veja acima." % len(self.warnings))
+        else:
+            self.info(u"Concluido sem avisos.")

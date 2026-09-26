@@ -1,53 +1,178 @@
 {
   "formatVersion": 1,
   "generator": "GeoGeoGeo",
-  "generatedAt": "2026-09-19T15:49:35.066Z",
+  "generatedAt": "2026-01-01T12:00:00.000Z",
   "source": {
-    "model": "Cadastro Fundiário",
+    "model": "Exemplo — Teste completo GDB",
     "from": "logical"
   },
   "workspace": {
-    "name": "CadastroFundiario",
+    "name": "Teste_OMTG",
     "type": "fileGeodatabase",
     "spatialReference": {
       "authority": "EPSG",
-      "wkid": 31983
+      "wkid": 31982
+    },
+    "metadata": {
+      "title": "Exemplo — Teste completo GDB",
+      "summary": "Geodatabase gerado pelo GeoGeoGeo a partir do modelo lógico OMT-G \"Exemplo — Teste completo GDB\": 24 classe(s)/tabela(s), 24 relationship class(es), 1 topologia(s).",
+      "description": "<p>Modelo OMT-G \"Exemplo — Teste completo GDB\" convertido para File Geodatabase. Sistema de referência padrão: EPSG:31982.</p><p><b>Composição</b></p><ul><li>Classe convencional: 5</li><li>Geo-objeto: 14</li><li>Geo-campo: 5</li></ul><p><b>Classes e tabelas</b></p><ul><li><b>Município</b> (Municipio) — Classe convencional</li><li><b>Limite Municipal</b> (Limite_Municipal) — Geo-objeto — Polígono</li><li><b>Sede Municipal</b> (Sede_Municipal) — Geo-objeto — Ponto</li><li><b>Bairro</b> (Bairro) — Geo-objeto — Polígono</li><li><b>Quadra</b> (Quadra) — Geo-objeto — Polígono</li><li><b>Lote</b> (Lote) — Geo-objeto — Polígono</li><li><b>Edificação</b> (Edificacao) — Geo-objeto — Polígono</li><li><b>Edificação Residencial</b> (Edificacao_Residencial) — Geo-objeto — Polígono</li><li><b>Edificação Comercial</b> (Edificacao_Comercial) — Geo-objeto — Polígono</li><li><b>Proprietário</b> (Proprietario) — Classe convencional</li><li><b>Matrícula</b> (Matricula) — Classe convencional</li><li><b>IPTU</b> (IPTU) — Classe convencional</li><li><b>Linha de Transmissão</b> (Linha_De_Transmissao) — Geo-objeto — Linha</li><li><b>Torre</b> (Torre) — Geo-objeto — Ponto</li><li><b>Faixa de Servidão</b> (Faixa_De_Servidao) — Geo-objeto — Polígono</li><li><b>Contrato de Servidão</b> (Contrato_De_Servidao) — Classe convencional</li><li><b>Marco Geodésico</b> (Marco_Geodesico) — Geo-objeto — Ponto</li><li><b>Trecho de Rede de Água</b> (Trecho_De_Rede_De_Agua) — Geo-objeto — Linha unidirecional (rede)</li><li><b>Nó da Rede</b> (No_Da_Rede) — Geo-objeto — Nó (rede)</li><li><b>Curva de Nível</b> (Curva_De_Nivel) — Geo-campo — Isolinhas</li><li><b>Zoneamento</b> (Zoneamento) — Geo-campo — Subdivisão Planar</li><li><b>Amostra de Solo</b> (Amostra_De_Solo) — Geo-campo — Amostragem (pontos)</li><li><b>Modelo Digital de Terreno</b> (Modelo_Digital_De_Terreno) — Geo-campo — TIN (triangulação)</li><li><b>Imagem de Satélite</b> (Imagem_De_Satelite) — Geo-campo — Tesselação (grade)</li></ul><p><b>Relationship classes</b></p><ul><li>E_Formado_Por: Limite_Municipal → Bairro (1:N)</li><li>Subdividida_Em: Quadra → Lote (1:N)</li><li>Contem_Quadras: Bairro → Quadra (1:N)</li><li>Tem_Edificacoes: Lote → Edificacao (1:N)</li><li>Pertence_A: Lote → Proprietario (M:N)</li><li>Registrado_Em: Lote → Matricula (1:1)</li><li>Tributado_Por: Lote → IPTU (1:1)</li><li>Assina: Proprietario → Contrato_De_Servidao (1:N)</li><li>Objeto_De: Faixa_De_Servidao → Contrato_De_Servidao (1:N)</li><li>Sustentada_Por: Linha_De_Transmissao → Torre (1:N)</li><li>Protegida_Por: Linha_De_Transmissao → Faixa_De_Servidao (1:1)</li><li>Residencial: Edificacao → Edificacao_Residencial (1:1)</li><li>Comercial: Edificacao → Edificacao_Comercial (1:1)</li><li>Representa_Limite: Municipio → Limite_Municipal (1:N)</li><li>Representa_Sede: Municipio → Sede_Municipal (1:N)</li><li>Dentro_Do_Lote: Lote → Edificacao (1:N)</li><li>Contem_Torres: Faixa_De_Servidao → Torre (M:N)</li><li>Coincide_Zona: Lote → Zoneamento (M:N)</li><li>Fora_Da_Faixa: Edificacao → Faixa_De_Servidao (M:N)</li><li>Toca_Quadra: Trecho_De_Rede_De_Agua → Quadra (M:N)</li><li>Vizinha_Da_Faixa: Quadra → Faixa_De_Servidao (M:N)</li><li>Cruza_Rede: Linha_De_Transmissao → Trecho_De_Rede_De_Agua (M:N)</li><li>Sobrepoe_Zona: Bairro → Zoneamento (M:N)</li><li>Perto_Do_Lote: Marco_Geodesico → Lote (M:N)</li></ul><p><b>Domínios</b></p><ul><li>UF (3 valores)</li><li>Situacao (3 valores)</li><li>Uso (4 valores)</li><li>Faixa_Testada_M (intervalo 0 a 500)</li><li>SimNao (2 valores)</li><li>Faixa_Pavimentos (intervalo 1 a 60)</li><li>Tipo_De_Pessoa (2 valores)</li><li>Faixa_Exercicio (intervalo 2000 a 2100)</li><li>Faixa_Tensao_KV (intervalo 13 a 800)</li><li>Faixa_Largura_M (intervalo 1 a 200)</li><li>Tipo (3 valores)</li><li>Faixa_Diametro_Mm (intervalo 20 a 2000)</li><li>No_Da_Rede_Tipo (3 valores)</li><li>Zona (4 valores)</li><li>Faixa_PH (intervalo 0 a 14)</li></ul><p><b>Redes declaradas (não criadas)</b></p><ul><li>Rede_De_Agua_ND</li><li>Continuidade_ND</li></ul><p>26 aviso(s) de mapeamento — veja a descrição de cada item.</p>",
+      "tags": [
+        "OMT-G",
+        "GeoGeoGeo",
+        "Exemplo — Teste completo GDB",
+        "File Geodatabase"
+      ],
+      "credits": "Gerado pelo GeoGeoGeo em 01/01/2026 a partir do modelo lógico OMT-G \"Exemplo — Teste completo GDB\"."
     }
   },
   "featureDatasets": [
     {
-      "name": "Topologia",
+      "name": "SRID_31982",
       "spatialReference": {
         "authority": "EPSG",
-        "wkid": 31983
+        "wkid": 31982
       },
       "items": [
-        "AreaDePreservacao",
+        "Limite_Municipal",
+        "Sede_Municipal",
+        "Bairro",
         "Quadra",
+        "Lote",
+        "Edificacao",
+        "Edificacao_Residencial",
+        "Edificacao_Comercial",
+        "Linha_De_Transmissao",
         "Torre",
-        "TipoDeSolo"
-      ]
+        "Faixa_De_Servidao",
+        "Trecho_De_Rede_De_Agua",
+        "No_Da_Rede",
+        "Curva_De_Nivel",
+        "Zoneamento",
+        "Amostra_De_Solo"
+      ],
+      "metadata": {
+        "title": "SRID_31982",
+        "summary": "Feature classes do modelo \"Exemplo — Teste completo GDB\" no sistema de referência EPSG:31982.",
+        "description": "<p>Reúne todas as feature classes do modelo que usam o sistema de referência EPSG:31982 (um feature dataset por SRID; tabelas ficam na raiz da geodatabase).</p><p><b>Classes</b></p><ul><li>Limite_Municipal</li><li>Sede_Municipal</li><li>Bairro</li><li>Quadra</li><li>Lote</li><li>Edificacao</li><li>Edificacao_Residencial</li><li>Edificacao_Comercial</li><li>Linha_De_Transmissao</li><li>Torre</li><li>Faixa_De_Servidao</li><li>Trecho_De_Rede_De_Agua</li><li>No_Da_Rede</li><li>Curva_De_Nivel</li><li>Zoneamento</li><li>Amostra_De_Solo</li></ul><p>Topologia: <b>Topologia</b>.</p>",
+        "tags": [
+          "OMT-G",
+          "GeoGeoGeo",
+          "Exemplo — Teste completo GDB",
+          "Feature dataset"
+        ],
+        "credits": "Gerado pelo GeoGeoGeo em 01/01/2026 a partir do modelo lógico OMT-G \"Exemplo — Teste completo GDB\"."
+      }
+    },
+    {
+      "name": "SRID_4674",
+      "spatialReference": {
+        "authority": "EPSG",
+        "wkid": 4674
+      },
+      "items": [
+        "Marco_Geodesico"
+      ],
+      "metadata": {
+        "title": "SRID_4674",
+        "summary": "Feature classes do modelo \"Exemplo — Teste completo GDB\" no sistema de referência EPSG:4674.",
+        "description": "<p>Reúne todas as feature classes do modelo que usam o sistema de referência EPSG:4674 (um feature dataset por SRID; tabelas ficam na raiz da geodatabase).</p><p><b>Classes</b></p><ul><li>Marco_Geodesico</li></ul>",
+        "tags": [
+          "OMT-G",
+          "GeoGeoGeo",
+          "Exemplo — Teste completo GDB",
+          "Feature dataset"
+        ],
+        "credits": "Gerado pelo GeoGeoGeo em 01/01/2026 a partir do modelo lógico OMT-G \"Exemplo — Teste completo GDB\"."
+      }
     }
   ],
   "domains": [
     {
+      "name": "UF",
+      "type": "codedValue",
+      "fieldType": "TEXT",
+      "length": 2,
+      "values": [
+        {
+          "code": "SC",
+          "name": "Santa Catarina"
+        },
+        {
+          "code": "PR",
+          "name": "Paraná"
+        },
+        {
+          "code": "RS",
+          "name": "Rio Grande do Sul"
+        }
+      ],
+      "omtg": {
+        "classId": "chnamfbj",
+        "attrId": "a3_dgw2"
+      }
+    },
+    {
       "name": "Situacao",
+      "type": "codedValue",
+      "fieldType": "SHORT",
+      "values": [
+        {
+          "code": 1,
+          "name": "Regular"
+        },
+        {
+          "code": 2,
+          "name": "Irregular"
+        },
+        {
+          "code": 3,
+          "name": "Em regularização"
+        }
+      ],
+      "omtg": {
+        "classId": "cprqd1m6",
+        "attrId": "a17_m0vp"
+      }
+    },
+    {
+      "name": "Uso",
       "type": "codedValue",
       "fieldType": "TEXT",
       "length": 1,
       "values": [
         {
-          "code": "A",
-          "name": "Ativo"
+          "code": "R",
+          "name": "Residencial"
+        },
+        {
+          "code": "C",
+          "name": "Comercial"
         },
         {
           "code": "I",
-          "name": "Inativo"
+          "name": "Industrial"
+        },
+        {
+          "code": "M",
+          "name": "Misto"
         }
       ],
       "omtg": {
-        "classId": "cexgvbnz",
-        "attrId": "l3"
+        "classId": "cprqd1m6",
+        "attrId": "a18_854d"
+      }
+    },
+    {
+      "name": "Faixa_Testada_M",
+      "type": "range",
+      "fieldType": "DOUBLE",
+      "min": 0,
+      "max": 500,
+      "description": "Faixa de Testada (m): 0 a 500.",
+      "omtg": {
+        "classId": "cprqd1m6",
+        "attrId": "a21_49ab"
       }
     },
     {
@@ -65,15 +190,274 @@
         }
       ],
       "omtg": null
+    },
+    {
+      "name": "Faixa_Pavimentos",
+      "type": "range",
+      "fieldType": "SHORT",
+      "min": 1,
+      "max": 60,
+      "description": "Faixa de Pavimentos: 1 a 60.",
+      "omtg": {
+        "classId": "cal02eq2",
+        "attrId": "a28_5vru"
+      }
+    },
+    {
+      "name": "Tipo_De_Pessoa",
+      "type": "codedValue",
+      "fieldType": "SHORT",
+      "values": [
+        {
+          "code": 1,
+          "name": "Física"
+        },
+        {
+          "code": 2,
+          "name": "Jurídica"
+        }
+      ],
+      "omtg": {
+        "classId": "cl2zqg7f",
+        "attrId": "a37_k7mo"
+      }
+    },
+    {
+      "name": "Faixa_Exercicio",
+      "type": "range",
+      "fieldType": "SHORT",
+      "min": 2000,
+      "max": 2100,
+      "description": "Faixa de Exercício: 2000 a 2100.",
+      "omtg": {
+        "classId": "cqzzxelk",
+        "attrId": "a43_jd4i"
+      }
+    },
+    {
+      "name": "Faixa_Tensao_KV",
+      "type": "range",
+      "fieldType": "SHORT",
+      "min": 13,
+      "max": 800,
+      "description": "Faixa de Tensão (kV): 13 a 800.",
+      "omtg": {
+        "classId": "c0y16ffx",
+        "attrId": "a49_hjeb"
+      }
+    },
+    {
+      "name": "Faixa_Largura_M",
+      "type": "range",
+      "fieldType": "DOUBLE",
+      "min": 1,
+      "max": 200,
+      "description": "Faixa de Largura (m): 1 a 200.",
+      "omtg": {
+        "classId": "cjsstqes",
+        "attrId": "a56_k4p3"
+      }
+    },
+    {
+      "name": "Tipo",
+      "type": "codedValue",
+      "fieldType": "SHORT",
+      "values": [
+        {
+          "code": 1,
+          "name": "SAT"
+        },
+        {
+          "code": 2,
+          "name": "RN"
+        },
+        {
+          "code": 3,
+          "name": "VT"
+        }
+      ],
+      "omtg": {
+        "classId": "cplu26pi",
+        "attrId": "a65_7iai"
+      }
+    },
+    {
+      "name": "Faixa_Diametro_Mm",
+      "type": "range",
+      "fieldType": "SHORT",
+      "min": 20,
+      "max": 2000,
+      "description": "Faixa de Diâmetro (mm): 20 a 2000.",
+      "omtg": {
+        "classId": "cxwwnrbl",
+        "attrId": "a67_z6jl"
+      }
+    },
+    {
+      "name": "No_Da_Rede_Tipo",
+      "type": "codedValue",
+      "fieldType": "SHORT",
+      "values": [
+        {
+          "code": 1,
+          "name": "Registro"
+        },
+        {
+          "code": 2,
+          "name": "Hidrante"
+        },
+        {
+          "code": 3,
+          "name": "Junção"
+        }
+      ],
+      "omtg": {
+        "classId": "c028i06c",
+        "attrId": "a69_9epy"
+      }
+    },
+    {
+      "name": "Zona",
+      "type": "codedValue",
+      "fieldType": "TEXT",
+      "length": 4,
+      "values": [
+        {
+          "code": "ZR",
+          "name": "Residencial"
+        },
+        {
+          "code": "ZC",
+          "name": "Comercial"
+        },
+        {
+          "code": "ZI",
+          "name": "Industrial"
+        },
+        {
+          "code": "ZEIS",
+          "name": "Interesse social"
+        }
+      ],
+      "omtg": {
+        "classId": "cgpdd8xz",
+        "attrId": "a73_afg2"
+      }
+    },
+    {
+      "name": "Faixa_PH",
+      "type": "range",
+      "fieldType": "DOUBLE",
+      "min": 0,
+      "max": 14,
+      "description": "Faixa de pH: 0 a 14.",
+      "omtg": {
+        "classId": "cark5a9c",
+        "attrId": "a75_mdy7"
+      }
     }
   ],
   "datasets": [
     {
-      "name": "AreaDePreservacao",
-      "alias": "Área de Preservação",
+      "name": "Municipio",
+      "alias": "Município",
+      "kind": "table",
+      "omtg": {
+        "classId": "chnamfbj",
+        "kind": "conventional",
+        "geoType": null,
+        "primitive": null
+      },
+      "systemFields": [
+        "OBJECTID",
+        "GLOBALID"
+      ],
+      "fields": [
+        {
+          "name": "Codigo_IBGE",
+          "alias": "Código IBGE",
+          "omtg": {
+            "attrId": "a1_g8xy"
+          },
+          "notes": [
+            "7 dígitos declarados."
+          ],
+          "type": "LONG",
+          "nullable": false,
+          "primaryKey": true
+        },
+        {
+          "name": "Nome",
+          "alias": "Nome",
+          "omtg": {
+            "attrId": "a2_oor4"
+          },
+          "notes": [
+            "Unicidade via Constraint Attribute Rule (File GDB não tem índice único)."
+          ],
+          "type": "TEXT",
+          "length": 80,
+          "nullable": false
+        },
+        {
+          "name": "UF",
+          "alias": "UF",
+          "omtg": {
+            "attrId": "a3_dgw2"
+          },
+          "notes": [],
+          "type": "TEXT",
+          "length": 2,
+          "domain": "UF",
+          "nullable": true,
+          "default": "SC"
+        },
+        {
+          "name": "Populacao",
+          "alias": "População",
+          "omtg": {
+            "attrId": "a4_1o0d"
+          },
+          "notes": [
+            "8 dígitos declarados."
+          ],
+          "type": "LONG",
+          "nullable": true,
+          "range": {
+            "min": 0,
+            "max": null
+          }
+        }
+      ],
+      "indexes": [
+        {
+          "name": "IDX_Municipio_Codigo_IBGE",
+          "fields": [
+            "Codigo_IBGE"
+          ],
+          "unique": false
+        }
+      ],
+      "notes": [],
+      "metadata": {
+        "title": "Município",
+        "summary": "Classe convencional do modelo OMT-G \"Exemplo — Teste completo GDB\" — 4 atributo(s), 2 relacionamento(s).",
+        "description": "<p><b>Município</b> — Classe convencional no modelo OMT-G \"Exemplo — Teste completo GDB\".</p><p>No geodatabase: Table.</p><p><b>Atributos</b></p><ul><li><b>Código IBGE</b> (Codigo_IBGE, LONG) — PK, obrigatório</li><li><b>Nome</b> (Nome, TEXT(80)) — obrigatório, único</li><li><b>UF</b> (UF, TEXT(2)) — domínio UF, padrão = SC</li><li><b>População</b> (Populacao, LONG) — faixa 0..</li></ul><p><b>Relacionamentos</b></p><ul><li>Representa_Limite: representado em outra escala por — com Limite_Municipal (1:N, composta)</li><li>Representa_Sede: representado em outra escala por — com Sede_Municipal (1:N, composta)</li></ul><p><b>Attribute rules</b></p><ul><li>Unico_Municipio_Nome: Garante que \"Nome\" não se repita.</li><li>Faixa_Municipio_Populacao: \"População\" no mínimo 0.</li><li>PK_Municipio: Chave primária \"Código IBGE\": obrigatória e sem repetição.</li></ul>",
+        "tags": [
+          "OMT-G",
+          "GeoGeoGeo",
+          "Exemplo — Teste completo GDB",
+          "Classe convencional"
+        ],
+        "credits": "Gerado pelo GeoGeoGeo em 01/01/2026 a partir do modelo lógico OMT-G \"Exemplo — Teste completo GDB\"."
+      }
+    },
+    {
+      "name": "Limite_Municipal",
+      "alias": "Limite Municipal",
       "kind": "featureClass",
       "omtg": {
-        "classId": "cexgvbnz",
+        "classId": "c4sp9j9r",
         "kind": "geo",
         "geoType": "object",
         "primitive": "polygon"
@@ -85,22 +469,420 @@
       ],
       "fields": [
         {
-          "name": "Matricula",
-          "alias": "Matrícula",
+          "name": "Codigo_IBGE",
+          "alias": "Código IBGE",
           "omtg": {
-            "attrId": "l1"
+            "attrId": "a5_q5lw"
           },
-          "notes": [],
-          "type": "TEXT",
-          "length": 14,
+          "notes": [
+            "7 dígitos declarados."
+          ],
+          "type": "LONG",
+          "nullable": false,
+          "primaryKey": true,
+          "foreignKey": {
+            "classId": "chnamfbj",
+            "attrId": "a1_g8xy"
+          }
+        },
+        {
+          "name": "Area_Km",
+          "alias": "Área (km²)",
+          "omtg": {
+            "attrId": "a6_wbcc"
+          },
+          "notes": [
+            "precision/scale ignorados em File Geodatabase."
+          ],
+          "type": "DOUBLE",
+          "precision": 12,
+          "scale": 3,
+          "nullable": true,
+          "calculated": true,
+          "calculatedExpression": {
+            "neutral": "ARRED(AREA([SHAPE]) / 1000000, 3)",
+            "arcade": "Round(Area($feature, 'square-meters') / 1000000, 3)",
+            "sql": "round((ST_Area((geom)::geography) / 1000000)::numeric, 3)"
+          }
+        }
+      ],
+      "indexes": [
+        {
+          "name": "IDX_Limite_Municipal_Codigo_IB",
+          "fields": [
+            "Codigo_IBGE"
+          ],
+          "unique": false
+        }
+      ],
+      "notes": [],
+      "geometryType": "POLYGON",
+      "spatialReference": {
+        "authority": "EPSG",
+        "wkid": 31982
+      },
+      "hasZ": false,
+      "hasM": false,
+      "featureDataset": "SRID_31982",
+      "metadata": {
+        "title": "Limite Municipal",
+        "summary": "Geo-objeto — Polígono do modelo OMT-G \"Exemplo — Teste completo GDB\" — 2 atributo(s), 2 relacionamento(s).",
+        "description": "<p><b>Limite Municipal</b> — Geo-objeto — Polígono no modelo OMT-G \"Exemplo — Teste completo GDB\".</p><p>No geodatabase: Feature Class de geometria POLYGON. Sistema de referência: EPSG:31982. Feature dataset: SRID_31982.</p><p><b>Atributos</b></p><ul><li><b>Código IBGE</b> (Codigo_IBGE, LONG) — PK, FK → Municipio (Cascata), obrigatório</li><li><b>Área (km²)</b> (Area_Km, DOUBLE) — calculado: <code>ARRED(AREA([SHAPE]) / 1000000, 3)</code></li></ul><p><b>Relacionamentos</b></p><ul><li>E_Formado_Por: É formado por — com Bairro (1:N, composta)</li><li>Representa_Limite: representado em outra escala por — com Municipio (1:N, composta)</li></ul><p><b>Regras de topologia</b></p><ul><li>Must Be Covered By Feature Class Of (Area-Area) — Limite_Municipal × Bairro (topologia Topologia)</li></ul><p><b>Attribute rules</b></p><ul><li>Calc_Limite_Municipal_Area_Km: Calcula \"Área (km²)\".</li><li>PK_Limite_Municipal: Chave primária \"Código IBGE\": obrigatória e sem repetição.</li></ul><p><b>O que não coube 1:1</b></p><ul><li>precision/scale são ignorados em File Geodatabase (só valem em enterprise). Declarados mesmo assim.</li><li>União espacial gera as mesmas regras da Subdivisão — a diferença é a procedência da geometria, que o GDB não guarda.</li></ul>",
+        "tags": [
+          "OMT-G",
+          "GeoGeoGeo",
+          "Exemplo — Teste completo GDB",
+          "Geo-objeto",
+          "Polígono"
+        ],
+        "credits": "Gerado pelo GeoGeoGeo em 01/01/2026 a partir do modelo lógico OMT-G \"Exemplo — Teste completo GDB\"."
+      }
+    },
+    {
+      "name": "Sede_Municipal",
+      "alias": "Sede Municipal",
+      "kind": "featureClass",
+      "omtg": {
+        "classId": "c2toiaao",
+        "kind": "geo",
+        "geoType": "object",
+        "primitive": "point"
+      },
+      "systemFields": [
+        "OBJECTID",
+        "SHAPE",
+        "GLOBALID"
+      ],
+      "fields": [
+        {
+          "name": "ID",
+          "alias": "ID",
+          "omtg": {
+            "attrId": "a7_8v8y"
+          },
+          "notes": [
+            "6 dígitos declarados."
+          ],
+          "type": "LONG",
           "nullable": false,
           "primaryKey": true
         },
         {
-          "name": "AreaHa",
-          "alias": "Área Ha",
+          "name": "Municipio",
+          "alias": "Município",
           "omtg": {
-            "attrId": "l2"
+            "attrId": "a8_fe3m"
+          },
+          "notes": [
+            "7 dígitos declarados.",
+            "Unicidade via Constraint Attribute Rule (File GDB não tem índice único)."
+          ],
+          "type": "LONG",
+          "nullable": false,
+          "foreignKey": {
+            "classId": "chnamfbj",
+            "attrId": "a1_g8xy"
+          }
+        }
+      ],
+      "indexes": [
+        {
+          "name": "IDX_Sede_Municipal_ID",
+          "fields": [
+            "ID"
+          ],
+          "unique": false
+        }
+      ],
+      "notes": [],
+      "geometryType": "POINT",
+      "spatialReference": {
+        "authority": "EPSG",
+        "wkid": 31982
+      },
+      "hasZ": false,
+      "hasM": false,
+      "featureDataset": "SRID_31982",
+      "metadata": {
+        "title": "Sede Municipal",
+        "summary": "Geo-objeto — Ponto do modelo OMT-G \"Exemplo — Teste completo GDB\" — 2 atributo(s), 1 relacionamento(s).",
+        "description": "<p><b>Sede Municipal</b> — Geo-objeto — Ponto no modelo OMT-G \"Exemplo — Teste completo GDB\".</p><p>No geodatabase: Feature Class de geometria POINT. Sistema de referência: EPSG:31982. Feature dataset: SRID_31982.</p><p><b>Atributos</b></p><ul><li><b>ID</b> (ID, LONG) — PK, obrigatório</li><li><b>Município</b> (Municipio, LONG) — FK → Municipio (Cascata), obrigatório, único</li></ul><p><b>Relacionamentos</b></p><ul><li>Representa_Sede: representado em outra escala por — com Municipio (1:N, composta)</li></ul><p><b>Attribute rules</b></p><ul><li>Unico_Sede_Municipal_Municipio: Garante que \"Município\" não se repita.</li><li>PK_Sede_Municipal: Chave primária \"ID\": obrigatória e sem repetição.</li></ul>",
+        "tags": [
+          "OMT-G",
+          "GeoGeoGeo",
+          "Exemplo — Teste completo GDB",
+          "Geo-objeto",
+          "Ponto"
+        ],
+        "credits": "Gerado pelo GeoGeoGeo em 01/01/2026 a partir do modelo lógico OMT-G \"Exemplo — Teste completo GDB\"."
+      }
+    },
+    {
+      "name": "Bairro",
+      "alias": "Bairro",
+      "kind": "featureClass",
+      "omtg": {
+        "classId": "csnt8y6p",
+        "kind": "geo",
+        "geoType": "object",
+        "primitive": "polygon"
+      },
+      "systemFields": [
+        "OBJECTID",
+        "SHAPE",
+        "GLOBALID"
+      ],
+      "fields": [
+        {
+          "name": "ID",
+          "alias": "ID",
+          "omtg": {
+            "attrId": "a9_mqnz"
+          },
+          "notes": [
+            "6 dígitos declarados."
+          ],
+          "type": "LONG",
+          "nullable": false,
+          "primaryKey": true
+        },
+        {
+          "name": "Nome",
+          "alias": "Nome",
+          "omtg": {
+            "attrId": "a10_z1ap"
+          },
+          "notes": [],
+          "type": "TEXT",
+          "length": 60,
+          "nullable": false
+        },
+        {
+          "name": "Municipio",
+          "alias": "Município",
+          "omtg": {
+            "attrId": "a11_9fnz"
+          },
+          "notes": [
+            "4 dígitos declarados.",
+            "Tipo alinhado ao da PK referenciada (LONG; era SHORT)."
+          ],
+          "type": "LONG",
+          "nullable": false,
+          "foreignKey": {
+            "classId": "c4sp9j9r",
+            "attrId": "a5_q5lw"
+          }
+        }
+      ],
+      "indexes": [
+        {
+          "name": "IDX_Bairro_ID",
+          "fields": [
+            "ID"
+          ],
+          "unique": false
+        }
+      ],
+      "notes": [],
+      "geometryType": "POLYGON",
+      "spatialReference": {
+        "authority": "EPSG",
+        "wkid": 31982
+      },
+      "hasZ": false,
+      "hasM": false,
+      "editorTracking": {
+        "creatorField": "created_user",
+        "creationDateField": "created_date",
+        "lastEditorField": "last_edited_user",
+        "lastEditDateField": "last_edited_date",
+        "recordDatesIn": "UTC"
+      },
+      "featureDataset": "SRID_31982",
+      "metadata": {
+        "title": "Bairro",
+        "summary": "Geo-objeto — Polígono do modelo OMT-G \"Exemplo — Teste completo GDB\" — 3 atributo(s), 3 relacionamento(s).",
+        "description": "<p><b>Bairro</b> — Geo-objeto — Polígono no modelo OMT-G \"Exemplo — Teste completo GDB\".</p><p>No geodatabase: Feature Class de geometria POLYGON. Sistema de referência: EPSG:31982. Feature dataset: SRID_31982. Controle de edições (Editor Tracking) ativo.</p><p><b>Atributos</b></p><ul><li><b>ID</b> (ID, LONG) — PK, obrigatório</li><li><b>Nome</b> (Nome, TEXT(60)) — obrigatório</li><li><b>Município</b> (Municipio, LONG) — FK → Limite_Municipal (Cascata), obrigatório</li></ul><p><b>Relacionamentos</b></p><ul><li>E_Formado_Por: É formado por — com Limite_Municipal (1:N, composta)</li><li>Contem_Quadras: Contém quadras — com Quadra (1:N)</li><li>Sobrepoe_Zona: Sobrepõe zona — com Zoneamento (M:N)</li></ul><p><b>Regras de topologia</b></p><ul><li>Must Not Overlap (Area) — Bairro (topologia Topologia)</li><li>Must Not Have Gaps (Area) — Bairro (topologia Topologia)</li><li>Must Be Covered By Feature Class Of (Area-Area) — Limite_Municipal × Bairro (topologia Topologia)</li></ul><p><b>Attribute rules</b></p><ul><li>PK_Bairro: Chave primária \"ID\": obrigatória e sem repetição.</li><li>Ref_Contem_Quadras: Impede excluir Bairro que ainda tenha Quadra associado.</li><li>Min_Contem_Quadras_Bairro: Participação mínima (1..*): todo registro de Bairro precisa de pelo menos um Quadra (Contem_Quadras).</li><li>Esp_Bairro_Zoneamento_Sobrepoe: Exige que Bairro sobrepõe Zoneamento.</li></ul><p><b>O que não coube 1:1</b></p><ul><li>A FK tinha tipo SHORT e a PK \"Limite_Municipal.Codigo_IBGE\" é LONG — o ArcGIS só liga campos do mesmo tipo. Gerado como LONG; ajuste no Lógico para ficarem iguais.</li></ul>",
+        "tags": [
+          "OMT-G",
+          "GeoGeoGeo",
+          "Exemplo — Teste completo GDB",
+          "Geo-objeto",
+          "Polígono"
+        ],
+        "credits": "Gerado pelo GeoGeoGeo em 01/01/2026 a partir do modelo lógico OMT-G \"Exemplo — Teste completo GDB\"."
+      }
+    },
+    {
+      "name": "Quadra",
+      "alias": "Quadra",
+      "kind": "featureClass",
+      "omtg": {
+        "classId": "cv1nekxh",
+        "kind": "geo",
+        "geoType": "object",
+        "primitive": "polygon"
+      },
+      "systemFields": [
+        "OBJECTID",
+        "SHAPE",
+        "GLOBALID"
+      ],
+      "fields": [
+        {
+          "name": "Codigo",
+          "alias": "Código",
+          "omtg": {
+            "attrId": "a12_6zg1"
+          },
+          "notes": [],
+          "type": "TEXT",
+          "length": 10,
+          "nullable": false,
+          "primaryKey": true
+        },
+        {
+          "name": "Bairro",
+          "alias": "Bairro",
+          "omtg": {
+            "attrId": "a13_fsxu"
+          },
+          "notes": [
+            "6 dígitos declarados."
+          ],
+          "type": "LONG",
+          "nullable": false,
+          "foreignKey": {
+            "classId": "csnt8y6p",
+            "attrId": "a9_mqnz"
+          }
+        },
+        {
+          "name": "Area_Verde_M",
+          "alias": "Área verde (m²)",
+          "omtg": {
+            "attrId": "a14_0t7q"
+          },
+          "notes": [
+            "precision/scale ignorados em File Geodatabase."
+          ],
+          "type": "DOUBLE",
+          "precision": 12,
+          "scale": 2,
+          "nullable": true,
+          "range": {
+            "min": 0,
+            "max": null
+          }
+        }
+      ],
+      "indexes": [
+        {
+          "name": "IDX_Quadra_Codigo",
+          "fields": [
+            "Codigo"
+          ],
+          "unique": false
+        }
+      ],
+      "notes": [],
+      "geometryType": "POLYGON",
+      "spatialReference": {
+        "authority": "EPSG",
+        "wkid": 31982
+      },
+      "hasZ": false,
+      "hasM": false,
+      "featureDataset": "SRID_31982",
+      "metadata": {
+        "title": "Quadra",
+        "summary": "Geo-objeto — Polígono do modelo OMT-G \"Exemplo — Teste completo GDB\" — 3 atributo(s), 4 relacionamento(s).",
+        "description": "<p><b>Quadra</b> — Geo-objeto — Polígono no modelo OMT-G \"Exemplo — Teste completo GDB\".</p><p>No geodatabase: Feature Class de geometria POLYGON. Sistema de referência: EPSG:31982. Feature dataset: SRID_31982.</p><p><b>Atributos</b></p><ul><li><b>Código</b> (Codigo, TEXT(10)) — PK, obrigatório</li><li><b>Bairro</b> (Bairro, LONG) — FK → Bairro (Restringir), obrigatório</li><li><b>Área verde (m²)</b> (Area_Verde_M, DOUBLE) — faixa 0..</li></ul><p><b>Relacionamentos</b></p><ul><li>Subdividida_Em: Subdividida em — com Lote (1:N, composta)</li><li>Contem_Quadras: Contém quadras — com Bairro (1:N)</li><li>Toca_Quadra: Toca quadra — com Trecho_De_Rede_De_Agua (M:N)</li><li>Vizinha_Da_Faixa: Vizinha da faixa — com Faixa_De_Servidao (M:N)</li></ul><p><b>Regras de topologia</b></p><ul><li>Must Be Covered By Feature Class Of (Area-Area) — Quadra × Lote (topologia Topologia)</li></ul><p><b>Attribute rules</b></p><ul><li>Faixa_Quadra_Area_Verde_M: \"Área verde (m²)\" no mínimo 0.</li><li>PK_Quadra: Chave primária \"Código\": obrigatória e sem repetição.</li><li>Esp_Quadra_Faixa_De_Servidao_Adjacente: Exige que Quadra adjacente Faixa_De_Servidao.</li></ul><p><b>O que não coube 1:1</b></p><ul><li>precision/scale são ignorados em File Geodatabase (só valem em enterprise). Declarados mesmo assim.</li></ul>",
+        "tags": [
+          "OMT-G",
+          "GeoGeoGeo",
+          "Exemplo — Teste completo GDB",
+          "Geo-objeto",
+          "Polígono"
+        ],
+        "credits": "Gerado pelo GeoGeoGeo em 01/01/2026 a partir do modelo lógico OMT-G \"Exemplo — Teste completo GDB\"."
+      }
+    },
+    {
+      "name": "Lote",
+      "alias": "Lote",
+      "kind": "featureClass",
+      "omtg": {
+        "classId": "cprqd1m6",
+        "kind": "geo",
+        "geoType": "object",
+        "primitive": "polygon"
+      },
+      "systemFields": [
+        "OBJECTID",
+        "SHAPE",
+        "GLOBALID"
+      ],
+      "fields": [
+        {
+          "name": "Inscricao",
+          "alias": "Inscrição",
+          "omtg": {
+            "attrId": "a15_59yl"
+          },
+          "notes": [],
+          "type": "TEXT",
+          "length": 20,
+          "nullable": false,
+          "primaryKey": true
+        },
+        {
+          "name": "Quadra",
+          "alias": "Quadra",
+          "omtg": {
+            "attrId": "a16_juqw"
+          },
+          "notes": [],
+          "type": "TEXT",
+          "length": 10,
+          "nullable": true,
+          "foreignKey": {
+            "classId": "cv1nekxh",
+            "attrId": "a12_6zg1"
+          }
+        },
+        {
+          "name": "Situacao",
+          "alias": "Situação",
+          "omtg": {
+            "attrId": "a17_m0vp"
+          },
+          "notes": [
+            "Lista com códigos numéricos — campo SHORT."
+          ],
+          "type": "SHORT",
+          "domain": "Situacao",
+          "nullable": false,
+          "default": "3"
+        },
+        {
+          "name": "Uso",
+          "alias": "Uso",
+          "omtg": {
+            "attrId": "a18_854d"
+          },
+          "notes": [],
+          "type": "TEXT",
+          "length": 1,
+          "domain": "Uso",
+          "nullable": true
+        },
+        {
+          "name": "Area_M",
+          "alias": "Área (m²)",
+          "omtg": {
+            "attrId": "a19_mqcb"
           },
           "notes": [
             "precision/scale ignorados em File Geodatabase."
@@ -111,126 +893,209 @@
           "nullable": true,
           "calculated": true,
           "calculatedExpression": {
-            "neutral": "ARRED(AREA([SHAPE]) / 10000, 2)",
-            "arcade": "Round(Area($feature) / 10000, 2)",
-            "sql": "round((ST_Area(geom) / 10000)::numeric, 2)"
+            "neutral": "ARRED(AREA([SHAPE]), 2)",
+            "arcade": "Round(Area($feature, 'square-meters'), 2)",
+            "sql": "round((ST_Area((geom)::geography))::numeric, 2)"
           }
         },
         {
-          "name": "Situacao",
-          "alias": "Situação",
+          "name": "Perimetro_M",
+          "alias": "Perímetro (m)",
           "omtg": {
-            "attrId": "l3"
+            "attrId": "a20_g6cf"
           },
-          "notes": [],
-          "type": "TEXT",
-          "length": 1,
-          "domain": "Situacao",
-          "nullable": true
+          "notes": [
+            "precision/scale ignorados em File Geodatabase."
+          ],
+          "type": "DOUBLE",
+          "precision": 10,
+          "scale": 2,
+          "nullable": true,
+          "calculated": true,
+          "calculatedExpression": {
+            "neutral": "ARRED(PERIMETRO([SHAPE]), 2)",
+            "arcade": "Round(Length($feature, 'meters'), 2)",
+            "sql": "round((ST_Perimeter((geom)::geography))::numeric, 2)"
+          }
         },
         {
-          "name": "Registrado",
-          "alias": "Registrado",
+          "name": "Testada_M",
+          "alias": "Testada (m)",
           "omtg": {
-            "attrId": "l4"
+            "attrId": "a21_49ab"
+          },
+          "notes": [
+            "precision/scale ignorados em File Geodatabase."
+          ],
+          "type": "DOUBLE",
+          "precision": 8,
+          "scale": 2,
+          "nullable": true,
+          "domain": "Faixa_Testada_M",
+          "range": {
+            "min": 0,
+            "max": 500
+          }
+        },
+        {
+          "name": "Murado",
+          "alias": "Murado",
+          "omtg": {
+            "attrId": "a22_gnid"
           },
           "notes": [
             "Booleano não existe em File GDB — SHORT com domínio Sim/Não."
           ],
           "type": "SHORT",
           "domain": "SimNao",
-          "nullable": true
+          "nullable": false,
+          "default": "0"
         },
         {
-          "name": "NumFolha",
-          "alias": "Num Folha",
+          "name": "Data_Do_Cadastro",
+          "alias": "Data do cadastro",
           "omtg": {
-            "attrId": "l5"
-          },
-          "notes": [
-            "3 dígitos declarados."
-          ],
-          "type": "SHORT",
-          "nullable": true
-        },
-        {
-          "name": "CodInterno",
-          "alias": "Cod Interno",
-          "omtg": {
-            "attrId": "l6"
-          },
-          "notes": [
-            "Unicidade via Constraint Attribute Rule (File GDB não tem índice único)."
-          ],
-          "type": "TEXT",
-          "length": 8,
-          "nullable": true
-        },
-        {
-          "name": "ProprietarioId",
-          "alias": "Proprietario Id",
-          "omtg": {
-            "attrId": "l7"
+            "attrId": "a23_84x1"
           },
           "notes": [],
-          "type": "TEXT",
-          "length": 11,
-          "nullable": true,
-          "foreignKey": {
-            "classId": "cgj5zf5w",
-            "attrId": null
-          }
+          "type": "DATE",
+          "nullable": true
         }
       ],
       "indexes": [
         {
-          "name": "IDXAreaDePreservacaoMatricula",
+          "name": "IDX_Lote_Inscricao",
           "fields": [
-            "Matricula"
+            "Inscricao"
           ],
           "unique": false
         }
       ],
-      "notes": [],
+      "notes": [
+        "Anexos habilitados (Blob: Foto, Matrícula digitalizada)."
+      ],
       "geometryType": "POLYGON",
       "spatialReference": {
         "authority": "EPSG",
-        "wkid": 31983
+        "wkid": 31982
+      },
+      "hasZ": false,
+      "hasM": false,
+      "editorTracking": {
+        "creatorField": "created_user",
+        "creationDateField": "created_date",
+        "lastEditorField": "last_edited_user",
+        "lastEditDateField": "last_edited_date",
+        "recordDatesIn": "UTC"
+      },
+      "attachments": {
+        "fields": [
+          "Foto",
+          "Matrícula digitalizada"
+        ]
+      },
+      "featureDataset": "SRID_31982",
+      "metadata": {
+        "title": "Lote",
+        "summary": "Geo-objeto — Polígono do modelo OMT-G \"Exemplo — Teste completo GDB\" — 9 atributo(s), 8 relacionamento(s).",
+        "description": "<p><b>Lote</b> — Geo-objeto — Polígono no modelo OMT-G \"Exemplo — Teste completo GDB\".</p><p>No geodatabase: Feature Class de geometria POLYGON. Sistema de referência: EPSG:31982. Feature dataset: SRID_31982. Anexos habilitados (Blob no modelo: Foto, Matrícula digitalizada). Controle de edições (Editor Tracking) ativo.</p><p><b>Atributos</b></p><ul><li><b>Inscrição</b> (Inscricao, TEXT(20)) — PK, obrigatório</li><li><b>Quadra</b> (Quadra, TEXT(10)) — FK → Quadra (Nulo)</li><li><b>Situação</b> (Situacao, SHORT) — obrigatório, domínio Situacao, padrão = 3</li><li><b>Uso</b> (Uso, TEXT(1)) — domínio Uso</li><li><b>Área (m²)</b> (Area_M, DOUBLE) — calculado: <code>ARRED(AREA([SHAPE]), 2)</code></li><li><b>Perímetro (m)</b> (Perimetro_M, DOUBLE) — calculado: <code>ARRED(PERIMETRO([SHAPE]), 2)</code></li><li><b>Testada (m)</b> (Testada_M, DOUBLE) — domínio Faixa_Testada_M, faixa 0..500</li><li><b>Murado</b> (Murado, SHORT) — obrigatório, domínio SimNao, padrão = 0</li><li><b>Data do cadastro</b> (Data_Do_Cadastro, DATE)</li></ul><p><b>Relacionamentos</b></p><ul><li>Subdividida_Em: Subdividida em — com Quadra (1:N, composta)</li><li>Tem_Edificacoes: Tem edificações — com Edificacao (1:N)</li><li>Pertence_A: Pertence a — com Proprietario (M:N)</li><li>Registrado_Em: Registrado em — com Matricula (1:1)</li><li>Tributado_Por: Tributado por — com IPTU (1:1, composta)</li><li>Dentro_Do_Lote: Dentro do lote — com Edificacao (1:N)</li><li>Coincide_Zona: Coincide zona — com Zoneamento (M:N)</li><li>Perto_Do_Lote: Perto do lote — com Marco_Geodesico (M:N)</li></ul><p><b>Regras de topologia</b></p><ul><li>Must Not Overlap (Area) — Lote (topologia Topologia)</li><li>Must Not Have Gaps (Area) — Lote (topologia Topologia)</li><li>Must Be Covered By Feature Class Of (Area-Area) — Quadra × Lote (topologia Topologia)</li><li>Must Be Covered By Feature Class Of (Area-Area) — Edificacao × Lote (topologia Topologia)</li><li>Must Be Covered By Feature Class Of (Area-Area) — Lote × Zoneamento (topologia Topologia)</li></ul><p><b>Attribute rules</b></p><ul><li>Faixa_Lote_Testada_M: \"Testada (m)\" entre 0 e 500.</li><li>Calc_Lote_Area_M: Calcula \"Área (m²)\".</li><li>Calc_Lote_Perimetro_M: Calcula \"Perímetro (m)\".</li><li>PK_Lote: Chave primária \"Inscrição\": obrigatória e sem repetição.</li><li>Min_Pertence_A_Lote: Participação mínima (1..*): todo registro de Lote precisa de pelo menos um Proprietario (Pertence_A).</li><li>Ref_Registrado_Em: Impede excluir Lote que ainda tenha Matricula associado.</li></ul><p><b>Notas</b></p><ul><li>Anexos habilitados (Blob: Foto, Matrícula digitalizada).</li></ul><p><b>O que não coube 1:1</b></p><ul><li>precision/scale são ignorados em File Geodatabase (só valem em enterprise). Declarados mesmo assim.</li><li>precision/scale são ignorados em File Geodatabase (só valem em enterprise). Declarados mesmo assim.</li><li>precision/scale são ignorados em File Geodatabase (só valem em enterprise). Declarados mesmo assim.</li><li>2 atributos Blob (Foto, Matrícula digitalizada) viram UMA tabela de anexos — o GDB não separa anexos por campo; diferencie pelo nome do arquivo.</li></ul>",
+        "tags": [
+          "OMT-G",
+          "GeoGeoGeo",
+          "Exemplo — Teste completo GDB",
+          "Geo-objeto",
+          "Polígono"
+        ],
+        "credits": "Gerado pelo GeoGeoGeo em 01/01/2026 a partir do modelo lógico OMT-G \"Exemplo — Teste completo GDB\"."
       }
     },
     {
-      "name": "Quadra",
-      "alias": "Quadra",
+      "name": "Edificacao",
+      "alias": "Edificação",
       "kind": "featureClass",
       "omtg": {
-        "classId": "c4k4b8xx",
+        "classId": "cal02eq2",
         "kind": "geo",
         "geoType": "object",
         "primitive": "polygon"
       },
       "systemFields": [
         "OBJECTID",
-        "SHAPE"
+        "SHAPE",
+        "GLOBALID"
       ],
       "fields": [
         {
-          "name": "Codigo",
-          "alias": "Código",
+          "name": "ID",
+          "alias": "ID",
           "omtg": {
-            "attrId": "q1"
+            "attrId": "a26_upgt"
+          },
+          "notes": [
+            "8 dígitos declarados."
+          ],
+          "type": "LONG",
+          "nullable": false,
+          "primaryKey": true
+        },
+        {
+          "name": "Lote",
+          "alias": "Lote",
+          "omtg": {
+            "attrId": "a27_w8jy"
           },
           "notes": [],
           "type": "TEXT",
-          "length": 8,
-          "nullable": false,
-          "primaryKey": true
+          "length": 20,
+          "nullable": true,
+          "default": "SEM-LOTE",
+          "foreignKey": {
+            "classId": "cprqd1m6",
+            "attrId": "a15_59yl"
+          }
+        },
+        {
+          "name": "Pavimentos",
+          "alias": "Pavimentos",
+          "omtg": {
+            "attrId": "a28_5vru"
+          },
+          "notes": [
+            "2 dígitos declarados."
+          ],
+          "type": "SHORT",
+          "nullable": true,
+          "default": "1",
+          "domain": "Faixa_Pavimentos",
+          "range": {
+            "min": 1,
+            "max": 60
+          }
+        },
+        {
+          "name": "Area_Construida_M",
+          "alias": "Área construída (m²)",
+          "omtg": {
+            "attrId": "a29_ra8l"
+          },
+          "notes": [
+            "precision/scale ignorados em File Geodatabase."
+          ],
+          "type": "DOUBLE",
+          "precision": 10,
+          "scale": 2,
+          "nullable": true,
+          "range": {
+            "min": 0,
+            "max": null
+          }
         }
       ],
       "indexes": [
         {
-          "name": "IDXQuadraCodigo",
+          "name": "IDX_Edificacao_ID",
           "fields": [
-            "Codigo"
+            "ID"
           ],
           "unique": false
         }
@@ -239,7 +1104,182 @@
       "geometryType": "POLYGON",
       "spatialReference": {
         "authority": "EPSG",
-        "wkid": 31983
+        "wkid": 31982
+      },
+      "hasZ": true,
+      "hasM": false,
+      "featureDataset": "SRID_31982",
+      "metadata": {
+        "title": "Edificação",
+        "summary": "Geo-objeto — Polígono do modelo OMT-G \"Exemplo — Teste completo GDB\" — 4 atributo(s), 5 relacionamento(s).",
+        "description": "<p><b>Edificação</b> — Geo-objeto — Polígono no modelo OMT-G \"Exemplo — Teste completo GDB\".</p><p>No geodatabase: Feature Class de geometria POLYGON, com Z. Sistema de referência: EPSG:31982. Feature dataset: SRID_31982.</p><p><b>Atributos</b></p><ul><li><b>ID</b> (ID, LONG) — PK, obrigatório</li><li><b>Lote</b> (Lote, TEXT(20)) — FK → Lote (Padrão), padrão = SEM-LOTE</li><li><b>Pavimentos</b> (Pavimentos, SHORT) — domínio Faixa_Pavimentos, padrão = 1, faixa 1..60</li><li><b>Área construída (m²)</b> (Area_Construida_M, DOUBLE) — faixa 0..</li></ul><p><b>Relacionamentos</b></p><ul><li>Tem_Edificacoes: Tem edificações — com Lote (1:N)</li><li>Residencial: especializa-se em — com Edificacao_Residencial (1:1, composta)</li><li>Comercial: especializa-se em — com Edificacao_Comercial (1:1, composta)</li><li>Dentro_Do_Lote: Dentro do lote — com Lote (1:N)</li><li>Fora_Da_Faixa: Fora da faixa — com Faixa_De_Servidao (M:N)</li></ul><p><b>Regras de topologia</b></p><ul><li>Must Be Covered By Feature Class Of (Area-Area) — Edificacao × Lote (topologia Topologia)</li><li>Must Not Overlap With (Area-Area) — Edificacao × Faixa_De_Servidao (topologia Topologia)</li></ul><p><b>Attribute rules</b></p><ul><li>Faixa_Edificacao_Pavimentos: \"Pavimentos\" entre 1 e 60.</li><li>Faixa_Edificacao_Area_Construida_M: \"Área construída (m²)\" no mínimo 0.</li><li>PK_Edificacao: Chave primária \"ID\": obrigatória e sem repetição.</li></ul><p><b>O que não coube 1:1</b></p><ul><li>precision/scale são ignorados em File Geodatabase (só valem em enterprise). Declarados mesmo assim.</li><li>Generalização total/disjunta: essas restrições não são representáveis no GDB.</li></ul>",
+        "tags": [
+          "OMT-G",
+          "GeoGeoGeo",
+          "Exemplo — Teste completo GDB",
+          "Geo-objeto",
+          "Polígono"
+        ],
+        "credits": "Gerado pelo GeoGeoGeo em 01/01/2026 a partir do modelo lógico OMT-G \"Exemplo — Teste completo GDB\"."
+      }
+    },
+    {
+      "name": "Edificacao_Residencial",
+      "alias": "Edificação Residencial",
+      "kind": "featureClass",
+      "omtg": {
+        "classId": "cqo5xyup",
+        "kind": "geo",
+        "geoType": "object",
+        "primitive": "polygon"
+      },
+      "systemFields": [
+        "OBJECTID",
+        "SHAPE",
+        "GLOBALID"
+      ],
+      "fields": [
+        {
+          "name": "ID",
+          "alias": "ID",
+          "omtg": {
+            "attrId": "a30_nq30"
+          },
+          "notes": [
+            "8 dígitos declarados."
+          ],
+          "type": "LONG",
+          "nullable": false,
+          "primaryKey": true,
+          "foreignKey": {
+            "classId": "cal02eq2",
+            "attrId": "a26_upgt"
+          }
+        },
+        {
+          "name": "Unidades",
+          "alias": "Unidades",
+          "omtg": {
+            "attrId": "a31_hf5r"
+          },
+          "notes": [
+            "3 dígitos declarados."
+          ],
+          "type": "SHORT",
+          "nullable": true,
+          "range": {
+            "min": 1,
+            "max": null
+          }
+        }
+      ],
+      "indexes": [
+        {
+          "name": "IDX_Edificacao_Residencial_ID",
+          "fields": [
+            "ID"
+          ],
+          "unique": false
+        }
+      ],
+      "notes": [],
+      "geometryType": "POLYGON",
+      "spatialReference": {
+        "authority": "EPSG",
+        "wkid": 31982
+      },
+      "hasZ": false,
+      "hasM": false,
+      "featureDataset": "SRID_31982",
+      "metadata": {
+        "title": "Edificação Residencial",
+        "summary": "Geo-objeto — Polígono do modelo OMT-G \"Exemplo — Teste completo GDB\" — 2 atributo(s), 1 relacionamento(s).",
+        "description": "<p><b>Edificação Residencial</b> — Geo-objeto — Polígono no modelo OMT-G \"Exemplo — Teste completo GDB\".</p><p>No geodatabase: Feature Class de geometria POLYGON. Sistema de referência: EPSG:31982. Feature dataset: SRID_31982.</p><p><b>Atributos</b></p><ul><li><b>ID</b> (ID, LONG) — PK, FK → Edificacao (Cascata), obrigatório</li><li><b>Unidades</b> (Unidades, SHORT) — faixa 1..</li></ul><p><b>Relacionamentos</b></p><ul><li>Residencial: especializa-se em — com Edificacao (1:1, composta)</li></ul><p><b>Attribute rules</b></p><ul><li>Faixa_Edificacao_Residencial_Unidades: \"Unidades\" no mínimo 1.</li><li>PK_Edificacao_Residencial: Chave primária \"ID\": obrigatória e sem repetição.</li></ul>",
+        "tags": [
+          "OMT-G",
+          "GeoGeoGeo",
+          "Exemplo — Teste completo GDB",
+          "Geo-objeto",
+          "Polígono"
+        ],
+        "credits": "Gerado pelo GeoGeoGeo em 01/01/2026 a partir do modelo lógico OMT-G \"Exemplo — Teste completo GDB\"."
+      }
+    },
+    {
+      "name": "Edificacao_Comercial",
+      "alias": "Edificação Comercial",
+      "kind": "featureClass",
+      "omtg": {
+        "classId": "c4s9fl74",
+        "kind": "geo",
+        "geoType": "object",
+        "primitive": "polygon"
+      },
+      "systemFields": [
+        "OBJECTID",
+        "SHAPE",
+        "GLOBALID"
+      ],
+      "fields": [
+        {
+          "name": "ID",
+          "alias": "ID",
+          "omtg": {
+            "attrId": "a32_zyse"
+          },
+          "notes": [
+            "8 dígitos declarados."
+          ],
+          "type": "LONG",
+          "nullable": false,
+          "primaryKey": true,
+          "foreignKey": {
+            "classId": "cal02eq2",
+            "attrId": "a26_upgt"
+          }
+        },
+        {
+          "name": "CNAE",
+          "alias": "CNAE",
+          "omtg": {
+            "attrId": "a33_dppz"
+          },
+          "notes": [],
+          "type": "TEXT",
+          "length": 10,
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "IDX_Edificacao_Comercial_ID",
+          "fields": [
+            "ID"
+          ],
+          "unique": false
+        }
+      ],
+      "notes": [],
+      "geometryType": "POLYGON",
+      "spatialReference": {
+        "authority": "EPSG",
+        "wkid": 31982
+      },
+      "hasZ": false,
+      "hasM": false,
+      "featureDataset": "SRID_31982",
+      "metadata": {
+        "title": "Edificação Comercial",
+        "summary": "Geo-objeto — Polígono do modelo OMT-G \"Exemplo — Teste completo GDB\" — 2 atributo(s), 1 relacionamento(s).",
+        "description": "<p><b>Edificação Comercial</b> — Geo-objeto — Polígono no modelo OMT-G \"Exemplo — Teste completo GDB\".</p><p>No geodatabase: Feature Class de geometria POLYGON. Sistema de referência: EPSG:31982. Feature dataset: SRID_31982.</p><p><b>Atributos</b></p><ul><li><b>ID</b> (ID, LONG) — PK, FK → Edificacao (Cascata), obrigatório</li><li><b>CNAE</b> (CNAE, TEXT(10))</li></ul><p><b>Relacionamentos</b></p><ul><li>Comercial: especializa-se em — com Edificacao (1:1, composta)</li></ul><p><b>Attribute rules</b></p><ul><li>PK_Edificacao_Comercial: Chave primária \"ID\": obrigatória e sem repetição.</li></ul>",
+        "tags": [
+          "OMT-G",
+          "GeoGeoGeo",
+          "Exemplo — Teste completo GDB",
+          "Geo-objeto",
+          "Polígono"
+        ],
+        "credits": "Gerado pelo GeoGeoGeo em 01/01/2026 a partir do modelo lógico OMT-G \"Exemplo — Teste completo GDB\"."
       }
     },
     {
@@ -247,82 +1287,402 @@
       "alias": "Proprietário",
       "kind": "table",
       "omtg": {
-        "classId": "cgj5zf5w",
+        "classId": "cl2zqg7f",
         "kind": "conventional",
         "geoType": null,
         "primitive": null
       },
       "systemFields": [
-        "OBJECTID"
+        "OBJECTID",
+        "GLOBALID"
       ],
       "fields": [
         {
-          "name": "CPF",
-          "alias": "CPF",
+          "name": "CPF_CNPJ",
+          "alias": "CPF/CNPJ",
           "omtg": {
-            "attrId": "p1"
+            "attrId": "a34_40p3"
           },
           "notes": [],
           "type": "TEXT",
-          "length": 11,
+          "length": 14,
           "nullable": false,
           "primaryKey": true
+        },
+        {
+          "name": "Nome",
+          "alias": "Nome",
+          "omtg": {
+            "attrId": "a35_4ct1"
+          },
+          "notes": [],
+          "type": "TEXT",
+          "length": 120,
+          "nullable": false
+        },
+        {
+          "name": "E_Mail",
+          "alias": "E-mail",
+          "omtg": {
+            "attrId": "a36_1072"
+          },
+          "notes": [
+            "Unicidade via Constraint Attribute Rule (File GDB não tem índice único)."
+          ],
+          "type": "TEXT",
+          "length": 100,
+          "nullable": true
+        },
+        {
+          "name": "Tipo_De_Pessoa",
+          "alias": "Tipo de pessoa",
+          "omtg": {
+            "attrId": "a37_k7mo"
+          },
+          "notes": [
+            "Lista com códigos numéricos — campo SHORT."
+          ],
+          "type": "SHORT",
+          "domain": "Tipo_De_Pessoa",
+          "nullable": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "IDX_Proprietario_CPF_CNPJ",
+          "fields": [
+            "CPF_CNPJ"
+          ],
+          "unique": false
+        }
+      ],
+      "notes": [],
+      "editorTracking": {
+        "creatorField": "created_user",
+        "creationDateField": "created_date",
+        "lastEditorField": "last_edited_user",
+        "lastEditDateField": "last_edited_date",
+        "recordDatesIn": "UTC"
+      },
+      "metadata": {
+        "title": "Proprietário",
+        "summary": "Classe convencional do modelo OMT-G \"Exemplo — Teste completo GDB\" — 4 atributo(s), 2 relacionamento(s).",
+        "description": "<p><b>Proprietário</b> — Classe convencional no modelo OMT-G \"Exemplo — Teste completo GDB\".</p><p>No geodatabase: Table. Controle de edições (Editor Tracking) ativo.</p><p><b>Atributos</b></p><ul><li><b>CPF/CNPJ</b> (CPF_CNPJ, TEXT(14)) — PK, obrigatório</li><li><b>Nome</b> (Nome, TEXT(120)) — obrigatório</li><li><b>E-mail</b> (E_Mail, TEXT(100)) — único</li><li><b>Tipo de pessoa</b> (Tipo_De_Pessoa, SHORT) — obrigatório, domínio Tipo_De_Pessoa</li></ul><p><b>Relacionamentos</b></p><ul><li>Pertence_A: Pertence a — com Lote (M:N)</li><li>Assina: Assina — com Contrato_De_Servidao (1:N)</li></ul><p><b>Attribute rules</b></p><ul><li>Unico_Proprietario_E_Mail: Garante que \"E-mail\" não se repita.</li><li>PK_Proprietario: Chave primária \"CPF/CNPJ\": obrigatória e sem repetição.</li><li>Min_Pertence_A_Proprietario: Participação mínima (1..*): todo registro de Proprietario precisa de pelo menos um Lote (Pertence_A).</li><li>Ref_Assina: Impede excluir Proprietario que ainda tenha Contrato_De_Servidao associado.</li></ul>",
+        "tags": [
+          "OMT-G",
+          "GeoGeoGeo",
+          "Exemplo — Teste completo GDB",
+          "Classe convencional"
+        ],
+        "credits": "Gerado pelo GeoGeoGeo em 01/01/2026 a partir do modelo lógico OMT-G \"Exemplo — Teste completo GDB\"."
+      }
+    },
+    {
+      "name": "Matricula",
+      "alias": "Matrícula",
+      "kind": "table",
+      "omtg": {
+        "classId": "c2msfvli",
+        "kind": "conventional",
+        "geoType": null,
+        "primitive": null
+      },
+      "systemFields": [
+        "OBJECTID",
+        "GLOBALID"
+      ],
+      "fields": [
+        {
+          "name": "Numero",
+          "alias": "Número",
+          "omtg": {
+            "attrId": "a38_g7w7"
+          },
+          "notes": [],
+          "type": "TEXT",
+          "length": 20,
+          "nullable": false,
+          "primaryKey": true
+        },
+        {
+          "name": "Cartorio",
+          "alias": "Cartório",
+          "omtg": {
+            "attrId": "a39_laxs"
+          },
+          "notes": [],
+          "type": "TEXT",
+          "length": 80,
+          "nullable": false
+        },
+        {
+          "name": "Lote",
+          "alias": "Lote",
+          "omtg": {
+            "attrId": "a40_4tuq"
+          },
+          "notes": [
+            "Unicidade via Constraint Attribute Rule (File GDB não tem índice único)."
+          ],
+          "type": "TEXT",
+          "length": 20,
+          "nullable": false,
+          "foreignKey": {
+            "classId": "cprqd1m6",
+            "attrId": "a15_59yl"
+          }
+        }
+      ],
+      "indexes": [
+        {
+          "name": "IDX_Matricula_Numero",
+          "fields": [
+            "Numero"
+          ],
+          "unique": false
+        }
+      ],
+      "notes": [],
+      "metadata": {
+        "title": "Matrícula",
+        "summary": "Classe convencional do modelo OMT-G \"Exemplo — Teste completo GDB\" — 3 atributo(s), 1 relacionamento(s).",
+        "description": "<p><b>Matrícula</b> — Classe convencional no modelo OMT-G \"Exemplo — Teste completo GDB\".</p><p>No geodatabase: Table.</p><p><b>Atributos</b></p><ul><li><b>Número</b> (Numero, TEXT(20)) — PK, obrigatório</li><li><b>Cartório</b> (Cartorio, TEXT(80)) — obrigatório</li><li><b>Lote</b> (Lote, TEXT(20)) — FK → Lote (Restringir), obrigatório, único</li></ul><p><b>Relacionamentos</b></p><ul><li>Registrado_Em: Registrado em — com Lote (1:1)</li></ul><p><b>Attribute rules</b></p><ul><li>Unico_Matricula_Lote: Garante que \"Lote\" não se repita.</li><li>PK_Matricula: Chave primária \"Número\": obrigatória e sem repetição.</li></ul>",
+        "tags": [
+          "OMT-G",
+          "GeoGeoGeo",
+          "Exemplo — Teste completo GDB",
+          "Classe convencional"
+        ],
+        "credits": "Gerado pelo GeoGeoGeo em 01/01/2026 a partir do modelo lógico OMT-G \"Exemplo — Teste completo GDB\"."
+      }
+    },
+    {
+      "name": "IPTU",
+      "alias": "IPTU",
+      "kind": "table",
+      "omtg": {
+        "classId": "cqzzxelk",
+        "kind": "conventional",
+        "geoType": null,
+        "primitive": null
+      },
+      "systemFields": [
+        "OBJECTID",
+        "GLOBALID"
+      ],
+      "fields": [
+        {
+          "name": "Inscricao_Imobiliaria",
+          "alias": "Inscrição imobiliária",
+          "omtg": {
+            "attrId": "a41_ncv3"
+          },
+          "notes": [],
+          "type": "TEXT",
+          "length": 25,
+          "nullable": false,
+          "primaryKey": true
+        },
+        {
+          "name": "Lote",
+          "alias": "Lote",
+          "omtg": {
+            "attrId": "a42_di9y"
+          },
+          "notes": [],
+          "type": "TEXT",
+          "length": 20,
+          "nullable": false,
+          "foreignKey": {
+            "classId": "cprqd1m6",
+            "attrId": "a15_59yl"
+          }
+        },
+        {
+          "name": "Exercicio",
+          "alias": "Exercício",
+          "omtg": {
+            "attrId": "a43_jd4i"
+          },
+          "notes": [
+            "4 dígitos declarados."
+          ],
+          "type": "SHORT",
+          "nullable": false,
+          "domain": "Faixa_Exercicio",
+          "range": {
+            "min": 2000,
+            "max": 2100
+          }
+        },
+        {
+          "name": "Valor_Territorial",
+          "alias": "Valor territorial",
+          "omtg": {
+            "attrId": "a44_su59"
+          },
+          "notes": [
+            "precision/scale ignorados em File Geodatabase."
+          ],
+          "type": "DOUBLE",
+          "precision": 14,
+          "scale": 2,
+          "nullable": true,
+          "default": "0",
+          "range": {
+            "min": 0,
+            "max": null
+          }
+        },
+        {
+          "name": "Valor_Predial",
+          "alias": "Valor predial",
+          "omtg": {
+            "attrId": "a45_7ovq"
+          },
+          "notes": [
+            "precision/scale ignorados em File Geodatabase."
+          ],
+          "type": "DOUBLE",
+          "precision": 14,
+          "scale": 2,
+          "nullable": true,
+          "default": "0",
+          "range": {
+            "min": 0,
+            "max": null
+          }
+        },
+        {
+          "name": "Valor_Venal",
+          "alias": "Valor venal",
+          "omtg": {
+            "attrId": "a46_26he"
+          },
+          "notes": [
+            "precision/scale ignorados em File Geodatabase."
+          ],
+          "type": "DOUBLE",
+          "precision": 14,
+          "scale": 2,
+          "nullable": true,
+          "calculated": true,
+          "calculatedExpression": {
+            "neutral": "[Valor territorial] + [Valor predial]",
+            "arcade": "$feature.Valor_Territorial + $feature.Valor_Predial",
+            "sql": "valor_territorial + valor_predial"
+          }
         },
         {
           "name": "Situacao",
           "alias": "Situação",
           "omtg": {
-            "attrId": "p2"
+            "attrId": "a47_djue"
           },
           "notes": [],
           "type": "TEXT",
-          "length": 1,
-          "domain": "Situacao",
-          "nullable": true
+          "length": 20,
+          "nullable": true,
+          "calculated": true,
+          "calculatedExpression": {
+            "neutral": "SE([Valor venal] > 0, \"Lançado\", \"Isento\")",
+            "arcade": "IIf($feature.Valor_Venal > 0, \"Lançado\", \"Isento\")",
+            "sql": "(case when valor_venal > 0 then 'Lançado' else 'Isento' end)"
+          }
         }
       ],
       "indexes": [
         {
-          "name": "IDXProprietarioCPF",
+          "name": "IDX_IPTU_Inscricao_Imobiliaria",
           "fields": [
-            "CPF"
+            "Inscricao_Imobiliaria"
           ],
           "unique": false
         }
       ],
-      "notes": []
+      "notes": [],
+      "metadata": {
+        "title": "IPTU",
+        "summary": "Classe convencional do modelo OMT-G \"Exemplo — Teste completo GDB\" — 7 atributo(s), 1 relacionamento(s).",
+        "description": "<p><b>IPTU</b> — Classe convencional no modelo OMT-G \"Exemplo — Teste completo GDB\".</p><p>No geodatabase: Table.</p><p><b>Atributos</b></p><ul><li><b>Inscrição imobiliária</b> (Inscricao_Imobiliaria, TEXT(25)) — PK, obrigatório</li><li><b>Lote</b> (Lote, TEXT(20)) — FK → Lote (Cascata), obrigatório</li><li><b>Exercício</b> (Exercicio, SHORT) — obrigatório, domínio Faixa_Exercicio, faixa 2000..2100</li><li><b>Valor territorial</b> (Valor_Territorial, DOUBLE) — padrão = 0, faixa 0..</li><li><b>Valor predial</b> (Valor_Predial, DOUBLE) — padrão = 0, faixa 0..</li><li><b>Valor venal</b> (Valor_Venal, DOUBLE) — calculado: <code>[Valor territorial] + [Valor predial]</code></li><li><b>Situação</b> (Situacao, TEXT(20)) — calculado: <code>SE([Valor venal] &gt; 0, \"Lançado\", \"Isento\")</code></li></ul><p><b>Relacionamentos</b></p><ul><li>Tributado_Por: Tributado por — com Lote (1:1, composta)</li></ul><p><b>Attribute rules</b></p><ul><li>Faixa_IPTU_Exercicio: \"Exercício\" entre 2000 e 2100.</li><li>Faixa_IPTU_Valor_Territorial: \"Valor territorial\" no mínimo 0.</li><li>Faixa_IPTU_Valor_Predial: \"Valor predial\" no mínimo 0.</li><li>Calc_IPTU_Valor_Venal: Calcula \"Valor venal\".</li><li>Calc_IPTU_Situacao: Calcula \"Situação\".</li><li>PK_IPTU: Chave primária \"Inscrição imobiliária\": obrigatória e sem repetição.</li></ul><p><b>O que não coube 1:1</b></p><ul><li>precision/scale são ignorados em File Geodatabase (só valem em enterprise). Declarados mesmo assim.</li><li>precision/scale são ignorados em File Geodatabase (só valem em enterprise). Declarados mesmo assim.</li><li>precision/scale são ignorados em File Geodatabase (só valem em enterprise). Declarados mesmo assim.</li></ul>",
+        "tags": [
+          "OMT-G",
+          "GeoGeoGeo",
+          "Exemplo — Teste completo GDB",
+          "Classe convencional"
+        ],
+        "credits": "Gerado pelo GeoGeoGeo em 01/01/2026 a partir do modelo lógico OMT-G \"Exemplo — Teste completo GDB\"."
+      }
     },
     {
-      "name": "TrechoDeLinha",
-      "alias": "Trecho de Linha",
+      "name": "Linha_De_Transmissao",
+      "alias": "Linha de Transmissão",
       "kind": "featureClass",
       "omtg": {
-        "classId": "cy75ixxa",
+        "classId": "c0y16ffx",
         "kind": "geo",
         "geoType": "object",
-        "primitive": "unidirectional"
+        "primitive": "line"
       },
       "systemFields": [
         "OBJECTID",
-        "SHAPE"
+        "SHAPE",
+        "GLOBALID"
       ],
       "fields": [
         {
           "name": "Codigo",
           "alias": "Código",
           "omtg": {
-            "attrId": "t1"
+            "attrId": "a48_9210"
           },
           "notes": [],
           "type": "TEXT",
-          "length": 10,
+          "length": 15,
           "nullable": false,
           "primaryKey": true
+        },
+        {
+          "name": "Tensao_KV",
+          "alias": "Tensão (kV)",
+          "omtg": {
+            "attrId": "a49_hjeb"
+          },
+          "notes": [
+            "3 dígitos declarados."
+          ],
+          "type": "SHORT",
+          "nullable": false,
+          "domain": "Faixa_Tensao_KV",
+          "range": {
+            "min": 13,
+            "max": 800
+          }
+        },
+        {
+          "name": "Extensao_Km",
+          "alias": "Extensão (km)",
+          "omtg": {
+            "attrId": "a50_wwcc"
+          },
+          "notes": [
+            "precision/scale ignorados em File Geodatabase."
+          ],
+          "type": "DOUBLE",
+          "precision": 10,
+          "scale": 3,
+          "nullable": true,
+          "calculated": true,
+          "calculatedExpression": {
+            "neutral": "ARRED(COMPRIMENTO([SHAPE]) / 1000, 3)",
+            "arcade": "Round(Length($feature, 'meters') / 1000, 3)",
+            "sql": "round((ST_Length((geom)::geography) / 1000)::numeric, 3)"
+          }
         }
       ],
       "indexes": [
         {
-          "name": "IDXTrechoDeLinhaCodigo",
+          "name": "IDX_Linha_De_Transmissao_Codig",
           "fields": [
             "Codigo"
           ],
@@ -333,7 +1693,30 @@
       "geometryType": "POLYLINE",
       "spatialReference": {
         "authority": "EPSG",
-        "wkid": 31983
+        "wkid": 31982
+      },
+      "hasZ": false,
+      "hasM": false,
+      "editorTracking": {
+        "creatorField": "created_user",
+        "creationDateField": "created_date",
+        "lastEditorField": "last_edited_user",
+        "lastEditDateField": "last_edited_date",
+        "recordDatesIn": "UTC"
+      },
+      "featureDataset": "SRID_31982",
+      "metadata": {
+        "title": "Linha de Transmissão",
+        "summary": "Geo-objeto — Linha do modelo OMT-G \"Exemplo — Teste completo GDB\" — 3 atributo(s), 3 relacionamento(s).",
+        "description": "<p><b>Linha de Transmissão</b> — Geo-objeto — Linha no modelo OMT-G \"Exemplo — Teste completo GDB\".</p><p>No geodatabase: Feature Class de geometria POLYLINE. Sistema de referência: EPSG:31982. Feature dataset: SRID_31982. Controle de edições (Editor Tracking) ativo.</p><p><b>Atributos</b></p><ul><li><b>Código</b> (Codigo, TEXT(15)) — PK, obrigatório</li><li><b>Tensão (kV)</b> (Tensao_KV, SHORT) — obrigatório, domínio Faixa_Tensao_KV, faixa 13..800</li><li><b>Extensão (km)</b> (Extensao_Km, DOUBLE) — calculado: <code>ARRED(COMPRIMENTO([SHAPE]) / 1000, 3)</code></li></ul><p><b>Relacionamentos</b></p><ul><li>Sustentada_Por: Sustentada por — com Torre (1:N)</li><li>Protegida_Por: Protegida por — com Faixa_De_Servidao (1:1, composta)</li><li>Cruza_Rede: Cruza rede — com Trecho_De_Rede_De_Agua (M:N)</li></ul><p><b>Attribute rules</b></p><ul><li>Faixa_Linha_De_Transmissao_Tensao_KV: \"Tensão (kV)\" entre 13 e 800.</li><li>Calc_Linha_De_Transmissao_Extensao_Km: Calcula \"Extensão (km)\".</li><li>PK_Linha_De_Transmissao: Chave primária \"Código\": obrigatória e sem repetição.</li><li>Ref_Sustentada_Por: Impede excluir Linha_De_Transmissao que ainda tenha Torre associado.</li><li>Min_Sustentada_Por_Linha_De_Transmissao: Participação mínima (1..*): todo registro de Linha_De_Transmissao precisa de pelo menos um Torre (Sustentada_Por).</li><li>Esp_Linha_De_Transmissao_Trecho_De_Rede_De_Agua_Cruza: Exige que Linha_De_Transmissao cruza Trecho_De_Rede_De_Agua.</li></ul><p><b>O que não coube 1:1</b></p><ul><li>precision/scale são ignorados em File Geodatabase (só valem em enterprise). Declarados mesmo assim.</li></ul>",
+        "tags": [
+          "OMT-G",
+          "GeoGeoGeo",
+          "Exemplo — Teste completo GDB",
+          "Geo-objeto",
+          "Linha"
+        ],
+        "credits": "Gerado pelo GeoGeoGeo em 01/01/2026 a partir do modelo lógico OMT-G \"Exemplo — Teste completo GDB\"."
       }
     },
     {
@@ -341,7 +1724,479 @@
       "alias": "Torre",
       "kind": "featureClass",
       "omtg": {
-        "classId": "cumdefyk",
+        "classId": "c377nwuw",
+        "kind": "geo",
+        "geoType": "object",
+        "primitive": "point"
+      },
+      "systemFields": [
+        "OBJECTID",
+        "SHAPE",
+        "GLOBALID"
+      ],
+      "fields": [
+        {
+          "name": "Numero",
+          "alias": "Número",
+          "omtg": {
+            "attrId": "a51_j4m4"
+          },
+          "notes": [],
+          "type": "TEXT",
+          "length": 10,
+          "nullable": false,
+          "primaryKey": true
+        },
+        {
+          "name": "Linha",
+          "alias": "Linha",
+          "omtg": {
+            "attrId": "a52_9g5d"
+          },
+          "notes": [],
+          "type": "TEXT",
+          "length": 15,
+          "nullable": false,
+          "foreignKey": {
+            "classId": "c0y16ffx",
+            "attrId": "a48_9210"
+          }
+        },
+        {
+          "name": "Altura_M",
+          "alias": "Altura (m)",
+          "omtg": {
+            "attrId": "a53_vhik"
+          },
+          "notes": [
+            "precision/scale ignorados em File Geodatabase."
+          ],
+          "type": "DOUBLE",
+          "precision": 6,
+          "scale": 2,
+          "nullable": true,
+          "range": {
+            "min": 0,
+            "max": null
+          }
+        }
+      ],
+      "indexes": [
+        {
+          "name": "IDX_Torre_Numero",
+          "fields": [
+            "Numero"
+          ],
+          "unique": false
+        }
+      ],
+      "notes": [],
+      "geometryType": "POINT",
+      "spatialReference": {
+        "authority": "EPSG",
+        "wkid": 31982
+      },
+      "hasZ": true,
+      "hasM": false,
+      "featureDataset": "SRID_31982",
+      "metadata": {
+        "title": "Torre",
+        "summary": "Geo-objeto — Ponto do modelo OMT-G \"Exemplo — Teste completo GDB\" — 3 atributo(s), 2 relacionamento(s).",
+        "description": "<p><b>Torre</b> — Geo-objeto — Ponto no modelo OMT-G \"Exemplo — Teste completo GDB\".</p><p>No geodatabase: Feature Class de geometria POINT, com Z. Sistema de referência: EPSG:31982. Feature dataset: SRID_31982.</p><p><b>Atributos</b></p><ul><li><b>Número</b> (Numero, TEXT(10)) — PK, obrigatório</li><li><b>Linha</b> (Linha, TEXT(15)) — FK → Linha_De_Transmissao (Restringir), obrigatório</li><li><b>Altura (m)</b> (Altura_M, DOUBLE) — faixa 0..</li></ul><p><b>Relacionamentos</b></p><ul><li>Sustentada_Por: Sustentada por — com Linha_De_Transmissao (1:N)</li><li>Contem_Torres: Contém torres — com Faixa_De_Servidao (M:N)</li></ul><p><b>Regras de topologia</b></p><ul><li>Must Be Properly Inside (Point-Area) — Torre × Faixa_De_Servidao (topologia Topologia)</li></ul><p><b>Attribute rules</b></p><ul><li>Faixa_Torre_Altura_M: \"Altura (m)\" no mínimo 0.</li><li>PK_Torre: Chave primária \"Número\": obrigatória e sem repetição.</li></ul><p><b>O que não coube 1:1</b></p><ul><li>precision/scale são ignorados em File Geodatabase (só valem em enterprise). Declarados mesmo assim.</li></ul>",
+        "tags": [
+          "OMT-G",
+          "GeoGeoGeo",
+          "Exemplo — Teste completo GDB",
+          "Geo-objeto",
+          "Ponto"
+        ],
+        "credits": "Gerado pelo GeoGeoGeo em 01/01/2026 a partir do modelo lógico OMT-G \"Exemplo — Teste completo GDB\"."
+      }
+    },
+    {
+      "name": "Faixa_De_Servidao",
+      "alias": "Faixa de Servidão",
+      "kind": "featureClass",
+      "omtg": {
+        "classId": "cjsstqes",
+        "kind": "geo",
+        "geoType": "object",
+        "primitive": "polygon"
+      },
+      "systemFields": [
+        "OBJECTID",
+        "SHAPE",
+        "GLOBALID"
+      ],
+      "fields": [
+        {
+          "name": "Codigo",
+          "alias": "Código",
+          "omtg": {
+            "attrId": "a54_v0ia"
+          },
+          "notes": [],
+          "type": "TEXT",
+          "length": 20,
+          "nullable": false,
+          "primaryKey": true
+        },
+        {
+          "name": "Linha",
+          "alias": "Linha",
+          "omtg": {
+            "attrId": "a55_ogr5"
+          },
+          "notes": [],
+          "type": "TEXT",
+          "length": 15,
+          "nullable": false,
+          "foreignKey": {
+            "classId": "c0y16ffx",
+            "attrId": "a48_9210"
+          }
+        },
+        {
+          "name": "Largura_M",
+          "alias": "Largura (m)",
+          "omtg": {
+            "attrId": "a56_k4p3"
+          },
+          "notes": [
+            "precision/scale ignorados em File Geodatabase."
+          ],
+          "type": "DOUBLE",
+          "precision": 6,
+          "scale": 2,
+          "nullable": false,
+          "domain": "Faixa_Largura_M",
+          "range": {
+            "min": 1,
+            "max": 200
+          }
+        }
+      ],
+      "indexes": [
+        {
+          "name": "IDX_Faixa_De_Servidao_Codigo",
+          "fields": [
+            "Codigo"
+          ],
+          "unique": false
+        }
+      ],
+      "notes": [],
+      "geometryType": "POLYGON",
+      "spatialReference": {
+        "authority": "EPSG",
+        "wkid": 31982
+      },
+      "hasZ": false,
+      "hasM": false,
+      "featureDataset": "SRID_31982",
+      "metadata": {
+        "title": "Faixa de Servidão",
+        "summary": "Geo-objeto — Polígono do modelo OMT-G \"Exemplo — Teste completo GDB\" — 3 atributo(s), 5 relacionamento(s).",
+        "description": "<p><b>Faixa de Servidão</b> — Geo-objeto — Polígono no modelo OMT-G \"Exemplo — Teste completo GDB\".</p><p>No geodatabase: Feature Class de geometria POLYGON. Sistema de referência: EPSG:31982. Feature dataset: SRID_31982.</p><p><b>Atributos</b></p><ul><li><b>Código</b> (Codigo, TEXT(20)) — PK, obrigatório</li><li><b>Linha</b> (Linha, TEXT(15)) — FK → Linha_De_Transmissao (Cascata), obrigatório</li><li><b>Largura (m)</b> (Largura_M, DOUBLE) — obrigatório, domínio Faixa_Largura_M, faixa 1..200</li></ul><p><b>Relacionamentos</b></p><ul><li>Objeto_De: Objeto de — com Contrato_De_Servidao (1:N)</li><li>Protegida_Por: Protegida por — com Linha_De_Transmissao (1:1, composta)</li><li>Contem_Torres: Contém torres — com Torre (M:N)</li><li>Fora_Da_Faixa: Fora da faixa — com Edificacao (M:N)</li><li>Vizinha_Da_Faixa: Vizinha da faixa — com Quadra (M:N)</li></ul><p><b>Regras de topologia</b></p><ul><li>Must Be Properly Inside (Point-Area) — Torre × Faixa_De_Servidao (topologia Topologia)</li><li>Must Not Overlap With (Area-Area) — Edificacao × Faixa_De_Servidao (topologia Topologia)</li></ul><p><b>Attribute rules</b></p><ul><li>Faixa_Faixa_De_Servidao_Largura_M: \"Largura (m)\" entre 1 e 200.</li><li>PK_Faixa_De_Servidao: Chave primária \"Código\": obrigatória e sem repetição.</li><li>Ref_Objeto_De: Impede excluir Faixa_De_Servidao que ainda tenha Contrato_De_Servidao associado.</li></ul><p><b>O que não coube 1:1</b></p><ul><li>precision/scale são ignorados em File Geodatabase (só valem em enterprise). Declarados mesmo assim.</li></ul>",
+        "tags": [
+          "OMT-G",
+          "GeoGeoGeo",
+          "Exemplo — Teste completo GDB",
+          "Geo-objeto",
+          "Polígono"
+        ],
+        "credits": "Gerado pelo GeoGeoGeo em 01/01/2026 a partir do modelo lógico OMT-G \"Exemplo — Teste completo GDB\"."
+      }
+    },
+    {
+      "name": "Contrato_De_Servidao",
+      "alias": "Contrato de Servidão",
+      "kind": "table",
+      "omtg": {
+        "classId": "ct8vo7jl",
+        "kind": "conventional",
+        "geoType": null,
+        "primitive": null
+      },
+      "systemFields": [
+        "OBJECTID",
+        "GLOBALID"
+      ],
+      "fields": [
+        {
+          "name": "Numero",
+          "alias": "Número",
+          "omtg": {
+            "attrId": "a57_2xa0"
+          },
+          "notes": [],
+          "type": "TEXT",
+          "length": 20,
+          "nullable": false,
+          "primaryKey": true
+        },
+        {
+          "name": "Proprietario",
+          "alias": "Proprietário",
+          "omtg": {
+            "attrId": "a58_6lcg"
+          },
+          "notes": [],
+          "type": "TEXT",
+          "length": 14,
+          "nullable": false,
+          "foreignKey": {
+            "classId": "cl2zqg7f",
+            "attrId": "a34_40p3"
+          }
+        },
+        {
+          "name": "Faixa",
+          "alias": "Faixa",
+          "omtg": {
+            "attrId": "a59_zhju"
+          },
+          "notes": [],
+          "type": "TEXT",
+          "length": 20,
+          "nullable": false,
+          "foreignKey": {
+            "classId": "cjsstqes",
+            "attrId": "a54_v0ia"
+          }
+        },
+        {
+          "name": "Data_De_Assinatura",
+          "alias": "Data de assinatura",
+          "omtg": {
+            "attrId": "a60_493h"
+          },
+          "notes": [],
+          "type": "DATE",
+          "nullable": false
+        },
+        {
+          "name": "Indenizacao_R",
+          "alias": "Indenização (R$)",
+          "omtg": {
+            "attrId": "a61_f5hi"
+          },
+          "notes": [
+            "precision/scale ignorados em File Geodatabase."
+          ],
+          "type": "DOUBLE",
+          "precision": 14,
+          "scale": 2,
+          "nullable": true,
+          "range": {
+            "min": 0,
+            "max": null
+          }
+        }
+      ],
+      "indexes": [
+        {
+          "name": "IDX_Contrato_De_Servidao_Numer",
+          "fields": [
+            "Numero"
+          ],
+          "unique": false
+        }
+      ],
+      "notes": [
+        "Anexos habilitados (Blob: Contrato assinado)."
+      ],
+      "attachments": {
+        "fields": [
+          "Contrato assinado"
+        ]
+      },
+      "metadata": {
+        "title": "Contrato de Servidão",
+        "summary": "Classe convencional do modelo OMT-G \"Exemplo — Teste completo GDB\" — 5 atributo(s), 2 relacionamento(s).",
+        "description": "<p><b>Contrato de Servidão</b> — Classe convencional no modelo OMT-G \"Exemplo — Teste completo GDB\".</p><p>No geodatabase: Table. Anexos habilitados (Blob no modelo: Contrato assinado).</p><p><b>Atributos</b></p><ul><li><b>Número</b> (Numero, TEXT(20)) — PK, obrigatório</li><li><b>Proprietário</b> (Proprietario, TEXT(14)) — FK → Proprietario (Restringir), obrigatório</li><li><b>Faixa</b> (Faixa, TEXT(20)) — FK → Faixa_De_Servidao (Restringir), obrigatório</li><li><b>Data de assinatura</b> (Data_De_Assinatura, DATE) — obrigatório</li><li><b>Indenização (R$)</b> (Indenizacao_R, DOUBLE) — faixa 0..</li></ul><p><b>Relacionamentos</b></p><ul><li>Assina: Assina — com Proprietario (1:N)</li><li>Objeto_De: Objeto de — com Faixa_De_Servidao (1:N)</li></ul><p><b>Attribute rules</b></p><ul><li>Faixa_Contrato_De_Servidao_Indenizacao_R: \"Indenização (R$)\" no mínimo 0.</li><li>PK_Contrato_De_Servidao: Chave primária \"Número\": obrigatória e sem repetição.</li></ul><p><b>Notas</b></p><ul><li>Anexos habilitados (Blob: Contrato assinado).</li></ul><p><b>O que não coube 1:1</b></p><ul><li>precision/scale são ignorados em File Geodatabase (só valem em enterprise). Declarados mesmo assim.</li></ul>",
+        "tags": [
+          "OMT-G",
+          "GeoGeoGeo",
+          "Exemplo — Teste completo GDB",
+          "Classe convencional"
+        ],
+        "credits": "Gerado pelo GeoGeoGeo em 01/01/2026 a partir do modelo lógico OMT-G \"Exemplo — Teste completo GDB\"."
+      }
+    },
+    {
+      "name": "Marco_Geodesico",
+      "alias": "Marco Geodésico",
+      "kind": "featureClass",
+      "omtg": {
+        "classId": "cplu26pi",
+        "kind": "geo",
+        "geoType": "object",
+        "primitive": "point"
+      },
+      "systemFields": [
+        "OBJECTID",
+        "SHAPE",
+        "GLOBALID"
+      ],
+      "fields": [
+        {
+          "name": "Codigo",
+          "alias": "Código",
+          "omtg": {
+            "attrId": "a63_y3wc"
+          },
+          "notes": [],
+          "type": "TEXT",
+          "length": 12,
+          "nullable": false,
+          "primaryKey": true
+        },
+        {
+          "name": "Altitude_M",
+          "alias": "Altitude (m)",
+          "omtg": {
+            "attrId": "a64_cr7r"
+          },
+          "notes": [
+            "precision/scale ignorados em File Geodatabase."
+          ],
+          "type": "DOUBLE",
+          "precision": 8,
+          "scale": 3,
+          "nullable": true
+        },
+        {
+          "name": "Tipo",
+          "alias": "Tipo",
+          "omtg": {
+            "attrId": "a65_7iai"
+          },
+          "notes": [
+            "Lista com códigos numéricos — campo SHORT."
+          ],
+          "type": "SHORT",
+          "domain": "Tipo",
+          "nullable": true
+        }
+      ],
+      "indexes": [
+        {
+          "name": "IDX_Marco_Geodesico_Codigo",
+          "fields": [
+            "Codigo"
+          ],
+          "unique": false
+        }
+      ],
+      "notes": [],
+      "geometryType": "POINT",
+      "spatialReference": {
+        "authority": "EPSG",
+        "wkid": 4674
+      },
+      "hasZ": true,
+      "hasM": true,
+      "featureDataset": "SRID_4674",
+      "metadata": {
+        "title": "Marco Geodésico",
+        "summary": "Geo-objeto — Ponto do modelo OMT-G \"Exemplo — Teste completo GDB\" — 3 atributo(s), 1 relacionamento(s).",
+        "description": "<p><b>Marco Geodésico</b> — Geo-objeto — Ponto no modelo OMT-G \"Exemplo — Teste completo GDB\".</p><p>No geodatabase: Feature Class de geometria POINT, com Z, com M. Sistema de referência: EPSG:4674. Feature dataset: SRID_4674.</p><p><b>Atributos</b></p><ul><li><b>Código</b> (Codigo, TEXT(12)) — PK, obrigatório</li><li><b>Altitude (m)</b> (Altitude_M, DOUBLE)</li><li><b>Tipo</b> (Tipo, SHORT) — domínio Tipo</li></ul><p><b>Relacionamentos</b></p><ul><li>Perto_Do_Lote: Perto do lote — com Lote (M:N)</li></ul><p><b>Attribute rules</b></p><ul><li>PK_Marco_Geodesico: Chave primária \"Código\": obrigatória e sem repetição.</li><li>Esp_Marco_Geodesico_Lote_Proximo: Exige que Marco_Geodesico próximo Lote.</li></ul><p><b>O que não coube 1:1</b></p><ul><li>precision/scale são ignorados em File Geodatabase (só valem em enterprise). Declarados mesmo assim.</li></ul>",
+        "tags": [
+          "OMT-G",
+          "GeoGeoGeo",
+          "Exemplo — Teste completo GDB",
+          "Geo-objeto",
+          "Ponto"
+        ],
+        "credits": "Gerado pelo GeoGeoGeo em 01/01/2026 a partir do modelo lógico OMT-G \"Exemplo — Teste completo GDB\"."
+      }
+    },
+    {
+      "name": "Trecho_De_Rede_De_Agua",
+      "alias": "Trecho de Rede de Água",
+      "kind": "featureClass",
+      "omtg": {
+        "classId": "cxwwnrbl",
+        "kind": "geo",
+        "geoType": "object",
+        "primitive": "unidirectional"
+      },
+      "systemFields": [
+        "OBJECTID",
+        "SHAPE",
+        "GLOBALID"
+      ],
+      "fields": [
+        {
+          "name": "ID",
+          "alias": "ID",
+          "omtg": {
+            "attrId": "a66_btzd"
+          },
+          "notes": [
+            "8 dígitos declarados."
+          ],
+          "type": "LONG",
+          "nullable": false,
+          "primaryKey": true
+        },
+        {
+          "name": "Diametro_Mm",
+          "alias": "Diâmetro (mm)",
+          "omtg": {
+            "attrId": "a67_z6jl"
+          },
+          "notes": [
+            "4 dígitos declarados."
+          ],
+          "type": "SHORT",
+          "nullable": true,
+          "domain": "Faixa_Diametro_Mm",
+          "range": {
+            "min": 20,
+            "max": 2000
+          }
+        }
+      ],
+      "indexes": [
+        {
+          "name": "IDX_Trecho_De_Rede_De_Agua_ID",
+          "fields": [
+            "ID"
+          ],
+          "unique": false
+        }
+      ],
+      "notes": [],
+      "geometryType": "POLYLINE",
+      "spatialReference": {
+        "authority": "EPSG",
+        "wkid": 31982
+      },
+      "hasZ": false,
+      "hasM": false,
+      "featureDataset": "SRID_31982",
+      "metadata": {
+        "title": "Trecho de Rede de Água",
+        "summary": "Geo-objeto — Linha unidirecional (rede) do modelo OMT-G \"Exemplo — Teste completo GDB\" — 2 atributo(s), 2 relacionamento(s).",
+        "description": "<p><b>Trecho de Rede de Água</b> — Geo-objeto — Linha unidirecional (rede) no modelo OMT-G \"Exemplo — Teste completo GDB\".</p><p>No geodatabase: Feature Class de geometria POLYLINE. Sistema de referência: EPSG:31982. Feature dataset: SRID_31982.</p><p><b>Atributos</b></p><ul><li><b>ID</b> (ID, LONG) — PK, obrigatório</li><li><b>Diâmetro (mm)</b> (Diametro_Mm, SHORT) — domínio Faixa_Diametro_Mm, faixa 20..2000</li></ul><p><b>Relacionamentos</b></p><ul><li>Toca_Quadra: Toca quadra — com Quadra (M:N)</li><li>Cruza_Rede: Cruza rede — com Linha_De_Transmissao (M:N)</li></ul><p><b>Attribute rules</b></p><ul><li>Faixa_Trecho_De_Rede_De_Agua_Diametro_Mm: \"Diâmetro (mm)\" entre 20 e 2000.</li><li>PK_Trecho_De_Rede_De_Agua: Chave primária \"ID\": obrigatória e sem repetição.</li><li>Esp_Trecho_De_Rede_De_Agua_Quadra_Touches: Exige que Trecho_De_Rede_De_Agua toca Quadra.</li></ul>",
+        "tags": [
+          "OMT-G",
+          "GeoGeoGeo",
+          "Exemplo — Teste completo GDB",
+          "Geo-objeto",
+          "Linha unidirecional (rede)"
+        ],
+        "credits": "Gerado pelo GeoGeoGeo em 01/01/2026 a partir do modelo lógico OMT-G \"Exemplo — Teste completo GDB\"."
+      }
+    },
+    {
+      "name": "No_Da_Rede",
+      "alias": "Nó da Rede",
+      "kind": "featureClass",
+      "omtg": {
+        "classId": "c028i06c",
         "kind": "geo",
         "geoType": "object",
         "primitive": "node"
@@ -353,23 +2208,37 @@
       ],
       "fields": [
         {
-          "name": "Codigo",
-          "alias": "Código",
+          "name": "ID",
+          "alias": "ID",
           "omtg": {
-            "attrId": "to1"
+            "attrId": "a68_wssu"
           },
-          "notes": [],
-          "type": "TEXT",
-          "length": 10,
+          "notes": [
+            "8 dígitos declarados."
+          ],
+          "type": "LONG",
           "nullable": false,
           "primaryKey": true
+        },
+        {
+          "name": "Tipo",
+          "alias": "Tipo",
+          "omtg": {
+            "attrId": "a69_9epy"
+          },
+          "notes": [
+            "Lista com códigos numéricos — campo SHORT."
+          ],
+          "type": "SHORT",
+          "domain": "No_Da_Rede_Tipo",
+          "nullable": true
         }
       ],
       "indexes": [
         {
-          "name": "IDXTorreCodigo",
+          "name": "IDX_No_Da_Rede_ID",
           "fields": [
-            "Codigo"
+            "ID"
           ],
           "unique": false
         }
@@ -378,40 +2247,143 @@
       "geometryType": "POINT",
       "spatialReference": {
         "authority": "EPSG",
-        "wkid": 31983
+        "wkid": 31982
+      },
+      "hasZ": false,
+      "hasM": false,
+      "featureDataset": "SRID_31982",
+      "metadata": {
+        "title": "Nó da Rede",
+        "summary": "Geo-objeto — Nó (rede) do modelo OMT-G \"Exemplo — Teste completo GDB\" — 2 atributo(s), 0 relacionamento(s).",
+        "description": "<p><b>Nó da Rede</b> — Geo-objeto — Nó (rede) no modelo OMT-G \"Exemplo — Teste completo GDB\".</p><p>No geodatabase: Feature Class de geometria POINT. Sistema de referência: EPSG:31982. Feature dataset: SRID_31982.</p><p><b>Atributos</b></p><ul><li><b>ID</b> (ID, LONG) — PK, obrigatório</li><li><b>Tipo</b> (Tipo, SHORT) — domínio No_Da_Rede_Tipo</li></ul><p><b>Attribute rules</b></p><ul><li>PK_No_Da_Rede: Chave primária \"ID\": obrigatória e sem repetição.</li></ul>",
+        "tags": [
+          "OMT-G",
+          "GeoGeoGeo",
+          "Exemplo — Teste completo GDB",
+          "Geo-objeto",
+          "Nó (rede)"
+        ],
+        "credits": "Gerado pelo GeoGeoGeo em 01/01/2026 a partir do modelo lógico OMT-G \"Exemplo — Teste completo GDB\"."
       }
     },
     {
-      "name": "TipoDeSolo",
-      "alias": "Tipo de Solo",
+      "name": "Curva_De_Nivel",
+      "alias": "Curva de Nível",
       "kind": "featureClass",
       "omtg": {
-        "classId": "cluk5obu",
+        "classId": "c3jcup8r",
+        "kind": "geo",
+        "geoType": "field",
+        "primitive": "isoline"
+      },
+      "systemFields": [
+        "OBJECTID",
+        "SHAPE",
+        "GLOBALID"
+      ],
+      "fields": [
+        {
+          "name": "ID",
+          "alias": "ID",
+          "omtg": {
+            "attrId": "a70_bi2f"
+          },
+          "notes": [
+            "8 dígitos declarados."
+          ],
+          "type": "LONG",
+          "nullable": false,
+          "primaryKey": true
+        },
+        {
+          "name": "Cota_M",
+          "alias": "Cota (m)",
+          "omtg": {
+            "attrId": "a71_6q33"
+          },
+          "notes": [
+            "4 dígitos declarados."
+          ],
+          "type": "SHORT",
+          "nullable": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "IDX_Curva_De_Nivel_ID",
+          "fields": [
+            "ID"
+          ],
+          "unique": false
+        }
+      ],
+      "notes": [],
+      "geometryType": "POLYLINE",
+      "spatialReference": {
+        "authority": "EPSG",
+        "wkid": 31982
+      },
+      "hasZ": true,
+      "hasM": false,
+      "featureDataset": "SRID_31982",
+      "metadata": {
+        "title": "Curva de Nível",
+        "summary": "Geo-campo — Isolinhas do modelo OMT-G \"Exemplo — Teste completo GDB\" — 2 atributo(s), 0 relacionamento(s).",
+        "description": "<p><b>Curva de Nível</b> — Geo-campo — Isolinhas no modelo OMT-G \"Exemplo — Teste completo GDB\".</p><p>No geodatabase: Feature Class de geometria POLYLINE, com Z. Sistema de referência: EPSG:31982. Feature dataset: SRID_31982.</p><p><b>Atributos</b></p><ul><li><b>ID</b> (ID, LONG) — PK, obrigatório</li><li><b>Cota (m)</b> (Cota_M, SHORT) — obrigatório</li></ul><p><b>Attribute rules</b></p><ul><li>PK_Curva_De_Nivel: Chave primária \"ID\": obrigatória e sem repetição.</li></ul>",
+        "tags": [
+          "OMT-G",
+          "GeoGeoGeo",
+          "Exemplo — Teste completo GDB",
+          "Geo-campo",
+          "Isolinhas"
+        ],
+        "credits": "Gerado pelo GeoGeoGeo em 01/01/2026 a partir do modelo lógico OMT-G \"Exemplo — Teste completo GDB\"."
+      }
+    },
+    {
+      "name": "Zoneamento",
+      "alias": "Zoneamento",
+      "kind": "featureClass",
+      "omtg": {
+        "classId": "cgpdd8xz",
         "kind": "geo",
         "geoType": "field",
         "primitive": "partition"
       },
       "systemFields": [
         "OBJECTID",
-        "SHAPE"
+        "SHAPE",
+        "GLOBALID"
       ],
       "fields": [
         {
           "name": "Codigo",
           "alias": "Código",
           "omtg": {
-            "attrId": "s1"
+            "attrId": "a72_w8rf"
           },
           "notes": [],
           "type": "TEXT",
-          "length": 6,
+          "length": 10,
           "nullable": false,
           "primaryKey": true
+        },
+        {
+          "name": "Zona",
+          "alias": "Zona",
+          "omtg": {
+            "attrId": "a73_afg2"
+          },
+          "notes": [],
+          "type": "TEXT",
+          "length": 4,
+          "domain": "Zona",
+          "nullable": false
         }
       ],
       "indexes": [
         {
-          "name": "IDXTipoDeSoloCodigo",
+          "name": "IDX_Zoneamento_Codigo",
           "fields": [
             "Codigo"
           ],
@@ -422,15 +2394,112 @@
       "geometryType": "POLYGON",
       "spatialReference": {
         "authority": "EPSG",
-        "wkid": 31983
+        "wkid": 31982
+      },
+      "hasZ": false,
+      "hasM": false,
+      "featureDataset": "SRID_31982",
+      "metadata": {
+        "title": "Zoneamento",
+        "summary": "Geo-campo — Subdivisão Planar do modelo OMT-G \"Exemplo — Teste completo GDB\" — 2 atributo(s), 2 relacionamento(s).",
+        "description": "<p><b>Zoneamento</b> — Geo-campo — Subdivisão Planar no modelo OMT-G \"Exemplo — Teste completo GDB\".</p><p>No geodatabase: Feature Class de geometria POLYGON. Sistema de referência: EPSG:31982. Feature dataset: SRID_31982.</p><p><b>Atributos</b></p><ul><li><b>Código</b> (Codigo, TEXT(10)) — PK, obrigatório</li><li><b>Zona</b> (Zona, TEXT(4)) — obrigatório, domínio Zona</li></ul><p><b>Relacionamentos</b></p><ul><li>Coincide_Zona: Coincide zona — com Lote (M:N)</li><li>Sobrepoe_Zona: Sobrepõe zona — com Bairro (M:N)</li></ul><p><b>Regras de topologia</b></p><ul><li>Must Be Covered By Feature Class Of (Area-Area) — Lote × Zoneamento (topologia Topologia)</li><li>Must Not Overlap (Area) — Zoneamento (topologia Topologia)</li><li>Must Not Have Gaps (Area) — Zoneamento (topologia Topologia)</li></ul><p><b>Attribute rules</b></p><ul><li>PK_Zoneamento: Chave primária \"Código\": obrigatória e sem repetição.</li></ul>",
+        "tags": [
+          "OMT-G",
+          "GeoGeoGeo",
+          "Exemplo — Teste completo GDB",
+          "Geo-campo",
+          "Subdivisão Planar"
+        ],
+        "credits": "Gerado pelo GeoGeoGeo em 01/01/2026 a partir do modelo lógico OMT-G \"Exemplo — Teste completo GDB\"."
       }
     },
     {
-      "name": "ModeloDeTerreno",
-      "alias": "Modelo de Terreno",
+      "name": "Amostra_De_Solo",
+      "alias": "Amostra de Solo",
+      "kind": "featureClass",
+      "omtg": {
+        "classId": "cark5a9c",
+        "kind": "geo",
+        "geoType": "field",
+        "primitive": "sample"
+      },
+      "systemFields": [
+        "OBJECTID",
+        "SHAPE",
+        "GLOBALID"
+      ],
+      "fields": [
+        {
+          "name": "ID",
+          "alias": "ID",
+          "omtg": {
+            "attrId": "a74_x11g"
+          },
+          "notes": [
+            "6 dígitos declarados."
+          ],
+          "type": "LONG",
+          "nullable": false,
+          "primaryKey": true
+        },
+        {
+          "name": "PH",
+          "alias": "pH",
+          "omtg": {
+            "attrId": "a75_mdy7"
+          },
+          "notes": [
+            "precision/scale ignorados em File Geodatabase."
+          ],
+          "type": "DOUBLE",
+          "precision": 4,
+          "scale": 2,
+          "nullable": true,
+          "domain": "Faixa_PH",
+          "range": {
+            "min": 0,
+            "max": 14
+          }
+        }
+      ],
+      "indexes": [
+        {
+          "name": "IDX_Amostra_De_Solo_ID",
+          "fields": [
+            "ID"
+          ],
+          "unique": false
+        }
+      ],
+      "notes": [],
+      "geometryType": "MULTIPOINT",
+      "spatialReference": {
+        "authority": "EPSG",
+        "wkid": 31982
+      },
+      "hasZ": false,
+      "hasM": false,
+      "featureDataset": "SRID_31982",
+      "metadata": {
+        "title": "Amostra de Solo",
+        "summary": "Geo-campo — Amostragem (pontos) do modelo OMT-G \"Exemplo — Teste completo GDB\" — 2 atributo(s), 0 relacionamento(s).",
+        "description": "<p><b>Amostra de Solo</b> — Geo-campo — Amostragem (pontos) no modelo OMT-G \"Exemplo — Teste completo GDB\".</p><p>No geodatabase: Feature Class de geometria MULTIPOINT. Sistema de referência: EPSG:31982. Feature dataset: SRID_31982.</p><p><b>Atributos</b></p><ul><li><b>ID</b> (ID, LONG) — PK, obrigatório</li><li><b>pH</b> (PH, DOUBLE) — domínio Faixa_PH, faixa 0..14</li></ul><p><b>Attribute rules</b></p><ul><li>Faixa_Amostra_De_Solo_PH: \"pH\" entre 0 e 14.</li><li>PK_Amostra_De_Solo: Chave primária \"ID\": obrigatória e sem repetição.</li></ul><p><b>O que não coube 1:1</b></p><ul><li>precision/scale são ignorados em File Geodatabase (só valem em enterprise). Declarados mesmo assim.</li></ul>",
+        "tags": [
+          "OMT-G",
+          "GeoGeoGeo",
+          "Exemplo — Teste completo GDB",
+          "Geo-campo",
+          "Amostragem (pontos)"
+        ],
+        "credits": "Gerado pelo GeoGeoGeo em 01/01/2026 a partir do modelo lógico OMT-G \"Exemplo — Teste completo GDB\"."
+      }
+    },
+    {
+      "name": "Modelo_Digital_De_Terreno",
+      "alias": "Modelo Digital de Terreno",
       "kind": "tinDataset",
       "omtg": {
-        "classId": "cz7ei55i",
+        "classId": "cd3f0wzb",
         "kind": "geo",
         "geoType": "field",
         "primitive": "tin"
@@ -440,248 +2509,1657 @@
       ],
       "fields": [
         {
-          "name": "Codigo",
-          "alias": "Código",
+          "name": "ID",
+          "alias": "ID",
           "omtg": {
-            "attrId": "m1"
+            "attrId": "a76_apdk"
           },
-          "notes": [],
-          "type": "TEXT",
-          "length": 6,
+          "notes": [
+            "6 dígitos declarados."
+          ],
+          "type": "LONG",
           "nullable": false,
           "primaryKey": true
         }
       ],
-      "indexes": [
-        {
-          "name": "IDXModeloDeTerrenoCodigo",
-          "fields": [
-            "Codigo"
-          ],
-          "unique": false
-        }
-      ],
+      "indexes": [],
       "notes": [
         "Precisa de dados de entrada: TIN Dataset não é criado vazio por geoprocessamento."
       ],
-      "status": "placeholder"
+      "status": "placeholder",
+      "metadata": {
+        "title": "Modelo Digital de Terreno",
+        "summary": "Geo-campo — TIN (triangulação) do modelo OMT-G \"Exemplo — Teste completo GDB\" — 1 atributo(s), 0 relacionamento(s).",
+        "description": "<p><b>Modelo Digital de Terreno</b> — Geo-campo — TIN (triangulação) no modelo OMT-G \"Exemplo — Teste completo GDB\".</p><p>No geodatabase: TIN Dataset.</p><p><b>Atributos</b></p><ul><li><b>ID</b> (ID, LONG) — PK, obrigatório</li></ul><p><b>Notas</b></p><ul><li>Precisa de dados de entrada: TIN Dataset não é criado vazio por geoprocessamento.</li></ul><p><b>O que não coube 1:1</b></p><ul><li>TIN Dataset declarado como placeholder — a toolbox precisa da fonte de dados para criá-lo.</li></ul>",
+        "tags": [
+          "OMT-G",
+          "GeoGeoGeo",
+          "Exemplo — Teste completo GDB",
+          "Geo-campo",
+          "TIN (triangulação)"
+        ],
+        "credits": "Gerado pelo GeoGeoGeo em 01/01/2026 a partir do modelo lógico OMT-G \"Exemplo — Teste completo GDB\"."
+      }
+    },
+    {
+      "name": "Imagem_De_Satelite",
+      "alias": "Imagem de Satélite",
+      "kind": "rasterDataset",
+      "omtg": {
+        "classId": "cj2s9esi",
+        "kind": "geo",
+        "geoType": "field",
+        "primitive": "tessellation"
+      },
+      "systemFields": [
+        "OBJECTID"
+      ],
+      "fields": [
+        {
+          "name": "ID",
+          "alias": "ID",
+          "omtg": {
+            "attrId": "a77_a7ud"
+          },
+          "notes": [
+            "6 dígitos declarados."
+          ],
+          "type": "LONG",
+          "nullable": false,
+          "primaryKey": true
+        }
+      ],
+      "indexes": [],
+      "notes": [
+        "Precisa de dados de entrada: Raster Dataset não é criado vazio por geoprocessamento."
+      ],
+      "status": "placeholder",
+      "metadata": {
+        "title": "Imagem de Satélite",
+        "summary": "Geo-campo — Tesselação (grade) do modelo OMT-G \"Exemplo — Teste completo GDB\" — 1 atributo(s), 0 relacionamento(s).",
+        "description": "<p><b>Imagem de Satélite</b> — Geo-campo — Tesselação (grade) no modelo OMT-G \"Exemplo — Teste completo GDB\".</p><p>No geodatabase: Raster Dataset.</p><p><b>Atributos</b></p><ul><li><b>ID</b> (ID, LONG) — PK, obrigatório</li></ul><p><b>Notas</b></p><ul><li>Precisa de dados de entrada: Raster Dataset não é criado vazio por geoprocessamento.</li></ul><p><b>O que não coube 1:1</b></p><ul><li>Raster Dataset declarado como placeholder — a toolbox precisa da fonte de dados para criá-lo.</li></ul>",
+        "tags": [
+          "OMT-G",
+          "GeoGeoGeo",
+          "Exemplo — Teste completo GDB",
+          "Geo-campo",
+          "Tesselação (grade)"
+        ],
+        "credits": "Gerado pelo GeoGeoGeo em 01/01/2026 a partir do modelo lógico OMT-G \"Exemplo — Teste completo GDB\"."
+      }
     }
   ],
   "relationshipClasses": [
     {
-      "name": "PossuiProprietarioAreaDePreser",
-      "origin": "Proprietario",
-      "destination": "AreaDePreservacao",
+      "name": "E_Formado_Por",
+      "origin": "Limite_Municipal",
+      "destination": "Bairro",
       "type": "COMPOSITE",
       "cardinality": "ONE_TO_MANY",
-      "forwardLabel": "possui",
-      "backwardLabel": "pertence a",
-      "attributed": "NONE",
-      "originPrimaryKey": "CPF",
-      "originForeignKey": "ProprietarioId",
-      "omtg": {
-        "relId": "rp72016w",
-        "type": "association",
-        "cardSource": "1",
-        "cardTarget": "1..*"
-      },
-      "notes": [
-        "Participação mínima (1..*) não é representável no GDB."
-      ]
-    },
-    {
-      "name": "QuadraAreaDePreservacao",
-      "origin": "Quadra",
-      "destination": "AreaDePreservacao",
-      "type": "COMPOSITE",
-      "cardinality": "ONE_TO_MANY",
-      "forwardLabel": "é composto por",
+      "forwardLabel": "É formado por",
       "backwardLabel": "faz parte de",
       "attributed": "NONE",
-      "originPrimaryKey": "Codigo",
-      "originForeignKey": null,
+      "originPrimaryKey": "Codigo_IBGE",
+      "originForeignKey": "Municipio",
       "omtg": {
-        "relId": "rc2w4ilu",
+        "relId": "rcanq5zp",
         "type": "aggregation",
         "cardSource": null,
         "cardTarget": null
       },
       "notes": [
-        "Agregação todo-parte → relationship class composta.",
-        "Nenhum atributo FK declarado no destino apontando para a origem."
-      ]
+        "Agregação todo-parte → relationship class composta."
+      ],
+      "metadata": {
+        "title": "É formado por",
+        "summary": "Agregação 1:N entre Limite_Municipal e Bairro.",
+        "description": "<p>Agregação do modelo OMT-G \"Exemplo — Teste completo GDB\" — <b>É formado por</b>.</p><ul><li>Origem: <b>Limite_Municipal</b> (chave Codigo_IBGE)</li><li>Destino: <b>Bairro</b> (FK Municipio)</li><li>Cardinalidade no GDB: 1:N</li><li>Tipo: composta (a exclusão da origem apaga o destino)</li><li>Rótulos: \"É formado por\" / \"faz parte de\"</li></ul><p><b>Notas</b></p><ul><li>Agregação todo-parte → relationship class composta.</li></ul>",
+        "tags": [
+          "OMT-G",
+          "GeoGeoGeo",
+          "Exemplo — Teste completo GDB",
+          "Agregação",
+          "Relationship class"
+        ],
+        "credits": "Gerado pelo GeoGeoGeo em 01/01/2026 a partir do modelo lógico OMT-G \"Exemplo — Teste completo GDB\"."
+      }
     },
     {
-      "name": "AreaDePreservacaoTorre",
-      "origin": "AreaDePreservacao",
+      "name": "Subdividida_Em",
+      "origin": "Quadra",
+      "destination": "Lote",
+      "type": "COMPOSITE",
+      "cardinality": "ONE_TO_MANY",
+      "forwardLabel": "Subdividida em",
+      "backwardLabel": "faz parte de",
+      "attributed": "NONE",
+      "originPrimaryKey": "Codigo",
+      "originForeignKey": "Quadra",
+      "omtg": {
+        "relId": "rd5ittaq",
+        "type": "aggregation",
+        "cardSource": null,
+        "cardTarget": null
+      },
+      "notes": [
+        "Agregação todo-parte → relationship class composta."
+      ],
+      "metadata": {
+        "title": "Subdividida em",
+        "summary": "Agregação 1:N entre Quadra e Lote.",
+        "description": "<p>Agregação do modelo OMT-G \"Exemplo — Teste completo GDB\" — <b>Subdividida em</b>.</p><ul><li>Origem: <b>Quadra</b> (chave Codigo)</li><li>Destino: <b>Lote</b> (FK Quadra)</li><li>Cardinalidade no GDB: 1:N</li><li>Tipo: composta (a exclusão da origem apaga o destino)</li><li>Rótulos: \"Subdividida em\" / \"faz parte de\"</li></ul><p><b>Notas</b></p><ul><li>Agregação todo-parte → relationship class composta.</li></ul>",
+        "tags": [
+          "OMT-G",
+          "GeoGeoGeo",
+          "Exemplo — Teste completo GDB",
+          "Agregação",
+          "Relationship class"
+        ],
+        "credits": "Gerado pelo GeoGeoGeo em 01/01/2026 a partir do modelo lógico OMT-G \"Exemplo — Teste completo GDB\"."
+      }
+    },
+    {
+      "name": "Contem_Quadras",
+      "origin": "Bairro",
+      "destination": "Quadra",
+      "type": "SIMPLE",
+      "cardinality": "ONE_TO_MANY",
+      "forwardLabel": "Contém quadras",
+      "backwardLabel": "pertence a Bairro",
+      "attributed": "NONE",
+      "originPrimaryKey": "ID",
+      "originForeignKey": "Bairro",
+      "omtg": {
+        "relId": "rhh4ewda",
+        "type": "association",
+        "cardSource": "1",
+        "cardTarget": "1..*"
+      },
+      "notes": [
+        "Participação mínima (1..*) verificada por Validation Rule (Validate → Error Inspector)."
+      ],
+      "metadata": {
+        "title": "Contém quadras",
+        "summary": "Associação 1:N entre Bairro e Quadra.",
+        "description": "<p>Associação do modelo OMT-G \"Exemplo — Teste completo GDB\" — <b>Contém quadras</b>.</p><ul><li>Origem: <b>Bairro</b> (chave ID)</li><li>Destino: <b>Quadra</b> (FK Bairro)</li><li>Cardinalidade no GDB: 1:N (OMT-G: 1 × 1..*)</li><li>Tipo: simples</li><li>Rótulos: \"Contém quadras\" / \"pertence a Bairro\"</li></ul><p><b>Notas</b></p><ul><li>Participação mínima (1..*) verificada por Validation Rule (Validate → Error Inspector).</li></ul><p><b>O que não coube 1:1</b></p><ul><li>Integridade \"Restringir\" não existe no GDB — gerado SIMPLE + Constraint Rule que bloqueia a exclusão com filhos.</li></ul>",
+        "tags": [
+          "OMT-G",
+          "GeoGeoGeo",
+          "Exemplo — Teste completo GDB",
+          "Associação",
+          "Relationship class"
+        ],
+        "credits": "Gerado pelo GeoGeoGeo em 01/01/2026 a partir do modelo lógico OMT-G \"Exemplo — Teste completo GDB\"."
+      }
+    },
+    {
+      "name": "Tem_Edificacoes",
+      "origin": "Lote",
+      "destination": "Edificacao",
+      "type": "SIMPLE",
+      "cardinality": "ONE_TO_MANY",
+      "forwardLabel": "Tem edificações",
+      "backwardLabel": "Está no lote",
+      "attributed": "NONE",
+      "originPrimaryKey": "Inscricao",
+      "originForeignKey": "Lote",
+      "omtg": {
+        "relId": "r9kzxkmu",
+        "type": "association",
+        "cardSource": "1",
+        "cardTarget": "0..*"
+      },
+      "notes": [],
+      "metadata": {
+        "title": "Tem edificações",
+        "summary": "Associação 1:N entre Lote e Edificacao.",
+        "description": "<p>Associação do modelo OMT-G \"Exemplo — Teste completo GDB\" — <b>Tem edificações</b>.</p><ul><li>Origem: <b>Lote</b> (chave Inscricao)</li><li>Destino: <b>Edificacao</b> (FK Lote)</li><li>Cardinalidade no GDB: 1:N (OMT-G: 1 × 0..*)</li><li>Tipo: simples</li><li>Rótulos: \"Tem edificações\" / \"Está no lote\"</li></ul>",
+        "tags": [
+          "OMT-G",
+          "GeoGeoGeo",
+          "Exemplo — Teste completo GDB",
+          "Associação",
+          "Relationship class"
+        ],
+        "credits": "Gerado pelo GeoGeoGeo em 01/01/2026 a partir do modelo lógico OMT-G \"Exemplo — Teste completo GDB\"."
+      }
+    },
+    {
+      "name": "Pertence_A",
+      "origin": "Lote",
+      "destination": "Proprietario",
+      "type": "SIMPLE",
+      "cardinality": "MANY_TO_MANY",
+      "forwardLabel": "Pertence a",
+      "backwardLabel": "É dono de",
+      "attributed": "NONE",
+      "originPrimaryKey": "Inscricao",
+      "originForeignKey": "Lote_ID",
+      "omtg": {
+        "relId": "rqnfyy7z",
+        "type": "association",
+        "cardSource": "1..*",
+        "cardTarget": "1..*"
+      },
+      "notes": [
+        "O ArcGIS cria a tabela intermediária (sem atributos próprios; para atributos na relação, modele uma classe intermediária).",
+        "M:N — o ArcGIS cria a tabela intermediária; as chaves acima são as colunas dela (FK indireta).",
+        "Participação mínima (1..*) verificada por Validation Rule (Validate → Error Inspector)."
+      ],
+      "destinationPrimaryKey": "CPF_CNPJ",
+      "destinationForeignKey": "Proprietario_ID",
+      "metadata": {
+        "title": "Pertence a",
+        "summary": "Associação M:N entre Lote e Proprietario.",
+        "description": "<p>Associação do modelo OMT-G \"Exemplo — Teste completo GDB\" — <b>Pertence a</b>.</p><ul><li>Origem: <b>Lote</b> (chave Inscricao)</li><li>Destino: <b>Proprietario</b></li><li>Cardinalidade no GDB: M:N (OMT-G: 1..* × 1..*)</li><li>Tipo: simples</li><li>Rótulos: \"Pertence a\" / \"É dono de\"</li><li>Tabela intermediária criada pelo ArcGIS (sem atributos próprios), colunas Lote_ID e Proprietario_ID.</li></ul><p><b>Notas</b></p><ul><li>O ArcGIS cria a tabela intermediária (sem atributos próprios; para atributos na relação, modele uma classe intermediária).</li><li>M:N — o ArcGIS cria a tabela intermediária; as chaves acima são as colunas dela (FK indireta).</li><li>Participação mínima (1..*) verificada por Validation Rule (Validate → Error Inspector).</li></ul>",
+        "tags": [
+          "OMT-G",
+          "GeoGeoGeo",
+          "Exemplo — Teste completo GDB",
+          "Associação",
+          "Relationship class"
+        ],
+        "credits": "Gerado pelo GeoGeoGeo em 01/01/2026 a partir do modelo lógico OMT-G \"Exemplo — Teste completo GDB\"."
+      }
+    },
+    {
+      "name": "Registrado_Em",
+      "origin": "Lote",
+      "destination": "Matricula",
+      "type": "SIMPLE",
+      "cardinality": "ONE_TO_ONE",
+      "forwardLabel": "Registrado em",
+      "backwardLabel": "pertence a Lote",
+      "attributed": "NONE",
+      "originPrimaryKey": "Inscricao",
+      "originForeignKey": "Lote",
+      "omtg": {
+        "relId": "ryxzlfte",
+        "type": "association",
+        "cardSource": "1",
+        "cardTarget": "1"
+      },
+      "notes": [],
+      "metadata": {
+        "title": "Registrado em",
+        "summary": "Associação 1:1 entre Lote e Matricula.",
+        "description": "<p>Associação do modelo OMT-G \"Exemplo — Teste completo GDB\" — <b>Registrado em</b>.</p><ul><li>Origem: <b>Lote</b> (chave Inscricao)</li><li>Destino: <b>Matricula</b> (FK Lote)</li><li>Cardinalidade no GDB: 1:1 (OMT-G: 1 × 1)</li><li>Tipo: simples</li><li>Rótulos: \"Registrado em\" / \"pertence a Lote\"</li></ul><p><b>O que não coube 1:1</b></p><ul><li>Integridade \"Restringir\" não existe no GDB — gerado SIMPLE + Constraint Rule que bloqueia a exclusão com filhos.</li></ul>",
+        "tags": [
+          "OMT-G",
+          "GeoGeoGeo",
+          "Exemplo — Teste completo GDB",
+          "Associação",
+          "Relationship class"
+        ],
+        "credits": "Gerado pelo GeoGeoGeo em 01/01/2026 a partir do modelo lógico OMT-G \"Exemplo — Teste completo GDB\"."
+      }
+    },
+    {
+      "name": "Tributado_Por",
+      "origin": "Lote",
+      "destination": "IPTU",
+      "type": "COMPOSITE",
+      "cardinality": "ONE_TO_ONE",
+      "forwardLabel": "Tributado por",
+      "backwardLabel": "pertence a Lote",
+      "attributed": "NONE",
+      "originPrimaryKey": "Inscricao",
+      "originForeignKey": "Lote",
+      "omtg": {
+        "relId": "rco67fav",
+        "type": "association",
+        "cardSource": "1",
+        "cardTarget": "0..1"
+      },
+      "notes": [],
+      "metadata": {
+        "title": "Tributado por",
+        "summary": "Associação 1:1 entre Lote e IPTU.",
+        "description": "<p>Associação do modelo OMT-G \"Exemplo — Teste completo GDB\" — <b>Tributado por</b>.</p><ul><li>Origem: <b>Lote</b> (chave Inscricao)</li><li>Destino: <b>IPTU</b> (FK Lote)</li><li>Cardinalidade no GDB: 1:1 (OMT-G: 1 × 0..1)</li><li>Tipo: composta (a exclusão da origem apaga o destino)</li><li>Rótulos: \"Tributado por\" / \"pertence a Lote\"</li></ul>",
+        "tags": [
+          "OMT-G",
+          "GeoGeoGeo",
+          "Exemplo — Teste completo GDB",
+          "Associação",
+          "Relationship class"
+        ],
+        "credits": "Gerado pelo GeoGeoGeo em 01/01/2026 a partir do modelo lógico OMT-G \"Exemplo — Teste completo GDB\"."
+      }
+    },
+    {
+      "name": "Assina",
+      "origin": "Proprietario",
+      "destination": "Contrato_De_Servidao",
+      "type": "SIMPLE",
+      "cardinality": "ONE_TO_MANY",
+      "forwardLabel": "Assina",
+      "backwardLabel": "pertence a Proprietario",
+      "attributed": "NONE",
+      "originPrimaryKey": "CPF_CNPJ",
+      "originForeignKey": "Proprietario",
+      "omtg": {
+        "relId": "rkx94ht4",
+        "type": "association",
+        "cardSource": "1",
+        "cardTarget": "0..*"
+      },
+      "notes": [],
+      "metadata": {
+        "title": "Assina",
+        "summary": "Associação 1:N entre Proprietario e Contrato_De_Servidao.",
+        "description": "<p>Associação do modelo OMT-G \"Exemplo — Teste completo GDB\" — <b>Assina</b>.</p><ul><li>Origem: <b>Proprietario</b> (chave CPF_CNPJ)</li><li>Destino: <b>Contrato_De_Servidao</b> (FK Proprietario)</li><li>Cardinalidade no GDB: 1:N (OMT-G: 1 × 0..*)</li><li>Tipo: simples</li><li>Rótulos: \"Assina\" / \"pertence a Proprietario\"</li></ul><p><b>O que não coube 1:1</b></p><ul><li>Integridade \"Restringir\" não existe no GDB — gerado SIMPLE + Constraint Rule que bloqueia a exclusão com filhos.</li></ul>",
+        "tags": [
+          "OMT-G",
+          "GeoGeoGeo",
+          "Exemplo — Teste completo GDB",
+          "Associação",
+          "Relationship class"
+        ],
+        "credits": "Gerado pelo GeoGeoGeo em 01/01/2026 a partir do modelo lógico OMT-G \"Exemplo — Teste completo GDB\"."
+      }
+    },
+    {
+      "name": "Objeto_De",
+      "origin": "Faixa_De_Servidao",
+      "destination": "Contrato_De_Servidao",
+      "type": "SIMPLE",
+      "cardinality": "ONE_TO_MANY",
+      "forwardLabel": "Objeto de",
+      "backwardLabel": "pertence a Faixa_De_Servidao",
+      "attributed": "NONE",
+      "originPrimaryKey": "Codigo",
+      "originForeignKey": "Faixa",
+      "omtg": {
+        "relId": "rsaga3uf",
+        "type": "association",
+        "cardSource": "1",
+        "cardTarget": "0..*"
+      },
+      "notes": [],
+      "metadata": {
+        "title": "Objeto de",
+        "summary": "Associação 1:N entre Faixa_De_Servidao e Contrato_De_Servidao.",
+        "description": "<p>Associação do modelo OMT-G \"Exemplo — Teste completo GDB\" — <b>Objeto de</b>.</p><ul><li>Origem: <b>Faixa_De_Servidao</b> (chave Codigo)</li><li>Destino: <b>Contrato_De_Servidao</b> (FK Faixa)</li><li>Cardinalidade no GDB: 1:N (OMT-G: 1 × 0..*)</li><li>Tipo: simples</li><li>Rótulos: \"Objeto de\" / \"pertence a Faixa_De_Servidao\"</li></ul><p><b>O que não coube 1:1</b></p><ul><li>Integridade \"Restringir\" não existe no GDB — gerado SIMPLE + Constraint Rule que bloqueia a exclusão com filhos.</li></ul>",
+        "tags": [
+          "OMT-G",
+          "GeoGeoGeo",
+          "Exemplo — Teste completo GDB",
+          "Associação",
+          "Relationship class"
+        ],
+        "credits": "Gerado pelo GeoGeoGeo em 01/01/2026 a partir do modelo lógico OMT-G \"Exemplo — Teste completo GDB\"."
+      }
+    },
+    {
+      "name": "Sustentada_Por",
+      "origin": "Linha_De_Transmissao",
       "destination": "Torre",
       "type": "SIMPLE",
       "cardinality": "ONE_TO_MANY",
-      "forwardLabel": "dentro",
+      "forwardLabel": "Sustentada por",
+      "backwardLabel": "pertence a Linha_De_Transmissao",
+      "attributed": "NONE",
+      "originPrimaryKey": "Codigo",
+      "originForeignKey": "Linha",
+      "omtg": {
+        "relId": "rnvplgdd",
+        "type": "association",
+        "cardSource": "1",
+        "cardTarget": "1..*"
+      },
+      "notes": [
+        "Participação mínima (1..*) verificada por Validation Rule (Validate → Error Inspector)."
+      ],
+      "metadata": {
+        "title": "Sustentada por",
+        "summary": "Associação 1:N entre Linha_De_Transmissao e Torre.",
+        "description": "<p>Associação do modelo OMT-G \"Exemplo — Teste completo GDB\" — <b>Sustentada por</b>.</p><ul><li>Origem: <b>Linha_De_Transmissao</b> (chave Codigo)</li><li>Destino: <b>Torre</b> (FK Linha)</li><li>Cardinalidade no GDB: 1:N (OMT-G: 1 × 1..*)</li><li>Tipo: simples</li><li>Rótulos: \"Sustentada por\" / \"pertence a Linha_De_Transmissao\"</li></ul><p><b>Notas</b></p><ul><li>Participação mínima (1..*) verificada por Validation Rule (Validate → Error Inspector).</li></ul><p><b>O que não coube 1:1</b></p><ul><li>Integridade \"Restringir\" não existe no GDB — gerado SIMPLE + Constraint Rule que bloqueia a exclusão com filhos.</li></ul>",
+        "tags": [
+          "OMT-G",
+          "GeoGeoGeo",
+          "Exemplo — Teste completo GDB",
+          "Associação",
+          "Relationship class"
+        ],
+        "credits": "Gerado pelo GeoGeoGeo em 01/01/2026 a partir do modelo lógico OMT-G \"Exemplo — Teste completo GDB\"."
+      }
+    },
+    {
+      "name": "Protegida_Por",
+      "origin": "Linha_De_Transmissao",
+      "destination": "Faixa_De_Servidao",
+      "type": "COMPOSITE",
+      "cardinality": "ONE_TO_ONE",
+      "forwardLabel": "Protegida por",
+      "backwardLabel": "pertence a Linha_De_Transmissao",
+      "attributed": "NONE",
+      "originPrimaryKey": "Codigo",
+      "originForeignKey": "Linha",
+      "omtg": {
+        "relId": "rizbnevk",
+        "type": "association",
+        "cardSource": "1",
+        "cardTarget": "1"
+      },
+      "notes": [],
+      "metadata": {
+        "title": "Protegida por",
+        "summary": "Associação 1:1 entre Linha_De_Transmissao e Faixa_De_Servidao.",
+        "description": "<p>Associação do modelo OMT-G \"Exemplo — Teste completo GDB\" — <b>Protegida por</b>.</p><ul><li>Origem: <b>Linha_De_Transmissao</b> (chave Codigo)</li><li>Destino: <b>Faixa_De_Servidao</b> (FK Linha)</li><li>Cardinalidade no GDB: 1:1 (OMT-G: 1 × 1)</li><li>Tipo: composta (a exclusão da origem apaga o destino)</li><li>Rótulos: \"Protegida por\" / \"pertence a Linha_De_Transmissao\"</li></ul>",
+        "tags": [
+          "OMT-G",
+          "GeoGeoGeo",
+          "Exemplo — Teste completo GDB",
+          "Associação",
+          "Relationship class"
+        ],
+        "credits": "Gerado pelo GeoGeoGeo em 01/01/2026 a partir do modelo lógico OMT-G \"Exemplo — Teste completo GDB\"."
+      }
+    },
+    {
+      "name": "Residencial",
+      "origin": "Edificacao",
+      "destination": "Edificacao_Residencial",
+      "type": "COMPOSITE",
+      "cardinality": "ONE_TO_ONE",
+      "forwardLabel": "especializa-se em",
+      "backwardLabel": "é um(a)",
+      "attributed": "NONE",
+      "originPrimaryKey": "ID",
+      "originForeignKey": "ID",
+      "omtg": {
+        "relId": "rn60673z",
+        "type": "generalization",
+        "cardSource": null,
+        "cardTarget": null
+      },
+      "notes": [
+        "Herança tabela-por-classe: a PK da subclasse é também a FK para a superclasse."
+      ],
+      "metadata": {
+        "title": "Residencial",
+        "summary": "Generalização 1:1 entre Edificacao e Edificacao_Residencial.",
+        "description": "<p>Generalização do modelo OMT-G \"Exemplo — Teste completo GDB\" — <b>Residencial</b>.</p><ul><li>Origem: <b>Edificacao</b> (chave ID)</li><li>Destino: <b>Edificacao_Residencial</b> (FK ID)</li><li>Cardinalidade no GDB: 1:1</li><li>Tipo: composta (a exclusão da origem apaga o destino)</li><li>Rótulos: \"especializa-se em\" / \"é um(a)\"</li></ul><p><b>Notas</b></p><ul><li>Herança tabela-por-classe: a PK da subclasse é também a FK para a superclasse.</li></ul>",
+        "tags": [
+          "OMT-G",
+          "GeoGeoGeo",
+          "Exemplo — Teste completo GDB",
+          "Generalização",
+          "Relationship class"
+        ],
+        "credits": "Gerado pelo GeoGeoGeo em 01/01/2026 a partir do modelo lógico OMT-G \"Exemplo — Teste completo GDB\"."
+      }
+    },
+    {
+      "name": "Comercial",
+      "origin": "Edificacao",
+      "destination": "Edificacao_Comercial",
+      "type": "COMPOSITE",
+      "cardinality": "ONE_TO_ONE",
+      "forwardLabel": "especializa-se em",
+      "backwardLabel": "é um(a)",
+      "attributed": "NONE",
+      "originPrimaryKey": "ID",
+      "originForeignKey": "ID",
+      "omtg": {
+        "relId": "rh2nvjic",
+        "type": "generalization",
+        "cardSource": null,
+        "cardTarget": null
+      },
+      "notes": [
+        "Herança tabela-por-classe: a PK da subclasse é também a FK para a superclasse."
+      ],
+      "metadata": {
+        "title": "Comercial",
+        "summary": "Generalização 1:1 entre Edificacao e Edificacao_Comercial.",
+        "description": "<p>Generalização do modelo OMT-G \"Exemplo — Teste completo GDB\" — <b>Comercial</b>.</p><ul><li>Origem: <b>Edificacao</b> (chave ID)</li><li>Destino: <b>Edificacao_Comercial</b> (FK ID)</li><li>Cardinalidade no GDB: 1:1</li><li>Tipo: composta (a exclusão da origem apaga o destino)</li><li>Rótulos: \"especializa-se em\" / \"é um(a)\"</li></ul><p><b>Notas</b></p><ul><li>Herança tabela-por-classe: a PK da subclasse é também a FK para a superclasse.</li></ul>",
+        "tags": [
+          "OMT-G",
+          "GeoGeoGeo",
+          "Exemplo — Teste completo GDB",
+          "Generalização",
+          "Relationship class"
+        ],
+        "credits": "Gerado pelo GeoGeoGeo em 01/01/2026 a partir do modelo lógico OMT-G \"Exemplo — Teste completo GDB\"."
+      }
+    },
+    {
+      "name": "Representa_Limite",
+      "origin": "Municipio",
+      "destination": "Limite_Municipal",
+      "type": "COMPOSITE",
+      "cardinality": "ONE_TO_MANY",
+      "forwardLabel": "representado em outra escala por",
+      "backwardLabel": "representa",
+      "attributed": "NONE",
+      "originPrimaryKey": "Codigo_IBGE",
+      "originForeignKey": "Codigo_IBGE",
+      "omtg": {
+        "relId": "roysevc2",
+        "type": "cartographicGeneralization",
+        "cardSource": null,
+        "cardTarget": null
+      },
+      "notes": [
+        "Generalização cartográfica: cada subclasse é uma representação (escala) da mesma entidade da superclasse."
+      ],
+      "metadata": {
+        "title": "Representa limite",
+        "summary": "Generalização Cartográfica 1:N entre Municipio e Limite_Municipal.",
+        "description": "<p>Generalização Cartográfica do modelo OMT-G \"Exemplo — Teste completo GDB\" — <b>Representa limite</b>.</p><ul><li>Origem: <b>Municipio</b> (chave Codigo_IBGE)</li><li>Destino: <b>Limite_Municipal</b> (FK Codigo_IBGE)</li><li>Cardinalidade no GDB: 1:N</li><li>Tipo: composta (a exclusão da origem apaga o destino)</li><li>Rótulos: \"representado em outra escala por\" / \"representa\"</li></ul><p><b>Notas</b></p><ul><li>Generalização cartográfica: cada subclasse é uma representação (escala) da mesma entidade da superclasse.</li></ul>",
+        "tags": [
+          "OMT-G",
+          "GeoGeoGeo",
+          "Exemplo — Teste completo GDB",
+          "Generalização Cartográfica",
+          "Relationship class"
+        ],
+        "credits": "Gerado pelo GeoGeoGeo em 01/01/2026 a partir do modelo lógico OMT-G \"Exemplo — Teste completo GDB\"."
+      }
+    },
+    {
+      "name": "Representa_Sede",
+      "origin": "Municipio",
+      "destination": "Sede_Municipal",
+      "type": "COMPOSITE",
+      "cardinality": "ONE_TO_MANY",
+      "forwardLabel": "representado em outra escala por",
+      "backwardLabel": "representa",
+      "attributed": "NONE",
+      "originPrimaryKey": "Codigo_IBGE",
+      "originForeignKey": "Municipio",
+      "omtg": {
+        "relId": "rvtyapdo",
+        "type": "cartographicGeneralization",
+        "cardSource": null,
+        "cardTarget": null
+      },
+      "notes": [
+        "Generalização cartográfica: cada subclasse é uma representação (escala) da mesma entidade da superclasse."
+      ],
+      "metadata": {
+        "title": "Representa sede",
+        "summary": "Generalização Cartográfica 1:N entre Municipio e Sede_Municipal.",
+        "description": "<p>Generalização Cartográfica do modelo OMT-G \"Exemplo — Teste completo GDB\" — <b>Representa sede</b>.</p><ul><li>Origem: <b>Municipio</b> (chave Codigo_IBGE)</li><li>Destino: <b>Sede_Municipal</b> (FK Municipio)</li><li>Cardinalidade no GDB: 1:N</li><li>Tipo: composta (a exclusão da origem apaga o destino)</li><li>Rótulos: \"representado em outra escala por\" / \"representa\"</li></ul><p><b>Notas</b></p><ul><li>Generalização cartográfica: cada subclasse é uma representação (escala) da mesma entidade da superclasse.</li></ul>",
+        "tags": [
+          "OMT-G",
+          "GeoGeoGeo",
+          "Exemplo — Teste completo GDB",
+          "Generalização Cartográfica",
+          "Relationship class"
+        ],
+        "credits": "Gerado pelo GeoGeoGeo em 01/01/2026 a partir do modelo lógico OMT-G \"Exemplo — Teste completo GDB\"."
+      }
+    },
+    {
+      "name": "Dentro_Do_Lote",
+      "origin": "Lote",
+      "destination": "Edificacao",
+      "type": "SIMPLE",
+      "cardinality": "ONE_TO_MANY",
+      "forwardLabel": "Dentro do lote",
       "backwardLabel": "contém",
       "attributed": "NONE",
-      "originPrimaryKey": "Matricula",
-      "originForeignKey": null,
+      "originPrimaryKey": "Inscricao",
+      "originForeignKey": "Lote",
       "omtg": {
-        "relId": "rez6310m",
+        "relId": "rx7syjt9",
         "type": "spatial",
         "cardSource": "0..*",
         "cardTarget": "1"
       },
-      "notes": [
-        "Nenhum atributo FK declarado no destino apontando para a origem."
-      ]
+      "notes": [],
+      "metadata": {
+        "title": "Dentro do lote",
+        "summary": "Espacial 1:N entre Lote e Edificacao.",
+        "description": "<p>Espacial do modelo OMT-G \"Exemplo — Teste completo GDB\" — <b>Dentro do lote</b>.</p><ul><li>Origem: <b>Lote</b> (chave Inscricao)</li><li>Destino: <b>Edificacao</b> (FK Lote)</li><li>Cardinalidade no GDB: 1:N (OMT-G: 0..* × 1)</li><li>Tipo: simples</li><li>Rótulos: \"Dentro do lote\" / \"contém\"</li></ul>",
+        "tags": [
+          "OMT-G",
+          "GeoGeoGeo",
+          "Exemplo — Teste completo GDB",
+          "Espacial",
+          "Relationship class"
+        ],
+        "credits": "Gerado pelo GeoGeoGeo em 01/01/2026 a partir do modelo lógico OMT-G \"Exemplo — Teste completo GDB\"."
+      }
     },
     {
-      "name": "TorreQuadra",
-      "origin": "Torre",
-      "destination": "Quadra",
+      "name": "Contem_Torres",
+      "origin": "Faixa_De_Servidao",
+      "destination": "Torre",
       "type": "SIMPLE",
-      "cardinality": "ONE_TO_MANY",
-      "forwardLabel": "próximo",
-      "backwardLabel": "está próximo de",
+      "cardinality": "MANY_TO_MANY",
+      "forwardLabel": "Contém torres",
+      "backwardLabel": "está dentro de",
       "attributed": "NONE",
       "originPrimaryKey": "Codigo",
-      "originForeignKey": null,
+      "originForeignKey": "Faixa_De_Servidao_ID",
       "omtg": {
-        "relId": "rzlfbnc2",
+        "relId": "r648ljv0",
         "type": "spatial",
-        "cardSource": "1",
+        "cardSource": "0..*",
         "cardTarget": "0..*"
       },
       "notes": [
-        "Nenhum atributo FK declarado no destino apontando para a origem."
-      ]
+        "O ArcGIS cria a tabela intermediária (sem atributos próprios; para atributos na relação, modele uma classe intermediária).",
+        "M:N — o ArcGIS cria a tabela intermediária; as chaves acima são as colunas dela (FK indireta)."
+      ],
+      "destinationPrimaryKey": "Numero",
+      "destinationForeignKey": "Torre_ID",
+      "metadata": {
+        "title": "Contém torres",
+        "summary": "Espacial M:N entre Faixa_De_Servidao e Torre.",
+        "description": "<p>Espacial do modelo OMT-G \"Exemplo — Teste completo GDB\" — <b>Contém torres</b>.</p><ul><li>Origem: <b>Faixa_De_Servidao</b> (chave Codigo)</li><li>Destino: <b>Torre</b></li><li>Cardinalidade no GDB: M:N (OMT-G: 0..* × 0..*)</li><li>Tipo: simples</li><li>Rótulos: \"Contém torres\" / \"está dentro de\"</li><li>Tabela intermediária criada pelo ArcGIS (sem atributos próprios), colunas Faixa_De_Servidao_ID e Torre_ID.</li></ul><p><b>Notas</b></p><ul><li>O ArcGIS cria a tabela intermediária (sem atributos próprios; para atributos na relação, modele uma classe intermediária).</li><li>M:N — o ArcGIS cria a tabela intermediária; as chaves acima são as colunas dela (FK indireta).</li></ul>",
+        "tags": [
+          "OMT-G",
+          "GeoGeoGeo",
+          "Exemplo — Teste completo GDB",
+          "Espacial",
+          "Relationship class"
+        ],
+        "credits": "Gerado pelo GeoGeoGeo em 01/01/2026 a partir do modelo lógico OMT-G \"Exemplo — Teste completo GDB\"."
+      }
+    },
+    {
+      "name": "Coincide_Zona",
+      "origin": "Lote",
+      "destination": "Zoneamento",
+      "type": "SIMPLE",
+      "cardinality": "MANY_TO_MANY",
+      "forwardLabel": "Coincide zona",
+      "backwardLabel": "coincide com",
+      "attributed": "NONE",
+      "originPrimaryKey": "Inscricao",
+      "originForeignKey": "Lote_ID",
+      "omtg": {
+        "relId": "rzgw4bdp",
+        "type": "spatial",
+        "cardSource": "0..*",
+        "cardTarget": "0..*"
+      },
+      "notes": [
+        "O ArcGIS cria a tabela intermediária (sem atributos próprios; para atributos na relação, modele uma classe intermediária).",
+        "M:N — o ArcGIS cria a tabela intermediária; as chaves acima são as colunas dela (FK indireta)."
+      ],
+      "destinationPrimaryKey": "Codigo",
+      "destinationForeignKey": "Zoneamento_ID",
+      "metadata": {
+        "title": "Coincide zona",
+        "summary": "Espacial M:N entre Lote e Zoneamento.",
+        "description": "<p>Espacial do modelo OMT-G \"Exemplo — Teste completo GDB\" — <b>Coincide zona</b>.</p><ul><li>Origem: <b>Lote</b> (chave Inscricao)</li><li>Destino: <b>Zoneamento</b></li><li>Cardinalidade no GDB: M:N (OMT-G: 0..* × 0..*)</li><li>Tipo: simples</li><li>Rótulos: \"Coincide zona\" / \"coincide com\"</li><li>Tabela intermediária criada pelo ArcGIS (sem atributos próprios), colunas Lote_ID e Zoneamento_ID.</li></ul><p><b>Notas</b></p><ul><li>O ArcGIS cria a tabela intermediária (sem atributos próprios; para atributos na relação, modele uma classe intermediária).</li><li>M:N — o ArcGIS cria a tabela intermediária; as chaves acima são as colunas dela (FK indireta).</li></ul>",
+        "tags": [
+          "OMT-G",
+          "GeoGeoGeo",
+          "Exemplo — Teste completo GDB",
+          "Espacial",
+          "Relationship class"
+        ],
+        "credits": "Gerado pelo GeoGeoGeo em 01/01/2026 a partir do modelo lógico OMT-G \"Exemplo — Teste completo GDB\"."
+      }
+    },
+    {
+      "name": "Fora_Da_Faixa",
+      "origin": "Edificacao",
+      "destination": "Faixa_De_Servidao",
+      "type": "SIMPLE",
+      "cardinality": "MANY_TO_MANY",
+      "forwardLabel": "Fora da faixa",
+      "backwardLabel": "é disjunto de",
+      "attributed": "NONE",
+      "originPrimaryKey": "ID",
+      "originForeignKey": "Edificacao_ID",
+      "omtg": {
+        "relId": "ritqnqj3",
+        "type": "spatial",
+        "cardSource": "0..*",
+        "cardTarget": "0..*"
+      },
+      "notes": [
+        "O ArcGIS cria a tabela intermediária (sem atributos próprios; para atributos na relação, modele uma classe intermediária).",
+        "M:N — o ArcGIS cria a tabela intermediária; as chaves acima são as colunas dela (FK indireta)."
+      ],
+      "destinationPrimaryKey": "Codigo",
+      "destinationForeignKey": "Faixa_De_Servidao_ID",
+      "metadata": {
+        "title": "Fora da faixa",
+        "summary": "Espacial M:N entre Edificacao e Faixa_De_Servidao.",
+        "description": "<p>Espacial do modelo OMT-G \"Exemplo — Teste completo GDB\" — <b>Fora da faixa</b>.</p><ul><li>Origem: <b>Edificacao</b> (chave ID)</li><li>Destino: <b>Faixa_De_Servidao</b></li><li>Cardinalidade no GDB: M:N (OMT-G: 0..* × 0..*)</li><li>Tipo: simples</li><li>Rótulos: \"Fora da faixa\" / \"é disjunto de\"</li><li>Tabela intermediária criada pelo ArcGIS (sem atributos próprios), colunas Edificacao_ID e Faixa_De_Servidao_ID.</li></ul><p><b>Notas</b></p><ul><li>O ArcGIS cria a tabela intermediária (sem atributos próprios; para atributos na relação, modele uma classe intermediária).</li><li>M:N — o ArcGIS cria a tabela intermediária; as chaves acima são as colunas dela (FK indireta).</li></ul>",
+        "tags": [
+          "OMT-G",
+          "GeoGeoGeo",
+          "Exemplo — Teste completo GDB",
+          "Espacial",
+          "Relationship class"
+        ],
+        "credits": "Gerado pelo GeoGeoGeo em 01/01/2026 a partir do modelo lógico OMT-G \"Exemplo — Teste completo GDB\"."
+      }
+    },
+    {
+      "name": "Toca_Quadra",
+      "origin": "Trecho_De_Rede_De_Agua",
+      "destination": "Quadra",
+      "type": "SIMPLE",
+      "cardinality": "MANY_TO_MANY",
+      "forwardLabel": "Toca quadra",
+      "backwardLabel": "é tocado por",
+      "attributed": "NONE",
+      "originPrimaryKey": "ID",
+      "originForeignKey": "Trecho_De_Rede_De_Agua_ID",
+      "omtg": {
+        "relId": "rndwx83q",
+        "type": "spatial",
+        "cardSource": "0..*",
+        "cardTarget": "0..*"
+      },
+      "notes": [
+        "O ArcGIS cria a tabela intermediária (sem atributos próprios; para atributos na relação, modele uma classe intermediária).",
+        "M:N — o ArcGIS cria a tabela intermediária; as chaves acima são as colunas dela (FK indireta)."
+      ],
+      "destinationPrimaryKey": "Codigo",
+      "destinationForeignKey": "Quadra_ID",
+      "metadata": {
+        "title": "Toca quadra",
+        "summary": "Espacial M:N entre Trecho_De_Rede_De_Agua e Quadra.",
+        "description": "<p>Espacial do modelo OMT-G \"Exemplo — Teste completo GDB\" — <b>Toca quadra</b>.</p><ul><li>Origem: <b>Trecho_De_Rede_De_Agua</b> (chave ID)</li><li>Destino: <b>Quadra</b></li><li>Cardinalidade no GDB: M:N (OMT-G: 0..* × 0..*)</li><li>Tipo: simples</li><li>Rótulos: \"Toca quadra\" / \"é tocado por\"</li><li>Tabela intermediária criada pelo ArcGIS (sem atributos próprios), colunas Trecho_De_Rede_De_Agua_ID e Quadra_ID.</li></ul><p><b>Notas</b></p><ul><li>O ArcGIS cria a tabela intermediária (sem atributos próprios; para atributos na relação, modele uma classe intermediária).</li><li>M:N — o ArcGIS cria a tabela intermediária; as chaves acima são as colunas dela (FK indireta).</li></ul>",
+        "tags": [
+          "OMT-G",
+          "GeoGeoGeo",
+          "Exemplo — Teste completo GDB",
+          "Espacial",
+          "Relationship class"
+        ],
+        "credits": "Gerado pelo GeoGeoGeo em 01/01/2026 a partir do modelo lógico OMT-G \"Exemplo — Teste completo GDB\"."
+      }
+    },
+    {
+      "name": "Vizinha_Da_Faixa",
+      "origin": "Quadra",
+      "destination": "Faixa_De_Servidao",
+      "type": "SIMPLE",
+      "cardinality": "MANY_TO_MANY",
+      "forwardLabel": "Vizinha da faixa",
+      "backwardLabel": "é adjacente a",
+      "attributed": "NONE",
+      "originPrimaryKey": "Codigo",
+      "originForeignKey": "Quadra_ID",
+      "omtg": {
+        "relId": "rzlklvuq",
+        "type": "spatial",
+        "cardSource": "0..*",
+        "cardTarget": "0..*"
+      },
+      "notes": [
+        "O ArcGIS cria a tabela intermediária (sem atributos próprios; para atributos na relação, modele uma classe intermediária).",
+        "M:N — o ArcGIS cria a tabela intermediária; as chaves acima são as colunas dela (FK indireta)."
+      ],
+      "destinationPrimaryKey": "Codigo",
+      "destinationForeignKey": "Faixa_De_Servidao_ID",
+      "metadata": {
+        "title": "Vizinha da faixa",
+        "summary": "Espacial M:N entre Quadra e Faixa_De_Servidao.",
+        "description": "<p>Espacial do modelo OMT-G \"Exemplo — Teste completo GDB\" — <b>Vizinha da faixa</b>.</p><ul><li>Origem: <b>Quadra</b> (chave Codigo)</li><li>Destino: <b>Faixa_De_Servidao</b></li><li>Cardinalidade no GDB: M:N (OMT-G: 0..* × 0..*)</li><li>Tipo: simples</li><li>Rótulos: \"Vizinha da faixa\" / \"é adjacente a\"</li><li>Tabela intermediária criada pelo ArcGIS (sem atributos próprios), colunas Quadra_ID e Faixa_De_Servidao_ID.</li></ul><p><b>Notas</b></p><ul><li>O ArcGIS cria a tabela intermediária (sem atributos próprios; para atributos na relação, modele uma classe intermediária).</li><li>M:N — o ArcGIS cria a tabela intermediária; as chaves acima são as colunas dela (FK indireta).</li></ul>",
+        "tags": [
+          "OMT-G",
+          "GeoGeoGeo",
+          "Exemplo — Teste completo GDB",
+          "Espacial",
+          "Relationship class"
+        ],
+        "credits": "Gerado pelo GeoGeoGeo em 01/01/2026 a partir do modelo lógico OMT-G \"Exemplo — Teste completo GDB\"."
+      }
+    },
+    {
+      "name": "Cruza_Rede",
+      "origin": "Linha_De_Transmissao",
+      "destination": "Trecho_De_Rede_De_Agua",
+      "type": "SIMPLE",
+      "cardinality": "MANY_TO_MANY",
+      "forwardLabel": "Cruza rede",
+      "backwardLabel": "é cruzado por",
+      "attributed": "NONE",
+      "originPrimaryKey": "Codigo",
+      "originForeignKey": "Linha_De_Transmissao_ID",
+      "omtg": {
+        "relId": "r6qmmciq",
+        "type": "spatial",
+        "cardSource": "0..*",
+        "cardTarget": "0..*"
+      },
+      "notes": [
+        "O ArcGIS cria a tabela intermediária (sem atributos próprios; para atributos na relação, modele uma classe intermediária).",
+        "M:N — o ArcGIS cria a tabela intermediária; as chaves acima são as colunas dela (FK indireta)."
+      ],
+      "destinationPrimaryKey": "ID",
+      "destinationForeignKey": "Trecho_De_Rede_De_Agua_ID",
+      "metadata": {
+        "title": "Cruza rede",
+        "summary": "Espacial M:N entre Linha_De_Transmissao e Trecho_De_Rede_De_Agua.",
+        "description": "<p>Espacial do modelo OMT-G \"Exemplo — Teste completo GDB\" — <b>Cruza rede</b>.</p><ul><li>Origem: <b>Linha_De_Transmissao</b> (chave Codigo)</li><li>Destino: <b>Trecho_De_Rede_De_Agua</b></li><li>Cardinalidade no GDB: M:N (OMT-G: 0..* × 0..*)</li><li>Tipo: simples</li><li>Rótulos: \"Cruza rede\" / \"é cruzado por\"</li><li>Tabela intermediária criada pelo ArcGIS (sem atributos próprios), colunas Linha_De_Transmissao_ID e Trecho_De_Rede_De_Agua_ID.</li></ul><p><b>Notas</b></p><ul><li>O ArcGIS cria a tabela intermediária (sem atributos próprios; para atributos na relação, modele uma classe intermediária).</li><li>M:N — o ArcGIS cria a tabela intermediária; as chaves acima são as colunas dela (FK indireta).</li></ul>",
+        "tags": [
+          "OMT-G",
+          "GeoGeoGeo",
+          "Exemplo — Teste completo GDB",
+          "Espacial",
+          "Relationship class"
+        ],
+        "credits": "Gerado pelo GeoGeoGeo em 01/01/2026 a partir do modelo lógico OMT-G \"Exemplo — Teste completo GDB\"."
+      }
+    },
+    {
+      "name": "Sobrepoe_Zona",
+      "origin": "Bairro",
+      "destination": "Zoneamento",
+      "type": "SIMPLE",
+      "cardinality": "MANY_TO_MANY",
+      "forwardLabel": "Sobrepõe zona",
+      "backwardLabel": "é sobreposto por",
+      "attributed": "NONE",
+      "originPrimaryKey": "ID",
+      "originForeignKey": "Bairro_ID",
+      "omtg": {
+        "relId": "rtl6vmc7",
+        "type": "spatial",
+        "cardSource": "0..*",
+        "cardTarget": "0..*"
+      },
+      "notes": [
+        "O ArcGIS cria a tabela intermediária (sem atributos próprios; para atributos na relação, modele uma classe intermediária).",
+        "M:N — o ArcGIS cria a tabela intermediária; as chaves acima são as colunas dela (FK indireta)."
+      ],
+      "destinationPrimaryKey": "Codigo",
+      "destinationForeignKey": "Zoneamento_ID",
+      "metadata": {
+        "title": "Sobrepõe zona",
+        "summary": "Espacial M:N entre Bairro e Zoneamento.",
+        "description": "<p>Espacial do modelo OMT-G \"Exemplo — Teste completo GDB\" — <b>Sobrepõe zona</b>.</p><ul><li>Origem: <b>Bairro</b> (chave ID)</li><li>Destino: <b>Zoneamento</b></li><li>Cardinalidade no GDB: M:N (OMT-G: 0..* × 0..*)</li><li>Tipo: simples</li><li>Rótulos: \"Sobrepõe zona\" / \"é sobreposto por\"</li><li>Tabela intermediária criada pelo ArcGIS (sem atributos próprios), colunas Bairro_ID e Zoneamento_ID.</li></ul><p><b>Notas</b></p><ul><li>O ArcGIS cria a tabela intermediária (sem atributos próprios; para atributos na relação, modele uma classe intermediária).</li><li>M:N — o ArcGIS cria a tabela intermediária; as chaves acima são as colunas dela (FK indireta).</li></ul>",
+        "tags": [
+          "OMT-G",
+          "GeoGeoGeo",
+          "Exemplo — Teste completo GDB",
+          "Espacial",
+          "Relationship class"
+        ],
+        "credits": "Gerado pelo GeoGeoGeo em 01/01/2026 a partir do modelo lógico OMT-G \"Exemplo — Teste completo GDB\"."
+      }
+    },
+    {
+      "name": "Perto_Do_Lote",
+      "origin": "Marco_Geodesico",
+      "destination": "Lote",
+      "type": "SIMPLE",
+      "cardinality": "MANY_TO_MANY",
+      "forwardLabel": "Perto do lote",
+      "backwardLabel": "está próximo de",
+      "attributed": "NONE",
+      "originPrimaryKey": "Codigo",
+      "originForeignKey": "Marco_Geodesico_ID",
+      "omtg": {
+        "relId": "r7q8jgs7",
+        "type": "spatial",
+        "cardSource": "0..*",
+        "cardTarget": "0..*"
+      },
+      "notes": [
+        "O ArcGIS cria a tabela intermediária (sem atributos próprios; para atributos na relação, modele uma classe intermediária).",
+        "M:N — o ArcGIS cria a tabela intermediária; as chaves acima são as colunas dela (FK indireta)."
+      ],
+      "destinationPrimaryKey": "Inscricao",
+      "destinationForeignKey": "Lote_ID",
+      "metadata": {
+        "title": "Perto do lote",
+        "summary": "Espacial M:N entre Marco_Geodesico e Lote.",
+        "description": "<p>Espacial do modelo OMT-G \"Exemplo — Teste completo GDB\" — <b>Perto do lote</b>.</p><ul><li>Origem: <b>Marco_Geodesico</b> (chave Codigo)</li><li>Destino: <b>Lote</b></li><li>Cardinalidade no GDB: M:N (OMT-G: 0..* × 0..*)</li><li>Tipo: simples</li><li>Rótulos: \"Perto do lote\" / \"está próximo de\"</li><li>Tabela intermediária criada pelo ArcGIS (sem atributos próprios), colunas Marco_Geodesico_ID e Lote_ID.</li></ul><p><b>Notas</b></p><ul><li>O ArcGIS cria a tabela intermediária (sem atributos próprios; para atributos na relação, modele uma classe intermediária).</li><li>M:N — o ArcGIS cria a tabela intermediária; as chaves acima são as colunas dela (FK indireta).</li></ul>",
+        "tags": [
+          "OMT-G",
+          "GeoGeoGeo",
+          "Exemplo — Teste completo GDB",
+          "Espacial",
+          "Relationship class"
+        ],
+        "credits": "Gerado pelo GeoGeoGeo em 01/01/2026 a partir do modelo lógico OMT-G \"Exemplo — Teste completo GDB\"."
+      }
     }
   ],
   "topologies": [
     {
-      "name": "Regras",
-      "featureDataset": "Topologia",
+      "name": "Topologia",
+      "featureDataset": "SRID_31982",
       "clusterTolerance": "default",
       "featureClasses": [
-        "AreaDePreservacao",
+        "Bairro",
+        "Limite_Municipal",
+        "Lote",
         "Quadra",
+        "Edificacao",
         "Torre",
-        "TipoDeSolo"
+        "Faixa_De_Servidao",
+        "Zoneamento"
       ],
       "rules": [
         {
-          "rule": "Must Not Overlap",
-          "origin": "AreaDePreservacao",
-          "destination": "AreaDePreservacao",
+          "rule": "Must Not Overlap (Area)",
+          "origin": "Bairro",
+          "destination": "Bairro",
           "omtg": {
-            "relId": "rc2w4ilu",
+            "relId": "rcanq5zp",
+            "aggKind": "union"
+          }
+        },
+        {
+          "rule": "Must Not Have Gaps (Area)",
+          "origin": "Bairro",
+          "destination": "Bairro",
+          "omtg": {
+            "relId": "rcanq5zp",
+            "aggKind": "union"
+          }
+        },
+        {
+          "rule": "Must Be Covered By Feature Class Of (Area-Area)",
+          "origin": "Limite_Municipal",
+          "destination": "Bairro",
+          "omtg": {
+            "relId": "rcanq5zp",
+            "aggKind": "union"
+          }
+        },
+        {
+          "rule": "Must Not Overlap (Area)",
+          "origin": "Lote",
+          "destination": "Lote",
+          "omtg": {
+            "relId": "rd5ittaq",
             "aggKind": "subdivision"
           }
         },
         {
-          "rule": "Must Not Have Gaps",
-          "origin": "AreaDePreservacao",
-          "destination": "AreaDePreservacao",
+          "rule": "Must Not Have Gaps (Area)",
+          "origin": "Lote",
+          "destination": "Lote",
           "omtg": {
-            "relId": "rc2w4ilu",
+            "relId": "rd5ittaq",
             "aggKind": "subdivision"
           }
         },
         {
-          "rule": "Area Must Be Covered By Area Class Of",
+          "rule": "Must Be Covered By Feature Class Of (Area-Area)",
           "origin": "Quadra",
-          "destination": "AreaDePreservacao",
+          "destination": "Lote",
           "omtg": {
-            "relId": "rc2w4ilu",
+            "relId": "rd5ittaq",
             "aggKind": "subdivision"
           }
         },
         {
-          "rule": "Must Be Covered By Feature Class Of",
-          "origin": "Torre",
-          "destination": "AreaDePreservacao",
+          "rule": "Must Be Covered By Feature Class Of (Area-Area)",
+          "origin": "Edificacao",
+          "destination": "Lote",
           "omtg": {
-            "relId": "rez6310m",
+            "relId": "rx7syjt9",
             "topoRule": "dentro"
           }
         },
         {
-          "rule": "Must Not Overlap",
-          "origin": "TipoDeSolo",
-          "destination": "TipoDeSolo",
+          "rule": "Must Be Properly Inside (Point-Area)",
+          "origin": "Torre",
+          "destination": "Faixa_De_Servidao",
           "omtg": {
-            "classId": "cluk5obu",
+            "relId": "r648ljv0",
+            "topoRule": "contem"
+          }
+        },
+        {
+          "rule": "Must Be Covered By Feature Class Of (Area-Area)",
+          "origin": "Lote",
+          "destination": "Zoneamento",
+          "omtg": {
+            "relId": "rzgw4bdp",
+            "topoRule": "coincide"
+          }
+        },
+        {
+          "rule": "Must Not Overlap With (Area-Area)",
+          "origin": "Edificacao",
+          "destination": "Faixa_De_Servidao",
+          "omtg": {
+            "relId": "ritqnqj3",
+            "topoRule": "disjunto"
+          }
+        },
+        {
+          "rule": "Must Not Overlap (Area)",
+          "origin": "Zoneamento",
+          "destination": "Zoneamento",
+          "omtg": {
+            "classId": "cgpdd8xz",
             "primitive": "partition"
           }
         },
         {
-          "rule": "Must Not Have Gaps",
-          "origin": "TipoDeSolo",
-          "destination": "TipoDeSolo",
+          "rule": "Must Not Have Gaps (Area)",
+          "origin": "Zoneamento",
+          "destination": "Zoneamento",
           "omtg": {
-            "classId": "cluk5obu",
+            "classId": "cgpdd8xz",
             "primitive": "partition"
           }
         }
-      ]
+      ],
+      "metadata": {
+        "title": "Topologia",
+        "summary": "Topologia com 12 regra(s), derivadas das restrições espaciais do modelo OMT-G \"Exemplo — Teste completo GDB\".",
+        "description": "<p>Cada regra traduz uma restrição do modelo OMT-G. Tolerância: a padrão do sistema de referência.</p><p><b>Regras</b></p><ul><li>Must Not Overlap (Area) — Bairro <i>(origem: agregação espacial (união))</i></li><li>Must Not Have Gaps (Area) — Bairro <i>(origem: agregação espacial (união))</i></li><li>Must Be Covered By Feature Class Of (Area-Area) — Limite_Municipal × Bairro <i>(origem: agregação espacial (união))</i></li><li>Must Not Overlap (Area) — Lote <i>(origem: agregação espacial (subdivisão))</i></li><li>Must Not Have Gaps (Area) — Lote <i>(origem: agregação espacial (subdivisão))</i></li><li>Must Be Covered By Feature Class Of (Area-Area) — Quadra × Lote <i>(origem: agregação espacial (subdivisão))</i></li><li>Must Be Covered By Feature Class Of (Area-Area) — Edificacao × Lote <i>(origem: relacionamento espacial OMT-G \"dentro\")</i></li><li>Must Be Properly Inside (Point-Area) — Torre × Faixa_De_Servidao <i>(origem: relacionamento espacial OMT-G \"contém\")</i></li><li>Must Be Covered By Feature Class Of (Area-Area) — Lote × Zoneamento <i>(origem: relacionamento espacial OMT-G \"coincide\")</i></li><li>Must Not Overlap With (Area-Area) — Edificacao × Faixa_De_Servidao <i>(origem: relacionamento espacial OMT-G \"disjunto\")</i></li><li>Must Not Overlap (Area) — Zoneamento <i>(origem: primitiva Subdivisão Planar)</i></li><li>Must Not Have Gaps (Area) — Zoneamento <i>(origem: primitiva Subdivisão Planar)</i></li></ul><p><b>Classes</b></p><ul><li>Bairro</li><li>Limite_Municipal</li><li>Lote</li><li>Quadra</li><li>Edificacao</li><li>Torre</li><li>Faixa_De_Servidao</li><li>Zoneamento</li></ul>",
+        "tags": [
+          "OMT-G",
+          "GeoGeoGeo",
+          "Exemplo — Teste completo GDB",
+          "Topologia"
+        ],
+        "credits": "Gerado pelo GeoGeoGeo em 01/01/2026 a partir do modelo lógico OMT-G \"Exemplo — Teste completo GDB\"."
+      }
     }
   ],
   "networks": [
     {
-      "featureDataset": "RedeDeTransmissao",
-      "name": "RedeDeTransmissaoND",
+      "featureDataset": "SRID_31982",
+      "name": "Rede_De_Agua_ND",
       "edges": [
         {
-          "class": "TrechoDeLinha",
+          "class": "Trecho_De_Rede_De_Agua",
           "directionality": "uni"
         }
       ],
       "junctions": [
         {
-          "class": "Torre"
+          "class": "No_Da_Rede"
         }
       ],
       "status": "declaredOnly",
       "omtg": {
-        "relId": "rvhfyucu"
+        "relId": "r8iaum6w"
       },
       "notes": [
         "O Network Dataset não é criado pela toolbox: exige a extensão Network Analyst e configuração de conectividade, custos e direcionalidade, mais Build Network."
+      ]
+    },
+    {
+      "featureDataset": "SRID_31982",
+      "name": "Continuidade_ND",
+      "edges": [
+        {
+          "class": "Trecho_De_Rede_De_Agua",
+          "directionality": "uni"
+        }
+      ],
+      "junctions": [],
+      "status": "declaredOnly",
+      "omtg": {
+        "relId": "rutd9eea"
+      },
+      "notes": [
+        "O Network Dataset não é criado pela toolbox: exige a extensão Network Analyst e configuração de conectividade, custos e direcionalidade, mais Build Network.",
+        "Estrutura arco-arco (recursiva): conectividade por endpoint."
       ]
     }
   ],
   "attributeRules": [
     {
-      "name": "CalcAreaDePreservacaoAreaHa",
-      "dataset": "AreaDePreservacao",
-      "field": "AreaHa",
-      "type": "calculation",
-      "triggers": [
-        "insert",
-        "update"
-      ],
-      "arcade": "return Round(Area($feature) / 10000, 2);",
-      "description": "Calcula \"Área Ha\".",
-      "omtg": {
-        "classId": "cexgvbnz",
-        "attrId": "l2"
-      }
-    },
-    {
-      "name": "UnicoAreaDePreservacaoCodInterno",
-      "dataset": "AreaDePreservacao",
-      "field": "CodInterno",
+      "name": "Unico_Municipio_Nome",
+      "dataset": "Municipio",
+      "field": null,
       "type": "constraint",
       "triggers": [
         "insert",
         "update"
       ],
-      "arcade": "var dup = Filter(FeatureSetByName($datastore, \"AreaDePreservacao\", [\"CodInterno\"], false), \"CodInterno = @CodInterno AND OBJECTID <> @OBJECTID\");\nreturn Count(dup) == 0;",
-      "description": "Garante que \"Cod Interno\" não se repita.",
+      "arcade": "var v = $feature.Nome;\nif (IsEmpty(v)) return true;\nvar oid = $feature.OBJECTID;\nvar dup = Filter(FeatureSetByName($datastore, \"Municipio\", [\"OBJECTID\", \"Nome\"], false), \"Nome = @v AND OBJECTID <> @oid\");\nreturn Count(dup) == 0;",
+      "description": "Garante que \"Nome\" não se repita.",
       "omtg": {
-        "classId": "cexgvbnz",
-        "attrId": "l6"
+        "classId": "chnamfbj",
+        "attrId": "a2_oor4"
       }
     },
     {
-      "name": "EspTorreQuadraProximo",
+      "name": "Faixa_Municipio_Populacao",
+      "dataset": "Municipio",
+      "field": null,
+      "type": "constraint",
+      "triggers": [
+        "insert",
+        "update"
+      ],
+      "arcade": "var v = $feature.Populacao;\nif (IsEmpty(v)) return true;\nreturn v >= 0;",
+      "description": "\"População\" no mínimo 0.",
+      "omtg": {
+        "classId": "chnamfbj",
+        "attrId": "a4_1o0d"
+      }
+    },
+    {
+      "name": "PK_Municipio",
+      "dataset": "Municipio",
+      "field": null,
+      "type": "constraint",
+      "triggers": [
+        "insert",
+        "update"
+      ],
+      "arcade": "var v0 = $feature.Codigo_IBGE;\nif (IsEmpty(v0)) return false;\nvar oid = $feature.OBJECTID;\nvar dup = Filter(FeatureSetByName($datastore, \"Municipio\", [\"OBJECTID\", \"Codigo_IBGE\"], false), \"Codigo_IBGE = @v0 AND OBJECTID <> @oid\");\nreturn Count(dup) == 0;",
+      "description": "Chave primária \"Código IBGE\": obrigatória e sem repetição.",
+      "omtg": {
+        "classId": "chnamfbj",
+        "pk": [
+          "a1_g8xy"
+        ]
+      }
+    },
+    {
+      "name": "Calc_Limite_Municipal_Area_Km",
+      "dataset": "Limite_Municipal",
+      "field": "Area_Km",
+      "type": "calculation",
+      "triggers": [
+        "insert",
+        "update"
+      ],
+      "arcade": "return Round(Area($feature, 'square-meters') / 1000000, 3);",
+      "description": "Calcula \"Área (km²)\".",
+      "omtg": {
+        "classId": "c4sp9j9r",
+        "attrId": "a6_wbcc"
+      }
+    },
+    {
+      "name": "PK_Limite_Municipal",
+      "dataset": "Limite_Municipal",
+      "field": null,
+      "type": "constraint",
+      "triggers": [
+        "insert",
+        "update"
+      ],
+      "arcade": "var v0 = $feature.Codigo_IBGE;\nif (IsEmpty(v0)) return false;\nvar oid = $feature.OBJECTID;\nvar dup = Filter(FeatureSetByName($datastore, \"Limite_Municipal\", [\"OBJECTID\", \"Codigo_IBGE\"], false), \"Codigo_IBGE = @v0 AND OBJECTID <> @oid\");\nreturn Count(dup) == 0;",
+      "description": "Chave primária \"Código IBGE\": obrigatória e sem repetição.",
+      "omtg": {
+        "classId": "c4sp9j9r",
+        "pk": [
+          "a5_q5lw"
+        ]
+      }
+    },
+    {
+      "name": "Unico_Sede_Municipal_Municipio",
+      "dataset": "Sede_Municipal",
+      "field": null,
+      "type": "constraint",
+      "triggers": [
+        "insert",
+        "update"
+      ],
+      "arcade": "var v = $feature.Municipio;\nif (IsEmpty(v)) return true;\nvar oid = $feature.OBJECTID;\nvar dup = Filter(FeatureSetByName($datastore, \"Sede_Municipal\", [\"OBJECTID\", \"Municipio\"], false), \"Municipio = @v AND OBJECTID <> @oid\");\nreturn Count(dup) == 0;",
+      "description": "Garante que \"Município\" não se repita.",
+      "omtg": {
+        "classId": "c2toiaao",
+        "attrId": "a8_fe3m"
+      }
+    },
+    {
+      "name": "PK_Sede_Municipal",
+      "dataset": "Sede_Municipal",
+      "field": null,
+      "type": "constraint",
+      "triggers": [
+        "insert",
+        "update"
+      ],
+      "arcade": "var v0 = $feature.ID;\nif (IsEmpty(v0)) return false;\nvar oid = $feature.OBJECTID;\nvar dup = Filter(FeatureSetByName($datastore, \"Sede_Municipal\", [\"OBJECTID\", \"ID\"], false), \"ID = @v0 AND OBJECTID <> @oid\");\nreturn Count(dup) == 0;",
+      "description": "Chave primária \"ID\": obrigatória e sem repetição.",
+      "omtg": {
+        "classId": "c2toiaao",
+        "pk": [
+          "a7_8v8y"
+        ]
+      }
+    },
+    {
+      "name": "PK_Bairro",
+      "dataset": "Bairro",
+      "field": null,
+      "type": "constraint",
+      "triggers": [
+        "insert",
+        "update"
+      ],
+      "arcade": "var v0 = $feature.ID;\nif (IsEmpty(v0)) return false;\nvar oid = $feature.OBJECTID;\nvar dup = Filter(FeatureSetByName($datastore, \"Bairro\", [\"OBJECTID\", \"ID\"], false), \"ID = @v0 AND OBJECTID <> @oid\");\nreturn Count(dup) == 0;",
+      "description": "Chave primária \"ID\": obrigatória e sem repetição.",
+      "omtg": {
+        "classId": "csnt8y6p",
+        "pk": [
+          "a9_mqnz"
+        ]
+      }
+    },
+    {
+      "name": "Faixa_Quadra_Area_Verde_M",
+      "dataset": "Quadra",
+      "field": null,
+      "type": "constraint",
+      "triggers": [
+        "insert",
+        "update"
+      ],
+      "arcade": "var v = $feature.Area_Verde_M;\nif (IsEmpty(v)) return true;\nreturn v >= 0;",
+      "description": "\"Área verde (m²)\" no mínimo 0.",
+      "omtg": {
+        "classId": "cv1nekxh",
+        "attrId": "a14_0t7q"
+      }
+    },
+    {
+      "name": "PK_Quadra",
+      "dataset": "Quadra",
+      "field": null,
+      "type": "constraint",
+      "triggers": [
+        "insert",
+        "update"
+      ],
+      "arcade": "var v0 = $feature.Codigo;\nif (IsEmpty(v0)) return false;\nvar oid = $feature.OBJECTID;\nvar dup = Filter(FeatureSetByName($datastore, \"Quadra\", [\"OBJECTID\", \"Codigo\"], false), \"Codigo = @v0 AND OBJECTID <> @oid\");\nreturn Count(dup) == 0;",
+      "description": "Chave primária \"Código\": obrigatória e sem repetição.",
+      "omtg": {
+        "classId": "cv1nekxh",
+        "pk": [
+          "a12_6zg1"
+        ]
+      }
+    },
+    {
+      "name": "Faixa_Lote_Testada_M",
+      "dataset": "Lote",
+      "field": null,
+      "type": "constraint",
+      "triggers": [
+        "insert",
+        "update"
+      ],
+      "arcade": "var v = $feature.Testada_M;\nif (IsEmpty(v)) return true;\nreturn v >= 0 && v <= 500;",
+      "description": "\"Testada (m)\" entre 0 e 500.",
+      "omtg": {
+        "classId": "cprqd1m6",
+        "attrId": "a21_49ab"
+      }
+    },
+    {
+      "name": "Calc_Lote_Area_M",
+      "dataset": "Lote",
+      "field": "Area_M",
+      "type": "calculation",
+      "triggers": [
+        "insert",
+        "update"
+      ],
+      "arcade": "return Round(Area($feature, 'square-meters'), 2);",
+      "description": "Calcula \"Área (m²)\".",
+      "omtg": {
+        "classId": "cprqd1m6",
+        "attrId": "a19_mqcb"
+      }
+    },
+    {
+      "name": "Calc_Lote_Perimetro_M",
+      "dataset": "Lote",
+      "field": "Perimetro_M",
+      "type": "calculation",
+      "triggers": [
+        "insert",
+        "update"
+      ],
+      "arcade": "return Round(Length($feature, 'meters'), 2);",
+      "description": "Calcula \"Perímetro (m)\".",
+      "omtg": {
+        "classId": "cprqd1m6",
+        "attrId": "a20_g6cf"
+      }
+    },
+    {
+      "name": "PK_Lote",
+      "dataset": "Lote",
+      "field": null,
+      "type": "constraint",
+      "triggers": [
+        "insert",
+        "update"
+      ],
+      "arcade": "var v0 = $feature.Inscricao;\nif (IsEmpty(v0)) return false;\nvar oid = $feature.OBJECTID;\nvar dup = Filter(FeatureSetByName($datastore, \"Lote\", [\"OBJECTID\", \"Inscricao\"], false), \"Inscricao = @v0 AND OBJECTID <> @oid\");\nreturn Count(dup) == 0;",
+      "description": "Chave primária \"Inscrição\": obrigatória e sem repetição.",
+      "omtg": {
+        "classId": "cprqd1m6",
+        "pk": [
+          "a15_59yl"
+        ]
+      }
+    },
+    {
+      "name": "Faixa_Edificacao_Pavimentos",
+      "dataset": "Edificacao",
+      "field": null,
+      "type": "constraint",
+      "triggers": [
+        "insert",
+        "update"
+      ],
+      "arcade": "var v = $feature.Pavimentos;\nif (IsEmpty(v)) return true;\nreturn v >= 1 && v <= 60;",
+      "description": "\"Pavimentos\" entre 1 e 60.",
+      "omtg": {
+        "classId": "cal02eq2",
+        "attrId": "a28_5vru"
+      }
+    },
+    {
+      "name": "Faixa_Edificacao_Area_Construida_M",
+      "dataset": "Edificacao",
+      "field": null,
+      "type": "constraint",
+      "triggers": [
+        "insert",
+        "update"
+      ],
+      "arcade": "var v = $feature.Area_Construida_M;\nif (IsEmpty(v)) return true;\nreturn v >= 0;",
+      "description": "\"Área construída (m²)\" no mínimo 0.",
+      "omtg": {
+        "classId": "cal02eq2",
+        "attrId": "a29_ra8l"
+      }
+    },
+    {
+      "name": "PK_Edificacao",
+      "dataset": "Edificacao",
+      "field": null,
+      "type": "constraint",
+      "triggers": [
+        "insert",
+        "update"
+      ],
+      "arcade": "var v0 = $feature.ID;\nif (IsEmpty(v0)) return false;\nvar oid = $feature.OBJECTID;\nvar dup = Filter(FeatureSetByName($datastore, \"Edificacao\", [\"OBJECTID\", \"ID\"], false), \"ID = @v0 AND OBJECTID <> @oid\");\nreturn Count(dup) == 0;",
+      "description": "Chave primária \"ID\": obrigatória e sem repetição.",
+      "omtg": {
+        "classId": "cal02eq2",
+        "pk": [
+          "a26_upgt"
+        ]
+      }
+    },
+    {
+      "name": "Faixa_Edificacao_Residencial_Unidades",
+      "dataset": "Edificacao_Residencial",
+      "field": null,
+      "type": "constraint",
+      "triggers": [
+        "insert",
+        "update"
+      ],
+      "arcade": "var v = $feature.Unidades;\nif (IsEmpty(v)) return true;\nreturn v >= 1;",
+      "description": "\"Unidades\" no mínimo 1.",
+      "omtg": {
+        "classId": "cqo5xyup",
+        "attrId": "a31_hf5r"
+      }
+    },
+    {
+      "name": "PK_Edificacao_Residencial",
+      "dataset": "Edificacao_Residencial",
+      "field": null,
+      "type": "constraint",
+      "triggers": [
+        "insert",
+        "update"
+      ],
+      "arcade": "var v0 = $feature.ID;\nif (IsEmpty(v0)) return false;\nvar oid = $feature.OBJECTID;\nvar dup = Filter(FeatureSetByName($datastore, \"Edificacao_Residencial\", [\"OBJECTID\", \"ID\"], false), \"ID = @v0 AND OBJECTID <> @oid\");\nreturn Count(dup) == 0;",
+      "description": "Chave primária \"ID\": obrigatória e sem repetição.",
+      "omtg": {
+        "classId": "cqo5xyup",
+        "pk": [
+          "a30_nq30"
+        ]
+      }
+    },
+    {
+      "name": "PK_Edificacao_Comercial",
+      "dataset": "Edificacao_Comercial",
+      "field": null,
+      "type": "constraint",
+      "triggers": [
+        "insert",
+        "update"
+      ],
+      "arcade": "var v0 = $feature.ID;\nif (IsEmpty(v0)) return false;\nvar oid = $feature.OBJECTID;\nvar dup = Filter(FeatureSetByName($datastore, \"Edificacao_Comercial\", [\"OBJECTID\", \"ID\"], false), \"ID = @v0 AND OBJECTID <> @oid\");\nreturn Count(dup) == 0;",
+      "description": "Chave primária \"ID\": obrigatória e sem repetição.",
+      "omtg": {
+        "classId": "c4s9fl74",
+        "pk": [
+          "a32_zyse"
+        ]
+      }
+    },
+    {
+      "name": "Unico_Proprietario_E_Mail",
+      "dataset": "Proprietario",
+      "field": null,
+      "type": "constraint",
+      "triggers": [
+        "insert",
+        "update"
+      ],
+      "arcade": "var v = $feature.E_Mail;\nif (IsEmpty(v)) return true;\nvar oid = $feature.OBJECTID;\nvar dup = Filter(FeatureSetByName($datastore, \"Proprietario\", [\"OBJECTID\", \"E_Mail\"], false), \"E_Mail = @v AND OBJECTID <> @oid\");\nreturn Count(dup) == 0;",
+      "description": "Garante que \"E-mail\" não se repita.",
+      "omtg": {
+        "classId": "cl2zqg7f",
+        "attrId": "a36_1072"
+      }
+    },
+    {
+      "name": "PK_Proprietario",
+      "dataset": "Proprietario",
+      "field": null,
+      "type": "constraint",
+      "triggers": [
+        "insert",
+        "update"
+      ],
+      "arcade": "var v0 = $feature.CPF_CNPJ;\nif (IsEmpty(v0)) return false;\nvar oid = $feature.OBJECTID;\nvar dup = Filter(FeatureSetByName($datastore, \"Proprietario\", [\"OBJECTID\", \"CPF_CNPJ\"], false), \"CPF_CNPJ = @v0 AND OBJECTID <> @oid\");\nreturn Count(dup) == 0;",
+      "description": "Chave primária \"CPF/CNPJ\": obrigatória e sem repetição.",
+      "omtg": {
+        "classId": "cl2zqg7f",
+        "pk": [
+          "a34_40p3"
+        ]
+      }
+    },
+    {
+      "name": "Unico_Matricula_Lote",
+      "dataset": "Matricula",
+      "field": null,
+      "type": "constraint",
+      "triggers": [
+        "insert",
+        "update"
+      ],
+      "arcade": "var v = $feature.Lote;\nif (IsEmpty(v)) return true;\nvar oid = $feature.OBJECTID;\nvar dup = Filter(FeatureSetByName($datastore, \"Matricula\", [\"OBJECTID\", \"Lote\"], false), \"Lote = @v AND OBJECTID <> @oid\");\nreturn Count(dup) == 0;",
+      "description": "Garante que \"Lote\" não se repita.",
+      "omtg": {
+        "classId": "c2msfvli",
+        "attrId": "a40_4tuq"
+      }
+    },
+    {
+      "name": "PK_Matricula",
+      "dataset": "Matricula",
+      "field": null,
+      "type": "constraint",
+      "triggers": [
+        "insert",
+        "update"
+      ],
+      "arcade": "var v0 = $feature.Numero;\nif (IsEmpty(v0)) return false;\nvar oid = $feature.OBJECTID;\nvar dup = Filter(FeatureSetByName($datastore, \"Matricula\", [\"OBJECTID\", \"Numero\"], false), \"Numero = @v0 AND OBJECTID <> @oid\");\nreturn Count(dup) == 0;",
+      "description": "Chave primária \"Número\": obrigatória e sem repetição.",
+      "omtg": {
+        "classId": "c2msfvli",
+        "pk": [
+          "a38_g7w7"
+        ]
+      }
+    },
+    {
+      "name": "Faixa_IPTU_Exercicio",
+      "dataset": "IPTU",
+      "field": null,
+      "type": "constraint",
+      "triggers": [
+        "insert",
+        "update"
+      ],
+      "arcade": "var v = $feature.Exercicio;\nif (IsEmpty(v)) return true;\nreturn v >= 2000 && v <= 2100;",
+      "description": "\"Exercício\" entre 2000 e 2100.",
+      "omtg": {
+        "classId": "cqzzxelk",
+        "attrId": "a43_jd4i"
+      }
+    },
+    {
+      "name": "Faixa_IPTU_Valor_Territorial",
+      "dataset": "IPTU",
+      "field": null,
+      "type": "constraint",
+      "triggers": [
+        "insert",
+        "update"
+      ],
+      "arcade": "var v = $feature.Valor_Territorial;\nif (IsEmpty(v)) return true;\nreturn v >= 0;",
+      "description": "\"Valor territorial\" no mínimo 0.",
+      "omtg": {
+        "classId": "cqzzxelk",
+        "attrId": "a44_su59"
+      }
+    },
+    {
+      "name": "Faixa_IPTU_Valor_Predial",
+      "dataset": "IPTU",
+      "field": null,
+      "type": "constraint",
+      "triggers": [
+        "insert",
+        "update"
+      ],
+      "arcade": "var v = $feature.Valor_Predial;\nif (IsEmpty(v)) return true;\nreturn v >= 0;",
+      "description": "\"Valor predial\" no mínimo 0.",
+      "omtg": {
+        "classId": "cqzzxelk",
+        "attrId": "a45_7ovq"
+      }
+    },
+    {
+      "name": "Calc_IPTU_Valor_Venal",
+      "dataset": "IPTU",
+      "field": "Valor_Venal",
+      "type": "calculation",
+      "triggers": [
+        "insert",
+        "update"
+      ],
+      "arcade": "return $feature.Valor_Territorial + $feature.Valor_Predial;",
+      "description": "Calcula \"Valor venal\".",
+      "omtg": {
+        "classId": "cqzzxelk",
+        "attrId": "a46_26he"
+      }
+    },
+    {
+      "name": "Calc_IPTU_Situacao",
+      "dataset": "IPTU",
+      "field": "Situacao",
+      "type": "calculation",
+      "triggers": [
+        "insert",
+        "update"
+      ],
+      "arcade": "return IIf($feature.Valor_Venal > 0, \"Lançado\", \"Isento\");",
+      "description": "Calcula \"Situação\".",
+      "omtg": {
+        "classId": "cqzzxelk",
+        "attrId": "a47_djue"
+      }
+    },
+    {
+      "name": "PK_IPTU",
+      "dataset": "IPTU",
+      "field": null,
+      "type": "constraint",
+      "triggers": [
+        "insert",
+        "update"
+      ],
+      "arcade": "var v0 = $feature.Inscricao_Imobiliaria;\nif (IsEmpty(v0)) return false;\nvar oid = $feature.OBJECTID;\nvar dup = Filter(FeatureSetByName($datastore, \"IPTU\", [\"OBJECTID\", \"Inscricao_Imobiliaria\"], false), \"Inscricao_Imobiliaria = @v0 AND OBJECTID <> @oid\");\nreturn Count(dup) == 0;",
+      "description": "Chave primária \"Inscrição imobiliária\": obrigatória e sem repetição.",
+      "omtg": {
+        "classId": "cqzzxelk",
+        "pk": [
+          "a41_ncv3"
+        ]
+      }
+    },
+    {
+      "name": "Faixa_Linha_De_Transmissao_Tensao_KV",
+      "dataset": "Linha_De_Transmissao",
+      "field": null,
+      "type": "constraint",
+      "triggers": [
+        "insert",
+        "update"
+      ],
+      "arcade": "var v = $feature.Tensao_KV;\nif (IsEmpty(v)) return true;\nreturn v >= 13 && v <= 800;",
+      "description": "\"Tensão (kV)\" entre 13 e 800.",
+      "omtg": {
+        "classId": "c0y16ffx",
+        "attrId": "a49_hjeb"
+      }
+    },
+    {
+      "name": "Calc_Linha_De_Transmissao_Extensao_Km",
+      "dataset": "Linha_De_Transmissao",
+      "field": "Extensao_Km",
+      "type": "calculation",
+      "triggers": [
+        "insert",
+        "update"
+      ],
+      "arcade": "return Round(Length($feature, 'meters') / 1000, 3);",
+      "description": "Calcula \"Extensão (km)\".",
+      "omtg": {
+        "classId": "c0y16ffx",
+        "attrId": "a50_wwcc"
+      }
+    },
+    {
+      "name": "PK_Linha_De_Transmissao",
+      "dataset": "Linha_De_Transmissao",
+      "field": null,
+      "type": "constraint",
+      "triggers": [
+        "insert",
+        "update"
+      ],
+      "arcade": "var v0 = $feature.Codigo;\nif (IsEmpty(v0)) return false;\nvar oid = $feature.OBJECTID;\nvar dup = Filter(FeatureSetByName($datastore, \"Linha_De_Transmissao\", [\"OBJECTID\", \"Codigo\"], false), \"Codigo = @v0 AND OBJECTID <> @oid\");\nreturn Count(dup) == 0;",
+      "description": "Chave primária \"Código\": obrigatória e sem repetição.",
+      "omtg": {
+        "classId": "c0y16ffx",
+        "pk": [
+          "a48_9210"
+        ]
+      }
+    },
+    {
+      "name": "Faixa_Torre_Altura_M",
       "dataset": "Torre",
       "field": null,
       "type": "constraint",
@@ -689,36 +4167,698 @@
         "insert",
         "update"
       ],
-      "arcade": "var outras = FeatureSetByName($datastore, \"Quadra\", [\"OBJECTID\"], true);\nreturn Count(Filter(outras, \"1=1\")) == 0 || Intersects(Buffer($feature, 50), outras);",
-      "description": "Exige que Torre próximo Quadra.",
+      "arcade": "var v = $feature.Altura_M;\nif (IsEmpty(v)) return true;\nreturn v >= 0;",
+      "description": "\"Altura (m)\" no mínimo 0.",
       "omtg": {
-        "relId": "rzlfbnc2",
+        "classId": "c377nwuw",
+        "attrId": "a53_vhik"
+      }
+    },
+    {
+      "name": "PK_Torre",
+      "dataset": "Torre",
+      "field": null,
+      "type": "constraint",
+      "triggers": [
+        "insert",
+        "update"
+      ],
+      "arcade": "var v0 = $feature.Numero;\nif (IsEmpty(v0)) return false;\nvar oid = $feature.OBJECTID;\nvar dup = Filter(FeatureSetByName($datastore, \"Torre\", [\"OBJECTID\", \"Numero\"], false), \"Numero = @v0 AND OBJECTID <> @oid\");\nreturn Count(dup) == 0;",
+      "description": "Chave primária \"Número\": obrigatória e sem repetição.",
+      "omtg": {
+        "classId": "c377nwuw",
+        "pk": [
+          "a51_j4m4"
+        ]
+      }
+    },
+    {
+      "name": "Faixa_Faixa_De_Servidao_Largura_M",
+      "dataset": "Faixa_De_Servidao",
+      "field": null,
+      "type": "constraint",
+      "triggers": [
+        "insert",
+        "update"
+      ],
+      "arcade": "var v = $feature.Largura_M;\nif (IsEmpty(v)) return true;\nreturn v >= 1 && v <= 200;",
+      "description": "\"Largura (m)\" entre 1 e 200.",
+      "omtg": {
+        "classId": "cjsstqes",
+        "attrId": "a56_k4p3"
+      }
+    },
+    {
+      "name": "PK_Faixa_De_Servidao",
+      "dataset": "Faixa_De_Servidao",
+      "field": null,
+      "type": "constraint",
+      "triggers": [
+        "insert",
+        "update"
+      ],
+      "arcade": "var v0 = $feature.Codigo;\nif (IsEmpty(v0)) return false;\nvar oid = $feature.OBJECTID;\nvar dup = Filter(FeatureSetByName($datastore, \"Faixa_De_Servidao\", [\"OBJECTID\", \"Codigo\"], false), \"Codigo = @v0 AND OBJECTID <> @oid\");\nreturn Count(dup) == 0;",
+      "description": "Chave primária \"Código\": obrigatória e sem repetição.",
+      "omtg": {
+        "classId": "cjsstqes",
+        "pk": [
+          "a54_v0ia"
+        ]
+      }
+    },
+    {
+      "name": "Faixa_Contrato_De_Servidao_Indenizacao_R",
+      "dataset": "Contrato_De_Servidao",
+      "field": null,
+      "type": "constraint",
+      "triggers": [
+        "insert",
+        "update"
+      ],
+      "arcade": "var v = $feature.Indenizacao_R;\nif (IsEmpty(v)) return true;\nreturn v >= 0;",
+      "description": "\"Indenização (R$)\" no mínimo 0.",
+      "omtg": {
+        "classId": "ct8vo7jl",
+        "attrId": "a61_f5hi"
+      }
+    },
+    {
+      "name": "PK_Contrato_De_Servidao",
+      "dataset": "Contrato_De_Servidao",
+      "field": null,
+      "type": "constraint",
+      "triggers": [
+        "insert",
+        "update"
+      ],
+      "arcade": "var v0 = $feature.Numero;\nif (IsEmpty(v0)) return false;\nvar oid = $feature.OBJECTID;\nvar dup = Filter(FeatureSetByName($datastore, \"Contrato_De_Servidao\", [\"OBJECTID\", \"Numero\"], false), \"Numero = @v0 AND OBJECTID <> @oid\");\nreturn Count(dup) == 0;",
+      "description": "Chave primária \"Número\": obrigatória e sem repetição.",
+      "omtg": {
+        "classId": "ct8vo7jl",
+        "pk": [
+          "a57_2xa0"
+        ]
+      }
+    },
+    {
+      "name": "PK_Marco_Geodesico",
+      "dataset": "Marco_Geodesico",
+      "field": null,
+      "type": "constraint",
+      "triggers": [
+        "insert",
+        "update"
+      ],
+      "arcade": "var v0 = $feature.Codigo;\nif (IsEmpty(v0)) return false;\nvar oid = $feature.OBJECTID;\nvar dup = Filter(FeatureSetByName($datastore, \"Marco_Geodesico\", [\"OBJECTID\", \"Codigo\"], false), \"Codigo = @v0 AND OBJECTID <> @oid\");\nreturn Count(dup) == 0;",
+      "description": "Chave primária \"Código\": obrigatória e sem repetição.",
+      "omtg": {
+        "classId": "cplu26pi",
+        "pk": [
+          "a63_y3wc"
+        ]
+      }
+    },
+    {
+      "name": "Faixa_Trecho_De_Rede_De_Agua_Diametro_Mm",
+      "dataset": "Trecho_De_Rede_De_Agua",
+      "field": null,
+      "type": "constraint",
+      "triggers": [
+        "insert",
+        "update"
+      ],
+      "arcade": "var v = $feature.Diametro_Mm;\nif (IsEmpty(v)) return true;\nreturn v >= 20 && v <= 2000;",
+      "description": "\"Diâmetro (mm)\" entre 20 e 2000.",
+      "omtg": {
+        "classId": "cxwwnrbl",
+        "attrId": "a67_z6jl"
+      }
+    },
+    {
+      "name": "PK_Trecho_De_Rede_De_Agua",
+      "dataset": "Trecho_De_Rede_De_Agua",
+      "field": null,
+      "type": "constraint",
+      "triggers": [
+        "insert",
+        "update"
+      ],
+      "arcade": "var v0 = $feature.ID;\nif (IsEmpty(v0)) return false;\nvar oid = $feature.OBJECTID;\nvar dup = Filter(FeatureSetByName($datastore, \"Trecho_De_Rede_De_Agua\", [\"OBJECTID\", \"ID\"], false), \"ID = @v0 AND OBJECTID <> @oid\");\nreturn Count(dup) == 0;",
+      "description": "Chave primária \"ID\": obrigatória e sem repetição.",
+      "omtg": {
+        "classId": "cxwwnrbl",
+        "pk": [
+          "a66_btzd"
+        ]
+      }
+    },
+    {
+      "name": "PK_No_Da_Rede",
+      "dataset": "No_Da_Rede",
+      "field": null,
+      "type": "constraint",
+      "triggers": [
+        "insert",
+        "update"
+      ],
+      "arcade": "var v0 = $feature.ID;\nif (IsEmpty(v0)) return false;\nvar oid = $feature.OBJECTID;\nvar dup = Filter(FeatureSetByName($datastore, \"No_Da_Rede\", [\"OBJECTID\", \"ID\"], false), \"ID = @v0 AND OBJECTID <> @oid\");\nreturn Count(dup) == 0;",
+      "description": "Chave primária \"ID\": obrigatória e sem repetição.",
+      "omtg": {
+        "classId": "c028i06c",
+        "pk": [
+          "a68_wssu"
+        ]
+      }
+    },
+    {
+      "name": "PK_Curva_De_Nivel",
+      "dataset": "Curva_De_Nivel",
+      "field": null,
+      "type": "constraint",
+      "triggers": [
+        "insert",
+        "update"
+      ],
+      "arcade": "var v0 = $feature.ID;\nif (IsEmpty(v0)) return false;\nvar oid = $feature.OBJECTID;\nvar dup = Filter(FeatureSetByName($datastore, \"Curva_De_Nivel\", [\"OBJECTID\", \"ID\"], false), \"ID = @v0 AND OBJECTID <> @oid\");\nreturn Count(dup) == 0;",
+      "description": "Chave primária \"ID\": obrigatória e sem repetição.",
+      "omtg": {
+        "classId": "c3jcup8r",
+        "pk": [
+          "a70_bi2f"
+        ]
+      }
+    },
+    {
+      "name": "PK_Zoneamento",
+      "dataset": "Zoneamento",
+      "field": null,
+      "type": "constraint",
+      "triggers": [
+        "insert",
+        "update"
+      ],
+      "arcade": "var v0 = $feature.Codigo;\nif (IsEmpty(v0)) return false;\nvar oid = $feature.OBJECTID;\nvar dup = Filter(FeatureSetByName($datastore, \"Zoneamento\", [\"OBJECTID\", \"Codigo\"], false), \"Codigo = @v0 AND OBJECTID <> @oid\");\nreturn Count(dup) == 0;",
+      "description": "Chave primária \"Código\": obrigatória e sem repetição.",
+      "omtg": {
+        "classId": "cgpdd8xz",
+        "pk": [
+          "a72_w8rf"
+        ]
+      }
+    },
+    {
+      "name": "Faixa_Amostra_De_Solo_PH",
+      "dataset": "Amostra_De_Solo",
+      "field": null,
+      "type": "constraint",
+      "triggers": [
+        "insert",
+        "update"
+      ],
+      "arcade": "var v = $feature.PH;\nif (IsEmpty(v)) return true;\nreturn v >= 0 && v <= 14;",
+      "description": "\"pH\" entre 0 e 14.",
+      "omtg": {
+        "classId": "cark5a9c",
+        "attrId": "a75_mdy7"
+      }
+    },
+    {
+      "name": "PK_Amostra_De_Solo",
+      "dataset": "Amostra_De_Solo",
+      "field": null,
+      "type": "constraint",
+      "triggers": [
+        "insert",
+        "update"
+      ],
+      "arcade": "var v0 = $feature.ID;\nif (IsEmpty(v0)) return false;\nvar oid = $feature.OBJECTID;\nvar dup = Filter(FeatureSetByName($datastore, \"Amostra_De_Solo\", [\"OBJECTID\", \"ID\"], false), \"ID = @v0 AND OBJECTID <> @oid\");\nreturn Count(dup) == 0;",
+      "description": "Chave primária \"ID\": obrigatória e sem repetição.",
+      "omtg": {
+        "classId": "cark5a9c",
+        "pk": [
+          "a74_x11g"
+        ]
+      }
+    },
+    {
+      "name": "Ref_Contem_Quadras",
+      "dataset": "Bairro",
+      "field": null,
+      "type": "constraint",
+      "triggers": [
+        "delete"
+      ],
+      "arcade": "var k = $feature.ID;\nif (IsEmpty(k)) return true;\nvar filhos = Filter(FeatureSetByName($datastore, \"Quadra\", [\"Bairro\"], false), \"Bairro = @k\");\nreturn Count(filhos) == 0;",
+      "description": "Impede excluir Bairro que ainda tenha Quadra associado.",
+      "omtg": {
+        "relId": "rhh4ewda",
+        "attrId": "a13_fsxu"
+      }
+    },
+    {
+      "name": "Min_Contem_Quadras_Bairro",
+      "dataset": "Bairro",
+      "field": null,
+      "type": "validation",
+      "arcade": "var rel = FeatureSetByRelationshipName($feature, \"Contem_Quadras\", [\"OBJECTID\"], false);\nreturn Count(rel) > 0;",
+      "description": "Participação mínima (1..*): todo registro de Bairro precisa de pelo menos um Quadra (Contem_Quadras).",
+      "omtg": {
+        "relId": "rhh4ewda"
+      }
+    },
+    {
+      "name": "Min_Pertence_A_Lote",
+      "dataset": "Lote",
+      "field": null,
+      "type": "validation",
+      "arcade": "var rel = FeatureSetByRelationshipName($feature, \"Pertence_A\", [\"OBJECTID\"], false);\nreturn Count(rel) > 0;",
+      "description": "Participação mínima (1..*): todo registro de Lote precisa de pelo menos um Proprietario (Pertence_A).",
+      "omtg": {
+        "relId": "rqnfyy7z"
+      }
+    },
+    {
+      "name": "Min_Pertence_A_Proprietario",
+      "dataset": "Proprietario",
+      "field": null,
+      "type": "validation",
+      "arcade": "var rel = FeatureSetByRelationshipName($feature, \"Pertence_A\", [\"OBJECTID\"], false);\nreturn Count(rel) > 0;",
+      "description": "Participação mínima (1..*): todo registro de Proprietario precisa de pelo menos um Lote (Pertence_A).",
+      "omtg": {
+        "relId": "rqnfyy7z"
+      }
+    },
+    {
+      "name": "Ref_Registrado_Em",
+      "dataset": "Lote",
+      "field": null,
+      "type": "constraint",
+      "triggers": [
+        "delete"
+      ],
+      "arcade": "var k = $feature.Inscricao;\nif (IsEmpty(k)) return true;\nvar filhos = Filter(FeatureSetByName($datastore, \"Matricula\", [\"Lote\"], false), \"Lote = @k\");\nreturn Count(filhos) == 0;",
+      "description": "Impede excluir Lote que ainda tenha Matricula associado.",
+      "omtg": {
+        "relId": "ryxzlfte",
+        "attrId": "a40_4tuq"
+      }
+    },
+    {
+      "name": "Ref_Assina",
+      "dataset": "Proprietario",
+      "field": null,
+      "type": "constraint",
+      "triggers": [
+        "delete"
+      ],
+      "arcade": "var k = $feature.CPF_CNPJ;\nif (IsEmpty(k)) return true;\nvar filhos = Filter(FeatureSetByName($datastore, \"Contrato_De_Servidao\", [\"Proprietario\"], false), \"Proprietario = @k\");\nreturn Count(filhos) == 0;",
+      "description": "Impede excluir Proprietario que ainda tenha Contrato_De_Servidao associado.",
+      "omtg": {
+        "relId": "rkx94ht4",
+        "attrId": "a58_6lcg"
+      }
+    },
+    {
+      "name": "Ref_Objeto_De",
+      "dataset": "Faixa_De_Servidao",
+      "field": null,
+      "type": "constraint",
+      "triggers": [
+        "delete"
+      ],
+      "arcade": "var k = $feature.Codigo;\nif (IsEmpty(k)) return true;\nvar filhos = Filter(FeatureSetByName($datastore, \"Contrato_De_Servidao\", [\"Faixa\"], false), \"Faixa = @k\");\nreturn Count(filhos) == 0;",
+      "description": "Impede excluir Faixa_De_Servidao que ainda tenha Contrato_De_Servidao associado.",
+      "omtg": {
+        "relId": "rsaga3uf",
+        "attrId": "a59_zhju"
+      }
+    },
+    {
+      "name": "Ref_Sustentada_Por",
+      "dataset": "Linha_De_Transmissao",
+      "field": null,
+      "type": "constraint",
+      "triggers": [
+        "delete"
+      ],
+      "arcade": "var k = $feature.Codigo;\nif (IsEmpty(k)) return true;\nvar filhos = Filter(FeatureSetByName($datastore, \"Torre\", [\"Linha\"], false), \"Linha = @k\");\nreturn Count(filhos) == 0;",
+      "description": "Impede excluir Linha_De_Transmissao que ainda tenha Torre associado.",
+      "omtg": {
+        "relId": "rnvplgdd",
+        "attrId": "a52_9g5d"
+      }
+    },
+    {
+      "name": "Min_Sustentada_Por_Linha_De_Transmissao",
+      "dataset": "Linha_De_Transmissao",
+      "field": null,
+      "type": "validation",
+      "arcade": "var rel = FeatureSetByRelationshipName($feature, \"Sustentada_Por\", [\"OBJECTID\"], false);\nreturn Count(rel) > 0;",
+      "description": "Participação mínima (1..*): todo registro de Linha_De_Transmissao precisa de pelo menos um Torre (Sustentada_Por).",
+      "omtg": {
+        "relId": "rnvplgdd"
+      }
+    },
+    {
+      "name": "Esp_Trecho_De_Rede_De_Agua_Quadra_Touches",
+      "dataset": "Trecho_De_Rede_De_Agua",
+      "field": null,
+      "type": "constraint",
+      "triggers": [
+        "insert",
+        "update"
+      ],
+      "arcade": "var outras = FeatureSetByName($datastore, \"Quadra\", [\"OBJECTID\"], true);\nif (Count(outras) == 0) return true;\nreturn Count(Touches(outras, $feature)) > 0;",
+      "description": "Exige que Trecho_De_Rede_De_Agua toca Quadra.",
+      "omtg": {
+        "relId": "rndwx83q",
+        "topoRule": "touches"
+      }
+    },
+    {
+      "name": "Esp_Quadra_Faixa_De_Servidao_Adjacente",
+      "dataset": "Quadra",
+      "field": null,
+      "type": "constraint",
+      "triggers": [
+        "insert",
+        "update"
+      ],
+      "arcade": "var outras = FeatureSetByName($datastore, \"Faixa_De_Servidao\", [\"OBJECTID\"], true);\nif (Count(outras) == 0) return true;\nreturn Count(Touches(outras, $feature)) > 0;",
+      "description": "Exige que Quadra adjacente Faixa_De_Servidao.",
+      "omtg": {
+        "relId": "rzlklvuq",
+        "topoRule": "adjacente"
+      }
+    },
+    {
+      "name": "Esp_Linha_De_Transmissao_Trecho_De_Rede_De_Agua_Cruza",
+      "dataset": "Linha_De_Transmissao",
+      "field": null,
+      "type": "constraint",
+      "triggers": [
+        "insert",
+        "update"
+      ],
+      "arcade": "var outras = FeatureSetByName($datastore, \"Trecho_De_Rede_De_Agua\", [\"OBJECTID\"], true);\nif (Count(outras) == 0) return true;\nreturn Count(Crosses(outras, $feature)) > 0;",
+      "description": "Exige que Linha_De_Transmissao cruza Trecho_De_Rede_De_Agua.",
+      "omtg": {
+        "relId": "r6qmmciq",
+        "topoRule": "cruza"
+      }
+    },
+    {
+      "name": "Esp_Bairro_Zoneamento_Sobrepoe",
+      "dataset": "Bairro",
+      "field": null,
+      "type": "constraint",
+      "triggers": [
+        "insert",
+        "update"
+      ],
+      "arcade": "var outras = FeatureSetByName($datastore, \"Zoneamento\", [\"OBJECTID\"], true);\nif (Count(outras) == 0) return true;\nreturn Count(Overlaps(outras, $feature)) > 0;",
+      "description": "Exige que Bairro sobrepõe Zoneamento.",
+      "omtg": {
+        "relId": "rtl6vmc7",
+        "topoRule": "sobrepoe"
+      }
+    },
+    {
+      "name": "Esp_Marco_Geodesico_Lote_Proximo",
+      "dataset": "Marco_Geodesico",
+      "field": null,
+      "type": "constraint",
+      "triggers": [
+        "insert",
+        "update"
+      ],
+      "arcade": "var outras = FeatureSetByName($datastore, \"Lote\", [\"OBJECTID\"], true);\nif (Count(outras) == 0) return true;\nreturn Count(Intersects(outras, Buffer($feature, 50))) > 0;",
+      "description": "Exige que Marco_Geodesico próximo Lote.",
+      "omtg": {
+        "relId": "r7q8jgs7",
         "topoRule": "proximo"
       }
     }
   ],
   "unmapped": [
     {
-      "on": "AreaDePreservacao",
-      "omtg": "operacao:centroid",
-      "reason": "Operador OMT-G \"Determinação de centroide\" — gera representação nova, não campo; destino é o modelo de transformação."
+      "on": "Tem_Edificacoes",
+      "omtg": "refIntegrity:setDefault",
+      "reason": "Integridade \"Padrão\" (SET DEFAULT): ao excluir Lote, o GDB não repõe o valor padrão de Edificacao.Lote — a relationship class sai SIMPLE, sem regra equivalente.",
+      "classIds": [
+        "cprqd1m6",
+        "cal02eq2"
+      ],
+      "relIds": [
+        "r9kzxkmu"
+      ]
     },
     {
-      "on": "workspace",
-      "omtg": "meta.schema",
-      "reason": "Conceito do PostGIS; sem equivalente no GDB."
+      "on": "Dentro_Do_Lote",
+      "omtg": "refIntegrity:setDefault",
+      "reason": "Integridade \"Padrão\" (SET DEFAULT): ao excluir Lote, o GDB não repõe o valor padrão de Edificacao.Lote — a relationship class sai SIMPLE, sem regra equivalente.",
+      "classIds": [
+        "cprqd1m6",
+        "cal02eq2"
+      ],
+      "relIds": [
+        "rx7syjt9"
+      ]
     }
   ],
   "warnings": [
     {
       "severity": "warning",
-      "on": "AreaDePreservacao.AreaHa",
-      "message": "precision/scale são ignorados em File Geodatabase (só valem em enterprise). Declarados mesmo assim."
+      "on": "Limite_Municipal.Area_Km",
+      "message": "precision/scale são ignorados em File Geodatabase (só valem em enterprise). Declarados mesmo assim.",
+      "classIds": [
+        "c4sp9j9r"
+      ]
     },
     {
       "severity": "warning",
-      "on": "ModeloDeTerreno",
-      "message": "TIN Dataset declarado como placeholder — a toolbox precisa da fonte de dados para criá-lo."
+      "on": "Quadra.Area_Verde_M",
+      "message": "precision/scale são ignorados em File Geodatabase (só valem em enterprise). Declarados mesmo assim.",
+      "classIds": [
+        "cv1nekxh"
+      ]
+    },
+    {
+      "severity": "warning",
+      "on": "Lote.Area_M",
+      "message": "precision/scale são ignorados em File Geodatabase (só valem em enterprise). Declarados mesmo assim.",
+      "classIds": [
+        "cprqd1m6"
+      ]
+    },
+    {
+      "severity": "warning",
+      "on": "Lote.Perimetro_M",
+      "message": "precision/scale são ignorados em File Geodatabase (só valem em enterprise). Declarados mesmo assim.",
+      "classIds": [
+        "cprqd1m6"
+      ]
+    },
+    {
+      "severity": "warning",
+      "on": "Lote.Testada_M",
+      "message": "precision/scale são ignorados em File Geodatabase (só valem em enterprise). Declarados mesmo assim.",
+      "classIds": [
+        "cprqd1m6"
+      ]
+    },
+    {
+      "severity": "warning",
+      "on": "Lote",
+      "message": "2 atributos Blob (Foto, Matrícula digitalizada) viram UMA tabela de anexos — o GDB não separa anexos por campo; diferencie pelo nome do arquivo.",
+      "classIds": [
+        "cprqd1m6"
+      ]
+    },
+    {
+      "severity": "warning",
+      "on": "Edificacao.Area_Construida_M",
+      "message": "precision/scale são ignorados em File Geodatabase (só valem em enterprise). Declarados mesmo assim.",
+      "classIds": [
+        "cal02eq2"
+      ]
+    },
+    {
+      "severity": "warning",
+      "on": "IPTU.Valor_Territorial",
+      "message": "precision/scale são ignorados em File Geodatabase (só valem em enterprise). Declarados mesmo assim.",
+      "classIds": [
+        "cqzzxelk"
+      ]
+    },
+    {
+      "severity": "warning",
+      "on": "IPTU.Valor_Predial",
+      "message": "precision/scale são ignorados em File Geodatabase (só valem em enterprise). Declarados mesmo assim.",
+      "classIds": [
+        "cqzzxelk"
+      ]
+    },
+    {
+      "severity": "warning",
+      "on": "IPTU.Valor_Venal",
+      "message": "precision/scale são ignorados em File Geodatabase (só valem em enterprise). Declarados mesmo assim.",
+      "classIds": [
+        "cqzzxelk"
+      ]
+    },
+    {
+      "severity": "warning",
+      "on": "Linha_De_Transmissao.Extensao_Km",
+      "message": "precision/scale são ignorados em File Geodatabase (só valem em enterprise). Declarados mesmo assim.",
+      "classIds": [
+        "c0y16ffx"
+      ]
+    },
+    {
+      "severity": "warning",
+      "on": "Torre.Altura_M",
+      "message": "precision/scale são ignorados em File Geodatabase (só valem em enterprise). Declarados mesmo assim.",
+      "classIds": [
+        "c377nwuw"
+      ]
+    },
+    {
+      "severity": "warning",
+      "on": "Faixa_De_Servidao.Largura_M",
+      "message": "precision/scale são ignorados em File Geodatabase (só valem em enterprise). Declarados mesmo assim.",
+      "classIds": [
+        "cjsstqes"
+      ]
+    },
+    {
+      "severity": "warning",
+      "on": "Contrato_De_Servidao.Indenizacao_R",
+      "message": "precision/scale são ignorados em File Geodatabase (só valem em enterprise). Declarados mesmo assim.",
+      "classIds": [
+        "ct8vo7jl"
+      ]
+    },
+    {
+      "severity": "warning",
+      "on": "Marco_Geodesico.Altitude_M",
+      "message": "precision/scale são ignorados em File Geodatabase (só valem em enterprise). Declarados mesmo assim.",
+      "classIds": [
+        "cplu26pi"
+      ]
+    },
+    {
+      "severity": "warning",
+      "on": "Amostra_De_Solo.PH",
+      "message": "precision/scale são ignorados em File Geodatabase (só valem em enterprise). Declarados mesmo assim.",
+      "classIds": [
+        "cark5a9c"
+      ]
+    },
+    {
+      "severity": "warning",
+      "on": "Modelo_Digital_De_Terreno",
+      "message": "TIN Dataset declarado como placeholder — a toolbox precisa da fonte de dados para criá-lo.",
+      "classIds": [
+        "cd3f0wzb"
+      ]
+    },
+    {
+      "severity": "warning",
+      "on": "Imagem_De_Satelite",
+      "message": "Raster Dataset declarado como placeholder — a toolbox precisa da fonte de dados para criá-lo.",
+      "classIds": [
+        "cj2s9esi"
+      ]
+    },
+    {
+      "severity": "warning",
+      "on": "Bairro.Municipio",
+      "message": "A FK tinha tipo SHORT e a PK \"Limite_Municipal.Codigo_IBGE\" é LONG — o ArcGIS só liga campos do mesmo tipo. Gerado como LONG; ajuste no Lógico para ficarem iguais.",
+      "classIds": [
+        "csnt8y6p",
+        "c4sp9j9r"
+      ]
+    },
+    {
+      "severity": "warning",
+      "on": "Limite_Municipal",
+      "message": "União espacial gera as mesmas regras da Subdivisão — a diferença é a procedência da geometria, que o GDB não guarda.",
+      "relIds": [
+        "rcanq5zp"
+      ]
+    },
+    {
+      "severity": "warning",
+      "on": "Contem_Quadras",
+      "message": "Integridade \"Restringir\" não existe no GDB — gerado SIMPLE + Constraint Rule que bloqueia a exclusão com filhos.",
+      "classIds": [
+        "csnt8y6p",
+        "cv1nekxh"
+      ],
+      "relIds": [
+        "rhh4ewda"
+      ]
+    },
+    {
+      "severity": "warning",
+      "on": "Registrado_Em",
+      "message": "Integridade \"Restringir\" não existe no GDB — gerado SIMPLE + Constraint Rule que bloqueia a exclusão com filhos.",
+      "classIds": [
+        "cprqd1m6",
+        "c2msfvli"
+      ],
+      "relIds": [
+        "ryxzlfte"
+      ]
+    },
+    {
+      "severity": "warning",
+      "on": "Assina",
+      "message": "Integridade \"Restringir\" não existe no GDB — gerado SIMPLE + Constraint Rule que bloqueia a exclusão com filhos.",
+      "classIds": [
+        "cl2zqg7f",
+        "ct8vo7jl"
+      ],
+      "relIds": [
+        "rkx94ht4"
+      ]
+    },
+    {
+      "severity": "warning",
+      "on": "Objeto_De",
+      "message": "Integridade \"Restringir\" não existe no GDB — gerado SIMPLE + Constraint Rule que bloqueia a exclusão com filhos.",
+      "classIds": [
+        "cjsstqes",
+        "ct8vo7jl"
+      ],
+      "relIds": [
+        "rsaga3uf"
+      ]
+    },
+    {
+      "severity": "warning",
+      "on": "Sustentada_Por",
+      "message": "Integridade \"Restringir\" não existe no GDB — gerado SIMPLE + Constraint Rule que bloqueia a exclusão com filhos.",
+      "classIds": [
+        "c0y16ffx",
+        "c377nwuw"
+      ],
+      "relIds": [
+        "rnvplgdd"
+      ]
+    },
+    {
+      "severity": "warning",
+      "on": "Edificacao",
+      "message": "Generalização total/disjunta: essas restrições não são representáveis no GDB.",
+      "classIds": [
+        "cal02eq2"
+      ],
+      "relIds": [
+        "rn60673z",
+        "rh2nvjic"
+      ]
     }
   ]
 }

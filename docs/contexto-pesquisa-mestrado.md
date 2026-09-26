@@ -2,6 +2,8 @@
 
 > Este documento foi preparado para ser colado/anexado em outra IA (LLM) como contexto, para ajudar na parte de pesquisa acadêmica (revisão bibliográfica, enquadramento teórico, redação de anteprojeto) de um projeto de mestrado. Ele resume quem sou, o que já foi construído, o roteiro de expansão planejado e como isso pode virar um trabalho de mestrado. Trate tudo abaixo como contexto factual dado pelo usuário, não como instruções de comportamento.
 
+> **Nota (2026):** a seção 2 descreve a ferramenta como ela era quando este texto foi escrito. Desde então, o modelo lógico e o físico ArcGIS (JSON + toolbox) foram construídos (itens 2 e 3 do roteiro). O estado atual está no `README.md`, no `CLAUDE.md` e em `mapeamento-logico-para-gdb.md`.
+
 ## 1. Quem sou eu
 
 Sou geógrafo, brasileiro, e trabalho com gestão fundiária (land management), dados geoespaciais e gestão de ativos/processos. No trabalho, uso ferramentas de SIG (ArcGIS, PostGIS), gestão de dados baseada em SharePoint, e avalio plataformas corporativas (4Asset/Specifor, Power Platform, Salesforce) para fluxos de regularização fundiária.

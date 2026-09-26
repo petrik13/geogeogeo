@@ -828,6 +828,17 @@ GEOMETRY_TYPES = set(["POINT", "MULTIPOINT", "POLYLINE", "POLYGON"])
 REL_TYPES = set(["SIMPLE", "COMPOSITE"])
 CARDINALITIES = set(["ONE_TO_ONE", "ONE_TO_MANY", "MANY_TO_MANY"])
 
+# Contadores do resumo final, na ordem em que aparecem.
+SUMMARY_ITEMS = [
+    ("domains", u"dominios"), ("featureDatasets", u"feature datasets"),
+    ("datasets", u"datasets"), ("fields", u"campos"),
+    ("indexes", u"indices"), ("relationshipClasses", u"relationship classes"),
+    ("topologies", u"topologias"), ("rules", u"attribute rules"),
+    ("attachments", u"classes com anexos"),
+    ("editorTracking", u"controle de edicoes"),
+    ("metadata", u"itens com metadados"),
+]
+
 
 class GdbBuilder(object):
 
@@ -842,10 +853,11 @@ class GdbBuilder(object):
         self.report_formats = [f for f in (report_formats or []) if f in ("HTML", "PDF", "XLSX", "JSON")]
         self.doc = None
         self.gdb = None
-        self.created = {"domains": 0, "featureDatasets": 0, "datasets": 0, "fields": 0,
-                        "indexes": 0, "relationshipClasses": 0, "topologies": 0, "rules": 0}
-        self.problems = []
+        self.created = dict((key, 0) for key, _ in SUMMARY_ITEMS)
+        self.warnings = []   # tudo que foi avisado
+        self.failures = []   # passos que falharam (subconjunto dos avisos)
         self.skipped = []
+        self._bad_srids = set()
         # nome do dataset -> caminho completo na gdb
         self.paths = {}
 
@@ -855,7 +867,7 @@ class GdbBuilder(object):
 
     def warn(self, msg):
         arcpy.AddWarning(msg)
-        self.problems.append(msg)
+        self.warnings.append(msg)
 
     def field_type(self, table, field):
         try:
@@ -872,7 +884,9 @@ class GdbBuilder(object):
             fn()
             return True
         except Exception as exc:
-            self.warn(u"%s: %s" % (what, exc))
+            msg = u"%s: %s" % (what, exc)
+            self.failures.append(msg)
+            self.warn(msg)
             return False
 
     def spatial_ref(self, spec):
@@ -884,10 +898,8 @@ class GdbBuilder(object):
         try:
             return arcpy.SpatialReference(int(wkid))
         except Exception:
-            bad = getattr(self, "_bad_srids", set())
-            self._bad_srids = bad
-            if wkid not in bad:
-                bad.add(wkid)
+            if wkid not in self._bad_srids:
+                self._bad_srids.add(wkid)
                 self.warn(u"SRID %s nao existe nesta instalacao do ArcGIS; os dados foram "
                           u"criados em 4326 (WGS 84). Corrija o SRID no modelo e gere de novo." % wkid)
             return arcpy.SpatialReference(4326)
@@ -1083,7 +1095,7 @@ class GdbBuilder(object):
 
         def make():
             arcpy.management.EnableAttachments(table)
-            self.created["attachments"] = self.created.get("attachments", 0) + 1
+            self.created["attachments"] += 1
             self.info(u"  %s: anexos habilitados (%s)." % (ds.get("name"), ", ".join(att.get("fields") or [])))
 
         self.step(u"Anexos em '%s'" % ds.get("name"), make)
@@ -1100,7 +1112,7 @@ class GdbBuilder(object):
                 table, et.get("creatorField"), et.get("creationDateField"),
                 et.get("lastEditorField"), et.get("lastEditDateField"),
                 "ADD_FIELDS", et.get("recordDatesIn") or "UTC")
-            self.created["editorTracking"] = self.created.get("editorTracking", 0) + 1
+            self.created["editorTracking"] += 1
 
         self.step(u"Controle de edicoes em '%s'" % ds.get("name"), make)
 
@@ -1253,10 +1265,15 @@ class GdbBuilder(object):
             name = rule.get("name")
             table = self.paths.get(rule.get("dataset"))
             script = rule.get("arcade")
-            if not name or not table or not script:
+            if not name or not script:
+                continue
+            if not table:
+                self.skipped.append(u"Attribute rule '%s': o dataset '%s' nao foi criado."
+                                    % (name, rule.get("dataset")))
                 continue
             if script.strip().startswith("//"):
-                # marcador do gerador para um caso sem equivalente executavel
+                # JSON de versoes antigas do gerador marcava assim um caso sem
+                # equivalente executavel; hoje isso vai para "unmapped".
                 self.skipped.append(u"Attribute rule '%s': %s" % (name, script.strip()))
                 continue
 
@@ -1292,7 +1309,6 @@ class GdbBuilder(object):
 
             self.step(u"Attribute rule '%s'" % name, make)
 
-    # -- relatorio ---------------------------------------------------------
     # -- metadados -----------------------------------------------------------
     def apply_metadata(self, label, path, meta):
         """Preenche o Item Description (titulo, resumo, descricao, tags,
@@ -1317,7 +1333,7 @@ class GdbBuilder(object):
             if meta.get("credits"):
                 m.credits = meta["credits"]
             m.save()
-            self.created["metadata"] = self.created.get("metadata", 0) + 1
+            self.created["metadata"] += 1
 
         self.step(u"Metadados de %s" % label, make)
 
@@ -1353,17 +1369,12 @@ class GdbBuilder(object):
                                 os.path.join(self.gdb, t.get("featureDataset") or "", t.get("name") or ""),
                                 t.get("metadata"))
 
+    # -- relatorio ---------------------------------------------------------
     def report(self):
         self.info(u"")
         self.info(u"===== Resumo =====")
-        for key, label in [("domains", u"dominios"), ("featureDatasets", u"feature datasets"),
-                           ("datasets", u"datasets"), ("fields", u"campos"),
-                           ("indexes", u"indices"), ("relationshipClasses", u"relationship classes"),
-                           ("topologies", u"topologias"), ("rules", u"attribute rules"),
-                           ("attachments", u"classes com anexos"),
-                           ("editorTracking", u"controle de edicoes"),
-                           ("metadata", u"itens com metadados")]:
-            self.info(u"  %-22s %d" % (label, self.created.get(key, 0)))
+        for key, label in SUMMARY_ITEMS:
+            self.info(u"  %-22s %d" % (label, self.created[key]))
 
         nets = self.doc.get("networks") or []
         if nets:
@@ -1372,7 +1383,8 @@ class GdbBuilder(object):
             for net in nets:
                 arcos = ", ".join([e.get("class", "") for e in net.get("edges") or []])
                 juncs = ", ".join([j.get("class", "") for j in net.get("junctions") or []])
-                self.info(u"  %s | arcos: %s | juncoes: %s" % (net.get("name"), arcos, juncs))
+                self.info(u"  %s (em %s) | arcos: %s | juncoes: %s"
+                          % (net.get("name"), net.get("featureDataset") or "?", arcos, juncs))
 
         if self.skipped:
             self.info(u"")
@@ -1394,10 +1406,13 @@ class GdbBuilder(object):
             for u in unmapped:
                 self.info(u"  - %s (%s): %s" % (u.get("on"), u.get("omtg"), u.get("reason")))
 
-        if self.problems:
-            self.info(u"")
-            self.warn(u"%d item(ns) falharam — veja os avisos acima." % len(self.problems))
-
+        self.info(u"")
+        if self.failures:
+            self.warn(u"%d item(ns) nao foram criados — veja os avisos acima." % len(self.failures))
+        elif self.warnings:
+            self.info(u"Concluido com %d aviso(s) — veja acima." % len(self.warnings))
+        else:
+            self.info(u"Concluido sem avisos.")
 </script>
 <div id="app">
   <div class="topbar">
@@ -1681,14 +1696,13 @@ const ATTR_TYPE_LABEL = Object.fromEntries(ATTR_TYPES.map(t=>[t.id,t.label]));
    Princípio: o que NÃO é representável no GDB não some — vai para `warnings`
    e `unmapped`, porque é exatamente isso que precisa ser auditado. */
 
-// Decisão 1: CamelCase, sem acento (ç→c, ñ→n via decomposição Unicode), sem
-// espaço nem caractere especial, no máximo 30 caracteres.
+// Nome físico (Decisão 1, revista): palavras com inicial maiúscula unidas por
+// "_" (Lote_Urbano, VALOR_TERRITORIAL), sem acento (ç→c, ñ→n via
+// decomposição Unicode), sem espaço nem caractere especial, até 30 caracteres.
 function gdbSanitize(raw, maxLen){
   const lim = maxLen || 30;
   const flat = String(raw||'').normalize('NFD').replace(/[̀-ͯ]/g,'');
   const words = flat.split(/[^A-Za-z0-9]+/).filter(Boolean);
-  // Round III: palavras unidas por "_" (Lote_Urbano, VALOR_TERRITORIAL) em
-  // vez de CamelCase.
   let out = words.map(w=> w.charAt(0).toUpperCase() + w.slice(1)).join('_');
   if(!out) out = 'Item';
   if(/^[0-9]/.test(out)) out = '_'+out;
@@ -1706,6 +1720,22 @@ function gdbUnique(base, used, maxLen){
   }
   used.add(name.toLowerCase());
   return name;
+}
+// Campos padrão do Editor Tracking da Esri (Controle de edições).
+const GDB_EDITOR_TRACKING_FIELDS = ['created_user','created_date','last_edited_user','last_edited_date'];
+// Nome físico de cada atributo de uma classe (attrId → nome), na ordem dos
+// atributos. Reserva o que o ArcGIS cria sozinho — OBJECTID, SHAPE, as medidas
+// automáticas de linha/polígono e GLOBALID — e os campos do Editor Tracking.
+// É a fonte única desses nomes: o gerador e a prévia do cálculo usam ela.
+function gdbFieldNames(cls){
+  const used = new Set(['objectid','shape','globalid']);
+  const geom = gdbDatasetOf(cls).geometry;
+  if(geom==='polyline' || geom==='polygon') used.add('shape_length');
+  if(geom==='polygon') used.add('shape_area');
+  if(cls.editTracking) GDB_EDITOR_TRACKING_FIELDS.forEach(n=>used.add(n));
+  const out = new Map();
+  (cls.attributes||[]).forEach(a=> out.set(a.id, gdbUnique(gdbSanitize(a.name||'Campo'), used)));
+  return out;
 }
 // Decisão 4 (com a correção do limite): SHORT vai até 32.767, então só até 4
 // dígitos cabe com segurança; de 5 em diante, LONG.
@@ -1839,7 +1869,7 @@ function buildGdbJson(){
   classes.forEach(cls=>{
     const name = gdbUnique(gdbSanitize(cls.name), usedNames);
     nameOf.set(cls.id, name);
-    const def = gdbDefaultsFor(cls);
+    const def = gdbDatasetOf(cls);
     const dsDef = GDB_DATASETS.find(d=>d.id===def.dataset) || GDB_DATASETS[0];
     const ds = {
       name: name, alias: cls.name, kind: def.dataset,
@@ -1853,23 +1883,26 @@ function buildGdbJson(){
       // Round CCC: Z e M são escolha da classe no Lógico.
       ds.hasZ = !!cls.hasZ; ds.hasM = !!cls.hasM;
     }
-    // TIN/Raster/LAS não nascem de criação vazia — dependem de dados de entrada.
-    if(def.dataset==='tinDataset' || def.dataset==='rasterDataset'){
+    // TIN e Raster não nascem de criação vazia — dependem de dados de
+    // entrada. Os campos ficam no JSON como documentação, mas nenhuma regra,
+    // índice ou GLOBALID é gerado para eles (a toolbox não cria o dataset).
+    const placeholder = def.dataset==='tinDataset' || def.dataset==='rasterDataset';
+    if(placeholder){
       ds.status = 'placeholder';
       ds.notes.push('Precisa de dados de entrada: '+dsDef.label+' não é criado vazio por geoprocessamento.');
       warn(name, dsDef.label+' declarado como placeholder — a toolbox precisa da fonte de dados para criá-lo.', {classIds:[cls.id]});
     }
 
-    const usedFields = new Set(['objectid','shape','globalid']);
+    const physNames = gdbFieldNames(cls);
+    const addRule = rule => { if(!placeholder) attributeRules.push(rule); };
     const pendingCalc = [];
-    // Round DDD: Controle de edições → Editor Tracking (nomes padrão da Esri).
+    // Controle de edições → Editor Tracking (nomes padrão da Esri).
     if(cls.editTracking){
-      ds.editorTracking = {creatorField:'created_user', creationDateField:'created_date',
-        lastEditorField:'last_edited_user', lastEditDateField:'last_edited_date', recordDatesIn:'UTC'};
-      ['created_user','created_date','last_edited_user','last_edited_date'].forEach(n=>usedFields.add(n));
+      const [c1, c2, c3, c4] = GDB_EDITOR_TRACKING_FIELDS;
+      ds.editorTracking = {creatorField:c1, creationDateField:c2, lastEditorField:c3, lastEditDateField:c4, recordDatesIn:'UTC'};
     }
     (cls.attributes||[]).forEach(attr=>{
-      const fname = gdbUnique(gdbSanitize(attr.name||'Campo'), usedFields);
+      const fname = physNames.get(attr.id);
       fieldNameOf.set(attr.id, fname);
       const f = {name:fname, alias:attr.name||'', omtg:{attrId:attr.id}, notes:[]};
       fieldObjOf.set(attr.id, f);
@@ -1911,9 +1944,9 @@ function buildGdbJson(){
       }
       f.nullable = !attr.required;
       if(attr.defaultValue) f.default = attr.defaultValue;
-      // Round DDD: faixa de valores (Mín/Máx) → domínio de intervalo (quando
-      // há os dois limites) + Constraint Rule, porque o domínio sozinho não
-      // impede a edição — só marca o valor como inválido.
+      // Faixa de valores (Mín/Máx) → domínio de intervalo (quando há os dois
+      // limites) + Constraint Rule, porque o domínio sozinho não impede a
+      // edição — só marca o valor como inválido.
       if((t==='integer' || t==='double') && !attr.calculated){
         const hasMin = attr.minValue!=null && String(attr.minValue).trim()!=='' && !isNaN(Number(attr.minValue));
         const hasMax = attr.maxValue!=null && String(attr.maxValue).trim()!=='' && !isNaN(Number(attr.maxValue));
@@ -1935,7 +1968,7 @@ function buildGdbJson(){
           const conds = [];
           if(hasMin) conds.push('v >= '+mn);
           if(hasMax) conds.push('v <= '+mx);
-          attributeRules.push({
+          addRule({
             name: gdbSanitize('Faixa '+name+' '+fname, 60), dataset: name, field: null,
             type:'constraint', triggers:['insert','update'],
             arcade: 'var v = $feature.'+fname+';\nif (IsEmpty(v)) return true;\nreturn '+conds.join(' && ')+';',
@@ -1949,19 +1982,19 @@ function buildGdbJson(){
         f.primaryKey = true;
         pkFieldOf.set(cls.id, fname);
         if(!pkAttrOf.has(cls.id)) pkAttrOf.set(cls.id, attr.id);
-        ds.indexes.push({name: gdbSanitize('IDX '+name+' '+fname, 30), fields:[fname], unique:false});
+        if(!placeholder) ds.indexes.push({name: gdbSanitize('IDX '+name+' '+fname, 30), fields:[fname], unique:false});
       }
       if(attr.fk && attr.fkRefClassId){
         f.foreignKey = {classId: attr.fkRefClassId, attrId: attr.fkRefAttrId||null};
       }
       // Decisão 6: índice único não existe em File GDB → Constraint Rule.
       if(attr.unique && !attr.pk){
-        attributeRules.push({
+        addRule({
           // Constraint Rule não aceita campo associado (ERROR 002543).
           name: gdbSanitize('Unico '+name+' '+fname, 60), dataset: name, field: null,
           type:'constraint', triggers:['insert','update'],
-          // Round XX: no Filter, @x lê a VARIÁVEL Arcade x — ela precisa ser
-          // declarada; e todo campo citado no SQL vai na lista de campos.
+          // No Filter, @x lê a VARIÁVEL Arcade x — ela precisa ser declarada;
+          // e todo campo citado no SQL vai na lista de campos.
           arcade: 'var v = $feature.'+fname+';\nif (IsEmpty(v)) return true;\nvar oid = $feature.OBJECTID;\n'
                 + 'var dup = Filter(FeatureSetByName($datastore, "'+name+'", ["OBJECTID", "'+fname+'"], false), "'+fname+' = @v AND OBJECTID <> @oid");\nreturn Count(dup) == 0;',
           description:'Garante que "'+(attr.name||fname)+'" não se repita.',
@@ -1969,35 +2002,26 @@ function buildGdbJson(){
         });
         f.notes.push('Unicidade via Constraint Attribute Rule (File GDB não tem índice único).');
       }
-      // Decisão extra: campo calculado com expressão real → Calculate Rule.
-      // Round YY: roda depois de todos os campos da classe terem nome no
-      // banco, para o Arcade citar o nome REAL (VALORTERRITORIAL, não VALOR_TERRITORIAL).
+      // Campo calculado com expressão real → Calculate Rule (spec 3.6). Roda
+      // depois dos demais atributos para as regras saírem agrupadas no fim da
+      // classe; o Arcade cita o nome FÍSICO de cada campo (calcContext).
       if(attr.calculated) pendingCalc.push(()=>{
         f.calculated = true;
         const expr = (attr.calculatedExpr||'').trim();
         if(expr){
-          const known = (cls.attributes||[]).filter(x=>x.id!==attr.id && x.name).map(x=>x.name);
-          if(cls.kind==='geo') known.push('SHAPE');
-          const fmap = {};
-          (cls.attributes||[]).forEach(x=>{ if(x.name && fieldNameOf.has(x.id)) fmap[x.name.toUpperCase()] = fieldNameOf.get(x.id); });
-          const tr = calcTranslate(expr, known, fmap);
+          const ctx = calcContext(cls, attr);
+          const tr = calcTranslate(expr, ctx.known, ctx.fieldMap);
           if(tr.ok){
-            f.calculatedExpression = {neutral: expr, arcade: tr.arcade, sql: tr.sql};
-            // O Arcade do ArcGIS recusa AreaGeodetic/LengthGeodetic fora de
-            // 4326/3857 ("Projection is invalid"). Em SRID projetado (UTM etc.)
-            // a unidade já é metro: usa-se o cálculo plano (Area/Length).
             const wk = ds.spatialReference && ds.spatialReference.wkid;
-            if(/Geodetic\(/.test(tr.arcade) && wk!==4326 && wk!==3857){
-              tr.arcade = tr.arcade.replace(/AreaGeodetic\(/g, 'Area(').replace(/LengthGeodetic\(/g, 'Length(');
-              f.calculatedExpression.arcade = tr.arcade;
-              if(wk>=4000 && wk<5000){
-                warn(name+'.'+fname, 'SRID '+wk+' é geográfico (graus) e o ArcGIS só faz cálculo geodésico em 4326/3857 — a área/comprimento sairá em graus. Use um SRID projetado (ex.: UTM) nesta classe.', {classIds:[cls.id]});
-              }
+            const arcade = arcadeForSrid(tr.arcade, wk);
+            f.calculatedExpression = {neutral: expr, arcade: arcade, sql: tr.sql};
+            if(arcade!==tr.arcade && wk>=4000 && wk<5000){
+              warn(name+'.'+fname, 'SRID '+wk+' é geográfico (graus) e o ArcGIS só faz cálculo geodésico em 4326/3857 — a área/comprimento sairá em graus. Use um SRID projetado (ex.: UTM) nesta classe.', {classIds:[cls.id]});
             }
-            attributeRules.push({
+            addRule({
               name: gdbSanitize('Calc '+name+' '+fname, 60), dataset: name, field: fname,
               type:'calculation', triggers:['insert','update'],
-              arcade: 'return '+tr.arcade+';',
+              arcade: 'return '+arcade+';',
               description:'Calcula "'+(attr.name||fname)+'".',
               omtg:{classId:cls.id, attrId:attr.id}
             });
@@ -2020,8 +2044,8 @@ function buildGdbJson(){
       ds.notes.push('Anexos habilitados (Blob: '+ds.attachments.fields.join(', ')+').');
       if(n>1) warn(name, n+' atributos Blob ('+ds.attachments.fields.join(', ')+') viram UMA tabela de anexos — o GDB não separa anexos por campo; diferencie pelo nome do arquivo.', {classIds:[cls.id]});
     }
-    // Round CCC: a PK passa a ter unicidade garantida (File GDB não tem
-    // restrição de PK) e não aceita nulo. PK composta → unicidade da combinação.
+    // A PK tem unicidade garantida por regra (File GDB não tem restrição de
+    // PK) e não aceita nulo. PK composta → unicidade da combinação.
     const pkAttrs = (cls.attributes||[]).filter(a=>a.pk && fieldNameOf.has(a.id) && a.type!=='blob');
     if(pkAttrs.length){
       const pf = pkAttrs.map(a=>fieldNameOf.get(a.id));
@@ -2029,7 +2053,7 @@ function buildGdbJson(){
       const vars = pf.map((f,i)=>'var v'+i+' = $feature.'+f+';').join('\n');
       const empty = pf.map((f,i)=>'IsEmpty(v'+i+')').join(' || ');
       const where = pf.map((f,i)=>f+' = @v'+i).join(' AND ');
-      attributeRules.push({
+      addRule({
         name: gdbSanitize('PK '+name, 60), dataset: name, field: null,
         type:'constraint', triggers:['insert','update'],
         arcade: vars+'\nif ('+empty+') return false;\nvar oid = $feature.OBJECTID;\n'
@@ -2056,24 +2080,19 @@ function buildGdbJson(){
   const relationshipClasses = [];
   const topoRules = [];      // {aId,bId,rule,swap,omtg}
   const networks = [];
+  const networkClassIds = new Map();        // rede → ids das classes participantes
+  const warnedGeneralizations = new Set();
   const nameFor = id => nameOf.get(id) || '(?)';
 
   // Decisão 8: o tipo da relationship class vem da integridade referencial do
-  // atributo FK que liga as duas classes (Cascata→COMPOSITE, Nulo→SIMPLE,
-  // Restringir→SIMPLE + regra, Padrão→SIMPLE + regra).
+  // atributo FK que liga as duas classes (Cascata→COMPOSITE, os demais→SIMPLE;
+  // Restringir ganha regra — ver pushRel).
   function fkBetween(destCls, originId){
     return (destCls.attributes||[]).find(a=>a.fk && a.fkRefClassId===originId) || null;
   }
-  function relTypeFor(destCls, originId, name){
+  function relTypeFor(destCls, originId){
     const fk = destCls ? fkBetween(destCls, originId) : null;
-    if(!fk) return {type:'SIMPLE', fk:null};
-    if(fk.refIntegrity==='cascade') return {type:'COMPOSITE', fk:fk};
-    if(fk.refIntegrity==='restrict'){
-      warn(name, 'Integridade "Restringir" não existe no GDB — gerado SIMPLE + Constraint Rule que bloqueia a exclusão com filhos.');
-    } else if(fk.refIntegrity==='setDefault'){
-      warn(name, 'Integridade "Padrão" não existe no GDB — gerado SIMPLE + regra que repõe o valor padrão.');
-    }
-    return {type:'SIMPLE', fk:fk};
+    return {type: fk && fk.refIntegrity==='cascade' ? 'COMPOSITE' : 'SIMPLE', fk:fk};
   }
   function cardinalityFor(cs, ct){
     const many = v => v==='0..*' || v==='1..*';
@@ -2100,15 +2119,15 @@ function buildGdbJson(){
       if((oName+dName).length > 30) warn(rcName, 'Relacionamento sem nome: o gerador montou "'+rcName+'" a partir das classes e precisou encurtar. Defina um nome no Lógico para controlar isso.');
     }
     const destCls = classes.find(c=>c.id===destId);
-    const kind = opts.forceType ? {type:opts.forceType, fk:fkBetween(destCls, originId)} : relTypeFor(destCls, originId, rcName);
+    const kind = opts.forceType ? {type:opts.forceType, fk:fkBetween(destCls, originId)} : relTypeFor(destCls, originId);
     const rc = {
       name: rcName, origin: oName, destination: dName,
       type: kind.type, cardinality: opts.cardinality || 'ONE_TO_MANY',
       forwardLabel: opts.forward || r.name || 'relaciona',
       backwardLabel: opts.backward || r.nameInverse || ('pertence a '+oName),
-      // Round HHH: M:N não é mais atribuível. Relação com atributos próprios
-      // o usuário modela como classe intermediária (dois 1:N) — portável
-      // para GDB e PostGIS.
+      // Nunca atribuível, nem em M:N: relação com atributos próprios é
+      // modelada como classe intermediária (dois 1:N), portável para GDB e
+      // PostGIS.
       attributed: 'NONE',
       originPrimaryKey: pkFieldOf.get(originId) || null,
       originForeignKey: kind.fk ? fieldNameOf.get(kind.fk.id) : null,
@@ -2158,21 +2177,26 @@ function buildGdbJson(){
       }
       warn(rcName, msg, {classIds:[originId, destId], relIds:[r.id]});
     }
-    // Decisão 8, continuação: as políticas sem equivalente viram regra.
-    if(kind.fk && (kind.fk.refIntegrity==='restrict' || kind.fk.refIntegrity==='setDefault')){
-      const dsName = dName, fName = fieldNameOf.get(kind.fk.id);
+    // Decisão 8, continuação: integridade sem equivalente direto no GDB.
+    const integrity = kind.fk ? kind.fk.refIntegrity : null;
+    const fkField = kind.fk ? fieldNameOf.get(kind.fk.id) : null;
+    const ids = {classIds:[originId, destId], relIds:[r.id]};
+    if(integrity==='restrict'){
+      warn(rcName, opts.forceType==='COMPOSITE'
+        ? 'A relação é composta (excluir "'+oName+'" exclui os "'+dName+'" ligados), mas a FK pede "Restringir" — as duas coisas se contradizem. A regra que bloqueia a exclusão foi gerada mesmo assim; revise a integridade da FK.'
+        : 'Integridade "Restringir" não existe no GDB — gerado SIMPLE + Constraint Rule que bloqueia a exclusão com filhos.', ids);
       attributeRules.push({
         name: gdbSanitize('Ref '+rcName, 60), dataset: oName, field: null,
         type:'constraint', triggers:['delete'],
-        arcade: kind.fk.refIntegrity==='restrict'
-          ? 'var k = $feature.'+(rc.originPrimaryKey||'OBJECTID')+';\nif (IsEmpty(k)) return true;\n'
-            + 'var filhos = Filter(FeatureSetByName($datastore, "'+dsName+'", ["'+fName+'"], false), "'+fName+' = @k");\nreturn Count(filhos) == 0;'
-          : '// SET DEFAULT não tem equivalente direto; repor o padrão em '+dsName+'.'+fName,
-        description: kind.fk.refIntegrity==='restrict'
-          ? 'Impede excluir '+oName+' que ainda tenha '+dsName+' associado.'
-          : 'Repõe o valor padrão de '+dsName+'.'+fName+' ao excluir a origem.',
+        arcade: 'var k = $feature.'+(rc.originPrimaryKey||'OBJECTID')+';\nif (IsEmpty(k)) return true;\n'
+              + 'var filhos = Filter(FeatureSetByName($datastore, "'+dName+'", ["'+fkField+'"], false), "'+fkField+' = @k");\nreturn Count(filhos) == 0;',
+        description: 'Impede excluir '+oName+' que ainda tenha '+dName+' associado.',
         omtg:{relId:r.id, attrId:kind.fk.id}
       });
+    } else if(integrity==='setDefault'){
+      // Repor o padrão exigiria uma regra de cálculo no delete da origem que
+      // edita outra tabela — ainda não gerada. Fica registrado como perda.
+      note(rcName, 'refIntegrity:setDefault', 'Integridade "Padrão" (SET DEFAULT): ao excluir '+oName+', o GDB não repõe o valor padrão de '+dName+'.'+fkField+' — a relationship class sai SIMPLE, sem regra equivalente.', ids);
     }
     relationshipClasses.push(rc);
     return rc;
@@ -2299,9 +2323,16 @@ function buildGdbJson(){
       pushRel(r, r.targetId, r.sourceId, {cardinality:'ONE_TO_ONE', forceType:'COMPOSITE',
         forward:'especializa-se em', backward:'é um(a)',
         notes:['Herança tabela-por-classe: a PK da subclasse é também a FK para a superclasse.']});
+      // Um aviso por generalização (superclasse + restrições), não um por
+      // subclasse: as subclasses de um mesmo grupo compartilham os valores.
       const cov = r.total ? 'total' : 'parcial';
       const dis = r.disjoint ? 'disjunta' : 'sobreposta';
-      warn(nameFor(r.targetId), 'Generalização '+cov+'/'+dis+': essas restrições não são representáveis no GDB.', {relIds:[r.id]});
+      const genKey = r.targetId+'|'+cov+'|'+dis;
+      if(!warnedGeneralizations.has(genKey)){
+        warnedGeneralizations.add(genKey);
+        const group = rels.filter(x=>x.type==='generalization' && x.targetId===r.targetId && !!x.total===!!r.total && !!x.disjoint===!!r.disjoint);
+        warn(nameFor(r.targetId), 'Generalização '+cov+'/'+dis+': essas restrições não são representáveis no GDB.', {classIds:[r.targetId], relIds:group.map(x=>x.id)});
+      }
     } else if(r.type==='cartographicGeneralization'){
       // Superclasse (destino no diagrama) → representação (origem no
       // diagrama), FK na representação. Modelos antigos com a FK do outro
@@ -2312,18 +2343,21 @@ function buildGdbJson(){
         forward: r.kind==='scale' ? 'representado em outra escala por' : 'representado em outra forma por', backward:'representa',
         notes:['Generalização cartográfica: cada subclasse é uma representação ('+(r.kind==='scale'?'escala':'forma')+') da mesma entidade da superclasse.']});
     } else if(r.type==='network'){
-      // Decisão 12: declarar, nunca criar.
-      const parts = [a,b];
-      // Round RR: nome da rede também é do usuário; só reservamos 2
-      // caracteres para o sufixo ND do Network Dataset.
+      // Decisão 12: declarar, nunca criar. Rede arco-arco liga a classe a ela
+      // mesma — entra uma vez só.
+      const parts = a.id===b.id ? [a] : [a,b];
+      // O nome da rede é do usuário; só se reservam 3 caracteres para o
+      // sufixo "_ND" do Network Dataset. O feature dataset dela é o do SRID
+      // das classes, resolvido depois que os feature datasets existem.
       const netBase = gdbSanitize(r.name||'Rede', 27);
       const net = {
-        featureDataset: gdbUnique(netBase, usedNames),
+        featureDataset: null,
         name: gdbUnique(netBase+'_ND', usedNames),
         edges: [], junctions: [], status:'declaredOnly',
         omtg:{relId:r.id},
         notes:['O Network Dataset não é criado pela toolbox: exige a extensão Network Analyst e configuração de conectividade, custos e direcionalidade, mais Build Network.']
       };
+      networkClassIds.set(net, parts.map(c=>c.id));
       parts.forEach(c=>{
         const dir = c.primitive==='unidirectional' ? 'uni' : (c.primitive==='bidirectional' ? 'bi' : null);
         if(dir) net.edges.push({class: nameFor(c.id), directionality: dir});
@@ -2343,10 +2377,10 @@ function buildGdbJson(){
   });
 
   /* ---------- feature datasets + topologias (Decisão 15: tolerância do SR) ---------- */
-  // Round CCC: toda feature class vai para um Feature Dataset do seu SRID —
-  // mesmo SRID, mesmo FD. Tabelas ficam na raiz (o ArcGIS não aceita tabela
-  // dentro de FD) e placeholders (TIN/raster/LAS) não entram. A topologia de
-  // cada SRID nasce dentro do FD dele.
+  // Toda feature class vai para o Feature Dataset do seu SRID — mesmo SRID,
+  // mesmo FD. Tabelas ficam na raiz (o ArcGIS não aceita tabela dentro de FD)
+  // e placeholders (TIN/raster) não entram. A topologia e a rede de cada SRID
+  // nascem dentro do FD dele.
   const featureDatasets = [];
   const topologies = [];
   const fdBySr = new Map();
@@ -2360,13 +2394,26 @@ function buildGdbJson(){
     fdBySr.set(sr, fd);
     featureDatasets.push(fd);
   });
+  // O Network Dataset mora no feature dataset das suas classes, então elas
+  // precisam estar todas no mesmo (mesmo SRID).
+  networks.forEach(net=>{
+    const ids = networkClassIds.get(net);
+    const fds = [...new Set(ids.map(id=>(datasets.find(d=>d.omtg.classId===id)||{}).featureDataset).filter(Boolean))];
+    net.featureDataset = fds.length===1 ? fds[0] : null;
+    if(fds.length>1){
+      warn(net.name, 'As classes da rede estão em feature datasets diferentes ('+fds.join(', ')+') — um Network Dataset exige todas no mesmo feature dataset, isto é, no mesmo SRID.', {classIds:ids, relIds:[net.omtg.relId]});
+    } else if(!fds.length){
+      warn(net.name, 'Nenhuma classe da rede virou feature class — não há feature dataset para o Network Dataset.', {classIds:ids, relIds:[net.omtg.relId]});
+    }
+  });
+  const topoIds = tr => ({classIds:[tr.aId, tr.bId], relIds: tr.omtg.relId ? [tr.omtg.relId] : []});
   if(topoRules.length){
     const srOf = id => { const ds = datasets.find(d=>d.omtg.classId===id); return ds ? srKey(ds) : String(baseSr.wkid); };
     const bySr = new Map();
     topoRules.forEach(tr=>{
       const sr = srOf(tr.aId);
       if(srOf(tr.bId)!==sr){
-        warn(nameFor(tr.aId), 'Regra de topologia com "'+nameFor(tr.bId)+'" ignorada: as duas classes têm SRIDs diferentes e não podem dividir o mesmo Feature Dataset.');
+        warn(nameFor(tr.aId), 'Regra de topologia com "'+nameFor(tr.bId)+'" ignorada: as duas classes têm SRIDs diferentes e não podem dividir o mesmo Feature Dataset.', topoIds(tr));
         return;
       }
       if(!fdBySr.has(sr)) return; // classe que não virou feature class
@@ -2383,17 +2430,16 @@ function buildGdbJson(){
         featureClasses: items,
         rules: g.rules.map(tr=>{
           const ca = classes.find(x=>x.id===tr.aId), cb = classes.find(x=>x.id===tr.bId);
-          const arcName = topoRuleArcName(tr.rule, gdbDefaultsFor(ca||{}).geometry, gdbDefaultsFor(cb||{}).geometry);
-          if(!arcName) warn(nameFor(tr.aId), 'Não há regra de topologia no ArcGIS para essa combinação de geometrias entre "'+nameFor(tr.aId)+'" e "'+nameFor(tr.bId)+'" — a regra foi omitida.');
+          const arcName = topoRuleArcName(tr.rule, gdbDatasetOf(ca||{}).geometry, gdbDatasetOf(cb||{}).geometry);
+          if(!arcName) warn(nameFor(tr.aId), 'Não há regra de topologia no ArcGIS para essa combinação de geometrias entre "'+nameFor(tr.aId)+'" e "'+nameFor(tr.bId)+'" — a regra foi omitida.', topoIds(tr));
           return arcName ? {rule:arcName, origin:nameFor(tr.aId), destination:nameFor(tr.bId), omtg:tr.omtg} : null;
         }).filter(Boolean)
       });
     });
   }
 
-  // GLOBALID só quando necessário (Decisão 14).
-  // GLOBALID só onde há attribute rule: é exigência do ArcGIS (ERROR 002710)
-  // — nenhuma regra existe sem ele. Anexos não pedem (usam o OBJECTID).
+  // GLOBALID só onde há attribute rule (Decisão 14): é exigência do ArcGIS
+  // (ERROR 002710). Anexos e Editor Tracking não pedem.
   const withRules = new Set(attributeRules.map(r=>r.dataset));
   datasets.forEach(d=>{ if(withRules.has(d.name)) d.systemFields.push('GLOBALID'); });
   // Validation rule (lote) só existe com Editor Tracking ligado na tabela
@@ -2403,14 +2449,15 @@ function buildGdbJson(){
   datasets.forEach(d=>{
     if(!withValidation.has(d.name) || d.editorTracking) return;
     const taken = new Set((d.fields||[]).map(f=>String(f.name).toLowerCase()));
-    const base = ['created_user','created_date','last_edited_user','last_edited_date'];
-    const nm = base.map(n=> taken.has(n) ? 'et_'+n : n);
+    const nm = GDB_EDITOR_TRACKING_FIELDS.map(n=> taken.has(n) ? 'et_'+n : n);
     d.editorTracking = {creatorField:nm[0], creationDateField:nm[1], lastEditorField:nm[2], lastEditDateField:nm[3],
       recordDatesIn:'UTC', requiredBy:'validationRule'};
     warn(d.name, 'A participação mínima (1..*) é uma Validation Rule, e o ArcGIS só aceita esse tipo de regra com Controle de edições (Editor Tracking) ligado — foi habilitado nesta tabela (4 campos a mais). Marque "Controle de edições" na classe no Lógico para deixar isso explícito.');
   });
 
-  if(meta.schema) note('workspace', 'meta.schema', 'Conceito do PostGIS; sem equivalente no GDB.');
+  // O esquema é conceito do PostGIS (guardado para o gerador futuro). Só é
+  // relatado quando foge do padrão — senão todo modelo teria este aviso.
+  if(meta.schema && meta.schema!=='public') note('workspace', 'meta.schema', 'Esquema "'+meta.schema+'": conceito do PostGIS, sem equivalente no GDB.');
 
   const doc = {
     formatVersion: 1,
@@ -2418,6 +2465,7 @@ function buildGdbJson(){
     generatedAt: new Date().toISOString(),
     source: {model: meta.name || 'Novo modelo', from: 'logical'},
     workspace: {
+      // Nome da geodatabase: o definido no modelo, senão o nome do modelo.
       name: gdbSanitize(meta.workspaceName || meta.name || 'ModeloOMTG'),
       type: 'fileGeodatabase',
       spatialReference: baseSr
@@ -2522,7 +2570,7 @@ function gdbAttachMetadata(doc, classes, rels){
       'Tipo: '+(rc.type==='COMPOSITE' ? 'composta (a exclusão da origem apaga o destino)' : 'simples'),
       'Rótulos: "'+esc(rc.forwardLabel)+'" / "'+esc(rc.backwardLabel)+'"'
     ];
-    if(rc.cardinality==='MANY_TO_MANY') lines.push('Tabela intermediária atribuível, colunas '+esc(rc.originForeignKey)+' e '+esc(rc.destinationForeignKey)+'.');
+    if(rc.cardinality==='MANY_TO_MANY') lines.push('Tabela intermediária criada pelo ArcGIS (sem atributos próprios), colunas '+esc(rc.originForeignKey)+' e '+esc(rc.destinationForeignKey)+'.');
     let html = '<p>'+esc(typeLbl)+' do modelo OMT-G "'+esc(modelName)+'"'+(r.name ? ' — <b>'+esc(r.name)+'</b>' : '')+'.</p>'+ul(lines);
     if(rc.notes.length) html += '<p><b>Notas</b></p>'+ul(rc.notes.map(esc));
     const ws = warnsFor([rc.name]).map(w=>esc(w.message));
@@ -2982,8 +3030,10 @@ const CALC_FUNCTIONS = [
   {name:'MAX', group:'numero', args:2, sig:'MAX(a, b)', desc:'O maior entre dois valores.',
    arcade:a=>`Max(${a.join(', ')})`, sql:a=>`greatest(${a.join(', ')})`},
   // --- texto ---
+  // Tradução que não é uma chamada única vai entre parênteses, para não
+  // mudar de sentido dentro de uma expressão maior (CONCAT(a,b) = "x").
   {name:'CONCAT', group:'texto', args:[2,9], sig:'CONCAT(a, b, ...)', desc:'Junta textos.',
-   arcade:a=>a.join(' + '), sql:a=>a.map(x=>`(${x})::text`).join(' || ')},
+   arcade:a=>`(${a.join(' + ')})`, sql:a=>`(${a.map(x=>`(${x})::text`).join(' || ')})`},
   {name:'MAIUSC', group:'texto', args:1, sig:'MAIUSC(texto)', desc:'Tudo em maiúsculas.',
    arcade:a=>`Upper(${a[0]})`, sql:a=>`upper(${a[0]})`},
   {name:'MINUSC', group:'texto', args:1, sig:'MINUSC(texto)', desc:'Tudo em minúsculas.',
@@ -3004,7 +3054,7 @@ const CALC_FUNCTIONS = [
   {name:'ANO', group:'data', args:1, sig:'ANO(data)', desc:'Ano de uma data.',
    arcade:a=>`Year(${a[0]})`, sql:a=>`extract(year from ${a[0]})`},
   {name:'MES', group:'data', args:1, sig:'MES(data)', desc:'Mês de uma data.',
-   arcade:a=>`Month(${a[0]}) + 1`, sql:a=>`extract(month from ${a[0]})`},
+   arcade:a=>`(Month(${a[0]}) + 1)`, sql:a=>`extract(month from ${a[0]})`}, // Month() do Arcade vai de 0 a 11
   {name:'DIA', group:'data', args:1, sig:'DIA(data)', desc:'Dia do mês.',
    arcade:a=>`Day(${a[0]})`, sql:a=>`extract(day from ${a[0]})`},
   {name:'DIAS_ENTRE', group:'data', args:2, sig:'DIAS_ENTRE(inicio, fim)', desc:'Diferença em dias.',
@@ -3156,7 +3206,7 @@ function calcEmit(node, target, fieldRef){
   const go = n => calcEmit(n, target, fieldRef);
   switch(node.k){
     case 'num': return node.v;
-    case 'str': return target==='sql' ? "'"+node.v.replace(/'/g,"''")+"'" : '"'+node.v.replace(/"/g,'\\"')+'"';
+    case 'str': return target==='sql' ? "'"+node.v.replace(/'/g,"''")+"'" : '"'+node.v.replace(/\\/g,'\\\\').replace(/"/g,'\\"')+'"';
     case 'field': return fieldRef(node.v);
     case 'neg': return '-'+go(node.a);
     case 'group': return '('+go(node.a)+')';
@@ -3164,6 +3214,32 @@ function calcEmit(node, target, fieldRef){
     case 'call': return node.fn[target](node.args.map(go));
   }
   return '';
+}
+// O Arcade do ArcGIS recusa AreaGeodetic/LengthGeodetic fora de 4326/3857
+// ("Projection is invalid"). Em SRID projetado (UTM etc.) a unidade já é o
+// metro, então o cálculo plano (Area/Length) dá o resultado esperado.
+function arcadeForSrid(arcade, wkid){
+  if(wkid===4326 || wkid===3857) return arcade;
+  return arcade.replace(/AreaGeodetic\(/g, 'Area(').replace(/LengthGeodetic\(/g, 'Length(');
+}
+// SRID efetivo de uma classe: o dela, ou o padrão do modelo.
+function classWkid(cls){
+  return parseInt(cls.srid,10) || parseInt((state.meta||{}).srid,10) || 4326;
+}
+// Entradas do tradutor para o cálculo de `attr`: os campos que a expressão
+// pode citar (os outros atributos da classe, e SHAPE numa classe geográfica)
+// e o nome físico de cada um. Gerador, painel do atributo e construtor usam
+// o mesmo contexto, então a prévia mostra exatamente o que será gerado.
+function calcContext(cls, attr){
+  const names = gdbFieldNames(cls);
+  const known = [], fieldMap = {};
+  (cls.attributes||[]).forEach(x=>{
+    if(x.id===attr.id || !x.name) return;
+    known.push(x.name);
+    fieldMap[x.name.toUpperCase()] = names.get(x.id);
+  });
+  if(cls.kind==='geo') known.push('SHAPE');
+  return {known, fieldMap};
 }
 // Traduz para os dois destinos + valida. Devolve {ok, arcade, sql, error, pos, fields}.
 function calcTranslate(src, knownFields, fieldMap){
@@ -3187,8 +3263,8 @@ function calcTranslate(src, knownFields, fieldMap){
     if(bad){ res.error = 'Campo "'+bad+'" não existe nesta classe.'; return res; }
   }
   try{
-    // fieldMap: nome escrito no modelo → nome real do campo no banco (o
-    // GDB tira _ e acentos; sem o mapa o Arcade citava um campo que não existe).
+    // fieldMap: nome escrito no modelo → nome físico do campo (sem acento nem
+    // espaço; sem o mapa o Arcade citaria um campo que não existe).
     const real = f => (fieldMap && fieldMap[f.toUpperCase()]) || f;
     res.arcade = calcEmit(ast, 'arcade', f => f.toUpperCase()==='SHAPE' ? '$feature' : '$feature.'+real(f));
     res.sql = calcEmit(ast, 'sql', f => f.toUpperCase()==='SHAPE' ? 'geom' : real(f).toLowerCase());
@@ -3202,8 +3278,8 @@ function calcTranslate(src, knownFields, fieldMap){
    dois destinos fica visível enquanto se escreve, que é o que torna a
    sintaxe neutra palpável em vez de abstrata. */
 function openCalcBuilder(cls, attr, onSave){
-  const fieldNames = (cls.attributes||[]).filter(a=>a.id!==attr.id && a.name).map(a=>a.name);
-  if(cls.kind==='geo') fieldNames.push('SHAPE');
+  const ctx = calcContext(cls, attr);
+  const fieldNames = ctx.known;
   let draft = attr.calculatedExpr || '';
 
   const overlay = E('div',{class:'calc-overlay'});
@@ -3235,11 +3311,11 @@ function openCalcBuilder(cls, attr, onSave){
       outArcade.textContent = '—'; outSql.textContent = '—';
       return;
     }
-    const r = calcTranslate(draft, fieldNames);
+    const r = calcTranslate(draft, ctx.known, ctx.fieldMap);
     if(r.ok){
       status.className = 'calc-status ok';
       status.textContent = '✓ Expressão válida.';
-      outArcade.textContent = r.arcade;
+      outArcade.textContent = arcadeForSrid(r.arcade, classWkid(cls));
       outSql.textContent = r.sql;
     } else {
       status.className = 'calc-status err';
@@ -3307,7 +3383,7 @@ function openCalcBuilder(cls, attr, onSave){
       // Salvar vazio é legítimo (volta a ser só a marcação de calculado);
       // salvar inválido não, senão o gerador quebra lá na frente.
       if(v){
-        const r = calcTranslate(v, fieldNames);
+        const r = calcTranslate(v, ctx.known, ctx.fieldMap);
         if(!r.ok){ toast('Corrija a expressão antes de salvar: '+r.error, true); return; }
       }
       onSave(v);
@@ -3363,6 +3439,31 @@ function attrTypeBase(a){
 // styled. Kept in a module-level Set rather than on the attribute object so
 // it's pure UI state: it never lands in the autosave or the exported .json.
 const attrPanelOpen = new Set();
+// Troca o tipo de um atributo do Lógico limpando o que deixou de valer. Uma
+// propriedade que some da tela mas fica no objeto continuaria indo para o
+// gerador (um valor padrão "abc" num campo que virou Booleano/SHORT, por ex.).
+const ATTR_PROPS_BY_TYPE = {
+  length:['text'], intDigits:['integer'], precision:['double'], scale:['double'],
+  minValue:['integer','double'], maxValue:['integer','double']
+};
+function applyAttrType(a, type){
+  const prev = a.type || 'text';
+  a.type = type;
+  if(type===prev) return;
+  Object.keys(ATTR_PROPS_BY_TYPE).forEach(k=>{ if(!ATTR_PROPS_BY_TYPE[k].includes(type)) delete a[k]; });
+  // o valor padrão só sobrevive se continuar válido no tipo novo
+  const dv = a.defaultValue==null ? '' : String(a.defaultValue).trim();
+  if(dv){
+    const n = Number(dv);
+    const ok = type==='text' || (type==='double' && !isNaN(n)) || (type==='integer' && Number.isInteger(n));
+    if(!ok) delete a.defaultValue;
+  }
+  // Blob e Lista não podem ser PK nem únicos; Blob também não pode ser FK.
+  if(type==='blob' || type==='list'){ a.pk = false; a.unique = false; }
+  if(type==='blob' && a.fk){ a.fk = false; a.fkRefClassId = null; a.fkRefAttrId = null; a.refIntegrity = null; }
+  // Lista é um domínio (pares chave/valor): nasce com um par vazio.
+  if(type==='list' && !(a.listDomain||[]).length) a.listDomain = [{id:uid('dom'), key:'', value:''}];
+}
 // Does this attribute have anything to configure at all? (Booleano/Data/Blob
 // with no FK and not calculated has nothing — no ⌄ button is drawn for it.)
 function attrHasPanel(a){
@@ -3412,59 +3513,37 @@ const GEO_FIELD_PRIMITIVES = [
 ];
 const ALL_PRIMITIVE_LABEL = Object.fromEntries([...GEO_OBJECT_PRIMITIVES, ...GEO_FIELD_PRIMITIVES].map(p=>[p.id,p.label]));
 
-/* ---------- Modelo Físico: ArcGIS Geodatabase ---------- */
-// Round OO. O briefing é explícito e vale como regra da casa: NÃO existe
-// "OMT-G → um tipo ArcGIS". Tipo geométrico, tipo de dataset e
-// comportamento/estrutura são TRÊS dimensões independentes, e misturá-las
-// numa propriedade só é o que gera as ambiguidades (Isolinhas virando
-// Polygon, Amostragem virando "Multipoint ou LAS/LAZ" — que são níveis
-// diferentes: geometria, formato de arquivo e estrutura de dados).
-//   Dataset       — o que é de fato criado na GDB
-//   Geometria     — só existe quando o dataset é Feature Class
-//   Comportamento — Network (+ direcionalidade) e Topologia: restrições e
-//                   estruturas sobre a geometria, nunca um tipo novo
+/* ---------- Modelo Físico: ArcGIS Geodatabase ----------
+   Dataset (o que é criado na GDB) e geometria (só em Feature Class) são
+   dimensões separadas. Rede e topologia não são "tipos" de dataset: são
+   estruturas sobre as feature classes, derivadas dos relacionamentos e da
+   primitiva em buildGdbJson. */
 const GDB_DATASETS = [
-  {id:'table',         label:'Table',          geom:false, hint:'Tabela sem geometria.'},
-  {id:'featureClass',  label:'Feature Class',  geom:true,  hint:'Classe de feições — exige um tipo geométrico.'},
-  {id:'rasterDataset', label:'Raster Dataset', geom:false, hint:'Grade regular de células (tesselação, imagem).'},
-  {id:'tinDataset',    label:'TIN Dataset',    geom:false, hint:'Malha triangular irregular — dataset de superfície.'},
-  {id:'lasDataset',    label:'LAS Dataset',    geom:false, hint:'Nuvem de pontos (arquivos LAS/LAZ).'}
+  {id:'table',         label:'Table',          geom:false},
+  {id:'featureClass',  label:'Feature Class',  geom:true},
+  {id:'rasterDataset', label:'Raster Dataset', geom:false},
+  {id:'tinDataset',    label:'TIN Dataset',    geom:false}
 ];
-const GDB_GEOMETRIES = [
-  {id:'point',      label:'Point',      hint:'Uma feição = um ponto.'},
-  {id:'multipoint', label:'Multipoint', hint:'Uma feição = vários pontos (várias amostras numa só feição).'},
-  {id:'polyline',   label:'Polyline',   hint:'Linhas — inclui isolinhas (linhas de igual valor).'},
-  {id:'polygon',    label:'Polygon',    hint:'Áreas.'}
-];
-const GDB_DIRECTIONS = [
-  {id:'none', label:'Sem direção'},
-  {id:'uni',  label:'Unidirecional'},
-  {id:'bi',   label:'Bidirecional'}
-];
-const GDB_DATASET_LABEL = Object.fromEntries(GDB_DATASETS.map(d=>[d.id,d.label]));
-const GDB_GEOMETRY_LABEL = Object.fromEntries(GDB_GEOMETRIES.map(d=>[d.id,d.label]));
-// Ponto de PARTIDA por primitiva OMT-G (a tabela do briefing). É só o default
-// aplicado quando a classe chega no Físico pela primeira vez — cada uma das
-// três dimensões continua editável classe a classe, porque o mapeamento não é
-// 1:1 (Amostragem pode ser Point, Multipoint ou LAS Dataset; Geo-campo pode
-// ser Feature Class, Raster ou TIN).
-const GDB_DEFAULT_BY_PRIMITIVE = {
+// Dataset e geometria de cada primitiva OMT-G no GDB (spec, seção 2.1).
+// Amostragem é sempre MULTIPOINT (Decisão 3): é o formato que vive dentro do
+// .gdb e para o qual se importa LiDAR (LAS To Multipoint); o LAS Dataset fica
+// fora da geodatabase.
+const GDB_DATASET_BY_PRIMITIVE = {
   point:          {dataset:'featureClass',  geometry:'point'},
   line:           {dataset:'featureClass',  geometry:'polyline'},
   polygon:        {dataset:'featureClass',  geometry:'polygon'},
-  unidirectional: {dataset:'featureClass',  geometry:'polyline', network:true, direction:'uni'},
-  bidirectional:  {dataset:'featureClass',  geometry:'polyline', network:true, direction:'bi'},
-  node:           {dataset:'featureClass',  geometry:'point',    network:true, direction:'none'},
+  unidirectional: {dataset:'featureClass',  geometry:'polyline'},
+  bidirectional:  {dataset:'featureClass',  geometry:'polyline'},
+  node:           {dataset:'featureClass',  geometry:'point'},
   isoline:        {dataset:'featureClass',  geometry:'polyline'},
   tin:            {dataset:'tinDataset',    geometry:null},
   tessellation:   {dataset:'rasterDataset', geometry:null},
-  sample:         {dataset:'featureClass',  geometry:'point'},
-  partition:      {dataset:'featureClass',  geometry:'polygon',  topology:true}
+  sample:         {dataset:'featureClass',  geometry:'multipoint'},
+  partition:      {dataset:'featureClass',  geometry:'polygon'}
 };
-function gdbDefaultsFor(c){
-  const base = {dataset:'table', geometry:null, network:false, direction:'none', topology:false};
-  if(c.kind!=='geo') return base; // classe convencional → Table, sem geometria
-  return Object.assign(base, GDB_DEFAULT_BY_PRIMITIVE[c.primitive] || {dataset:'featureClass', geometry:'point'});
+function gdbDatasetOf(c){
+  if(c.kind!=='geo') return {dataset:'table', geometry:null}; // convencional → Table
+  return GDB_DATASET_BY_PRIMITIVE[c.primitive] || {dataset:'featureClass', geometry:'point'};
 }
 /* Round CC items 7/8 ("Operações", per OMT-G): the 21 "transformation to
    representation" operators from Borges/Davis/Laender, Table 5 — 7 Geometric
@@ -4267,15 +4346,27 @@ function setActiveModel(id){
 }
 // Qual modelo estava aberto antes de entrar na vista do Físico.
 let viewReturnModel = 'logical';
+function isViewActive(){ return !!(MODEL_BY_ID[activeModel] && MODEL_BY_ID[activeModel].view); }
+// Atalhos do diagrama (Delete, espaço, Ctrl+C/V/Z/Y) só valem com o diagrama
+// na tela e fora de campo de texto. Na vista do Físico o state continua
+// apontando para o Lógico escondido, e um modal (construtor de cálculo,
+// resultado do GDB) cobre o canvas — em ambos o atalho agiria às cegas.
+function diagramShortcutsActive(){
+  if(isViewActive() || document.querySelector('.calc-overlay')) return false;
+  const tag = document.activeElement && document.activeElement.tagName;
+  return tag!=='INPUT' && tag!=='TEXTAREA' && tag!=='SELECT';
+}
+// Botões da barra que só fazem sentido sobre o diagrama.
+const DIAGRAM_ONLY_BUTTONS = ['btnLayout','btnGrid','btnValidate'];
 // Mostra o diagrama ou a tela do Físico, conforme a aba ativa.
 function applyScreenForActiveModel(){
-  const isView = !!(MODEL_BY_ID[activeModel] && MODEL_BY_ID[activeModel].view);
+  const isView = isViewActive();
   const layout = document.querySelector('.layout');
   const screen = document.getElementById('gdbScreen');
   if(layout) layout.hidden = isView;
   if(screen) screen.hidden = !isView;
-  const app = document.getElementById('app');
-  if(app) app.classList.toggle('gdb-mode', isView);
+  DIAGRAM_ONLY_BUTTONS.forEach(id=>{ const b = document.getElementById(id); if(b) b.disabled = isView; });
+  updateUndoRedoButtons();
   if(isView) renderGdbScreen();
 }
 function seedModelFromParent(id){
@@ -4287,9 +4378,6 @@ function seedModelFromParent(id){
   // is about to render and reset history anyway.
   mergeModels(modelStash[parent], modelStash[id], id, parent);
 }
-// Kept so the rest of the file (and any older call site) can still say
-// "go to the Lógico / go back to Conceitual" in one call.
-function setLogicalMode(v){ setActiveModel(v ? 'logical' : 'conceptual'); }
 
 /* ---------- undo/redo history ---------- */
 // Snapshots are whole-state JSON strings. historyBaseline is the state as of
@@ -4316,7 +4404,6 @@ function commitHistory(){
 }
 function restoreState(json){
   state = normalizeState(JSON.parse(json));
-  if(!state.meta) state.meta = emptyModel().meta;
   selection = {type:null,id:null};
   multiSelect = new Set();
   connDrag = null;
@@ -4344,12 +4431,15 @@ function redo(){
 }
 function updateUndoRedoButtons(){
   const u = document.getElementById('btnUndo'), r = document.getElementById('btnRedo');
-  if(u) u.disabled = !undoStack.length;
-  if(r) r.disabled = !redoStack.length;
+  const view = isViewActive(); // na vista do Físico o histórico é do diagrama escondido
+  if(u) u.disabled = view || !undoStack.length;
+  if(r) r.disabled = view || !redoStack.length;
 }
 
+// meta é compartilhado pelos modelos (Conceitual/Lógico). workspaceName vazio
+// = a geodatabase leva o nome do modelo.
 function emptyModel(name){
-  return { meta:{ name: name||'Novo modelo', srid:4326, schema:'public', workspaceName:'ModeloOMTG', srsAuthority:'EPSG' }, classes:[], relationships:[] };
+  return { meta:{ name: name||'Novo modelo', srid:4326, schema:'public', workspaceName:'', srsAuthority:'EPSG' }, classes:[], relationships:[] };
 }
 /* Shared "base name" / "base name 2" / "base name 3"... dedupe used for new
    class names, new attribute names, and to auto-fix a class rename that
@@ -4361,94 +4451,32 @@ function uniqueName(base, existingNames){
   while(existingNames.has(base+' '+i)) i++;
   return base+' '+i;
 }
-/* Round RR. No LÓGICO o nome já nasce no formato que o banco aceita — sem
-   acento, sem espaço, sem caractere especial e no máximo 30 caracteres —
-   para classes E relacionamentos. A razão é a do usuário: "assim a ferramenta
-   não precisa encurtar os nomes, deixa o usuário definir". Antes disso o
-   gerador sanitizava e truncava sozinho, e você só descobria o nome real
-   abrindo o JSON.
-   O Conceitual continua livre: lá o nome é linguagem de modelagem, não
-   identificador de banco. */
+/* No Lógico o nome é livre (espaços, acentos, símbolos) e vira o alias no
+   banco; o nome físico sai de gdbSanitize, com até 30 caracteres. Este rótulo
+   mostra, enquanto se digita, como o nome fica no banco e avisa quando ele
+   precisa ser encurtado. O Conceitual não tem nome físico. */
 const LOGICAL_NAME_MAXLEN = 30;
-/* Round ZZ: no Lógico o nome é livre e vira o alias; o nome físico sai das
-   regras de sempre. Este rótulo mostra, enquanto se digita, como ele fica no
-   banco — e avisa quando precisa encurtar. */
+const PHYS_HINT_KINDS = {
+  dataset:      {max:LOGICAL_NAME_MAXLEN, suffix:'',          role:' · o texto acima vira o alias'},
+  relationship: {max:LOGICAL_NAME_MAXLEN, suffix:'',          role:' · o texto acima vira o rótulo da relação'},
+  network:      {max:27,                  suffix:' (+_ND)',   role:''},   // 3 caracteres ficam para "_ND"
+  workspace:    {max:LOGICAL_NAME_MAXLEN, suffix:'.gdb',      role:''}
+};
 function physicalNameHint(inp, kind, emptyText){
   const box = E('div',{class:'phys-hint'});
-  const lim = kind==='network' ? 27 : LOGICAL_NAME_MAXLEN;
+  const k = PHYS_HINT_KINDS[kind] || PHYS_HINT_KINDS.dataset;
   const upd = ()=>{
     const v = inp.value.trim();
     box.innerHTML = '';
     if(!v){ box.appendChild(document.createTextNode(emptyText||'')); return; }
-    const full = gdbSanitize(v, 999), phys = gdbSanitize(v, lim);
+    const full = gdbSanitize(v, 999), phys = gdbSanitize(v, k.max);
     box.appendChild(document.createTextNode('No banco: '));
-    box.appendChild(E('code',{},[phys + (kind==='network' ? ' (+_ND)' : '')]));
-    const role = kind==='relationship' ? ' · o texto acima vira o rótulo da relação'
-               : kind==='network' ? '' : ' · o texto acima vira o alias';
-    box.appendChild(document.createTextNode(role));
-    if(full.length > lim) box.appendChild(E('span',{class:'phys-trunc'},[' · encurtado para '+lim+' caracteres']));
+    box.appendChild(E('code',{},[phys + k.suffix]));
+    box.appendChild(document.createTextNode(k.role));
+    if(full.length > k.max) box.appendChild(E('span',{class:'phys-trunc'},[' · encurtado para '+k.max+' caracteres']));
   };
   inp.addEventListener('input', upd); upd();
   return box;
-}
-function logicalNameSanitize(raw){
-  // NFD + corte dos diacríticos resolve á→a, ç→c, ñ→n de uma vez
-  let s = String(raw||'').normalize('NFD').replace(/[̀-ͯ]/g,'');
-  s = s.replace(/[^A-Za-z0-9_]/g, '');
-  if(/^[0-9]/.test(s)) s = '_'+s;
-  return s.slice(0, LOGICAL_NAME_MAXLEN);
-}
-function isLogicalNameValid(v){
-  const s = String(v||'');
-  return !!s && s.length<=LOGICAL_NAME_MAXLEN && /^[A-Za-z_][A-Za-z0-9_]*$/.test(s);
-}
-/* Dedup sem espaço (o " 2" de uniqueName não serviria aqui) e respeitando o
-   limite: o sufixo come o fim do nome em vez de estourar os 30. */
-function uniqueLogicalName(base, existingNames){
-  const b = logicalNameSanitize(base) || 'Item';
-  if(!existingNames.has(b)) return b;
-  let i = 2;
-  for(;;){
-    const sfx = String(i);
-    const cand = b.slice(0, LOGICAL_NAME_MAXLEN - sfx.length) + sfx;
-    if(!existingNames.has(cand)) return cand;
-    i++;
-  }
-}
-/* No GDB, feature classes/tables e relationship classes dividem o MESMO
-   espaço de nomes — então a unicidade no Lógico tem que valer entre os dois,
-   não só entre classes. */
-function logicalNamesInUse(excludeId){
-  const out = new Set();
-  (state.classes||[]).forEach(c=>{ if(c.id!==excludeId && c.name) out.add(c.name); });
-  (state.relationships||[]).forEach(r=>{ if(r.id!==excludeId && r.name) out.add(r.name); });
-  return out;
-}
-/* Liga um input de texto às regras acima: filtra o que não é permitido
-   enquanto digita (o caractere simplesmente não entra, e acento entra já
-   transliterado) e resolve duplicata no blur. */
-function bindLogicalNameInput(inp, getId, apply, kindLabel){
-  inp.setAttribute('maxlength', String(LOGICAL_NAME_MAXLEN));
-  inp.addEventListener('input', ()=>{
-    const clean = logicalNameSanitize(inp.value);
-    if(inp.value !== clean){
-      const at = inp.selectionStart;
-      const lost = inp.value.length - clean.length;
-      inp.value = clean;
-      try{ inp.setSelectionRange(Math.max(0, at-lost), Math.max(0, at-lost)); }catch(e){}
-    }
-  });
-  inp.addEventListener('blur', ()=>{
-    const v = logicalNameSanitize(inp.value.trim());
-    if(!v){ inp.value = ''; return; }
-    const others = logicalNamesInUse(getId());
-    if(others.has(v)){
-      const fixed = uniqueLogicalName(v, others);
-      inp.value = fixed; apply(fixed);
-      toast('Já existe "'+v+'" neste modelo — '+(kindLabel||'renomeado')+' para "'+fixed+'".', true);
-      touch(true);
-    }
-  });
 }
 function newClassObj(kind, idx, geoType, primitive){
   const id = uid('c');
@@ -4486,7 +4514,7 @@ function deleteClass(id){
   // class (a.fkRefClassId only exists on Lógico attributes — see
   // buildAttrTable — so this is a no-op for Conceitual classes).
   state.classes.forEach(c=> (c.attributes||[]).forEach(a=>{
-    if(a.fkRefClassId===id){ a.fk=false; a.fkRefClassId=null; a.fkRefAttrId=null; }
+    if(a.fkRefClassId===id){ a.fk=false; a.fkRefClassId=null; a.fkRefAttrId=null; a.refIntegrity=null; }
   }));
   if(selection.type==='class' && selection.id===id) selection = {type:null,id:null};
   // a selected Lista box belonging to the just-deleted class no longer
@@ -8182,20 +8210,17 @@ function initStageEvents(){
     addClassAt(kind, p.x - CARD_W/2, p.y - 22, geoType, primitive);
   });
   document.addEventListener('keydown', (evt)=>{
-    if(evt.code==='Space' && document.activeElement.tagName!=='INPUT' && document.activeElement.tagName!=='TEXTAREA'){ spaceHeld = true; }
     if(evt.key==='Escape'){
       if(connDrag){ connDrag=null; renderConnDragOverlay(); }
       if(marquee){ marquee=null; renderMarqueeOverlay(); }
     }
-    if((evt.key==='Delete'||evt.key==='Backspace') && document.activeElement.tagName!=='INPUT' && document.activeElement.tagName!=='TEXTAREA' && document.activeElement.tagName!=='SELECT'){
-      handleDeleteKey();
-    }
-    // Item 5 (2nd round): Ctrl/Cmd+C copies the selected class(es), Ctrl/Cmd+V
-    // pastes a duplicate — only on the Conceitual canvas, and never while a
-    // text field has focus (that keeps the browser's native copy/paste for
-    // text working normally).
-    const tag = document.activeElement && document.activeElement.tagName;
-    if((evt.ctrlKey||evt.metaKey) && tag!=='INPUT' && tag!=='TEXTAREA' && tag!=='SELECT'){
+    if(!diagramShortcutsActive()) return;
+    if(evt.code==='Space') spaceHeld = true;
+    if(evt.key==='Delete' || evt.key==='Backspace') handleDeleteKey();
+    // Ctrl/Cmd+C copia a(s) classe(s) selecionada(s), Ctrl/Cmd+V cola uma
+    // cópia — inclusive de um modelo para o outro (o clipboard vive fora do
+    // state). Fora de campo de texto, para não roubar o copiar/colar nativo.
+    if(evt.ctrlKey || evt.metaKey){
       if(evt.key==='c' || evt.key==='C'){ copySelection(); }
       else if(evt.key==='v' || evt.key==='V'){ pasteClipboard(); }
     }
@@ -8539,24 +8564,7 @@ function buildAttrTable(c){
     const typeOptions = restrictType ? ATTR_TYPES.filter(t=>t.id==='text'||t.id==='integer') : ATTR_TYPES;
     const curType = a.type || 'text';
     const typeSel = E('select',{onchange:(e)=>{
-      a.type = e.target.value;
-      // Items 2/3 ("Blob e Lista não podem ser PK nem único"; "Blob não pode
-      // ser FK"): switching TO one of these types clears whichever of those
-      // flags no longer applies, rather than leaving a stale true the
-      // now-disabled checkboxes can't turn off.
-      if(a.type==='blob' || a.type==='list'){
-        a.pk = false; a.unique = false;
-      }
-      if(a.type==='blob' && a.fk){ a.fk = false; a.fkRefClassId = null; a.fkRefAttrId = null; }
-      // Item 6, revised in Round II ("a configuração de Chave e valor do
-      // campo lista não é assim... configuração de domínio normal mesmo,
-      // valores pré-definidos"): a Lista attribute is a domain — a set of
-      // predefined key/value pairs (like a coded-values domain), not a
-      // single typed key + single typed value. Initialize with one empty
-      // pair the first time this attribute becomes a Lista.
-      if(a.type==='list' && (!a.listDomain || !a.listDomain.length)){
-        a.listDomain = [{id:uid('dom'), key:'', value:''}];
-      }
+      applyAttrType(a, e.target.value);
       if(a.type==='list') attrPanelOpen.add(a.id); // the domain editor is the whole point of Lista
       // its canvas box (see buildListNode) only exists while type==='list' —
       // clear a stale selection pointing at it if the type just changed away.
@@ -8581,7 +8589,7 @@ function buildAttrTable(c){
       if(e.target.checked){
         c.attributes.forEach(other=>{ if(other!==a) other.pk=false; });
         a.pk = true; a.unique = true; a.required = true;
-        if(a.type!=='text' && a.type!=='integer') a.type = 'text';
+        if(a.type!=='text' && a.type!=='integer') applyAttrType(a, 'text');
       } else {
         a.pk = false;
       }
@@ -8598,7 +8606,7 @@ function buildAttrTable(c){
     const fkChk = E('input',{type:'checkbox', onchange:(e)=>{
       a.fk = e.target.checked;
       if(a.fk){
-        if(a.type!=='text' && a.type!=='integer') a.type = 'text';
+        if(a.type!=='text' && a.type!=='integer') applyAttrType(a, 'text');
         if(!a.fkRefClassId){
           const other = state.classes.find(x=>x.id!==c.id);
           if(other){ a.fkRefClassId = other.id; const pk = other.attributes.find(at=>at.pk); a.fkRefAttrId = pk?pk.id:null; }
@@ -8632,7 +8640,7 @@ function buildAttrTable(c){
     const delBtn = E('button',{class:'del-x', title:'Remover atributo', html:ICONS.trash, onclick:()=>{
       c.attributes = c.attributes.filter(x=>x.id!==a.id);
       state.classes.forEach(cc=> cc.attributes.forEach(other=>{
-        if(other.fkRefAttrId===a.id){ other.fk=false; other.fkRefClassId=null; other.fkRefAttrId=null; }
+        if(other.fkRefAttrId===a.id){ other.fk=false; other.fkRefClassId=null; other.fkRefAttrId=null; other.refIntegrity=null; }
       }));
       if(selection.type==='listBox' && selection.id===a.id){ selection = {type:null, id:null}; }
       touch();
@@ -8911,10 +8919,9 @@ function buildAttrTable(c){
     // consegue traduzir para Arcade (ArcGIS) e SQL (PostGIS) em vez de só
     // registrar a intenção em português.
     if(a.calculated){
-      const known = (c.attributes||[]).filter(x=>x.id!==a.id && x.name).map(x=>x.name);
-      if(c.kind==='geo') known.push('SHAPE');
+      const ctx = calcContext(c, a);
       const cur = (a.calculatedExpr||'').trim();
-      const check = cur ? calcTranslate(cur, known) : null;
+      const check = cur ? calcTranslate(cur, ctx.known, ctx.fieldMap) : null;
       const body = [];
       body.push(E('div',{class:'calc-preview'+(check && !check.ok ? ' bad' : (cur ? '' : ' empty'))},[
         cur || 'Nenhuma expressão definida ainda.'
@@ -8922,7 +8929,7 @@ function buildAttrTable(c){
       if(check && !check.ok){
         body.push(E('div',{class:'attr-panel-hint', style:'color:var(--bad);'},['Expressão inválida: '+check.error]));
       } else if(check){
-        body.push(E('div',{class:'attr-panel-hint'},['ArcGIS: ', E('code',{},[check.arcade])]));
+        body.push(E('div',{class:'attr-panel-hint'},['ArcGIS: ', E('code',{},[arcadeForSrid(check.arcade, classWkid(c))])]));
       }
       body.push(E('button',{class:'btn ghost', style:'width:100%;justify-content:center;', onclick:()=>{
         openCalcBuilder(c, a, (v)=>{ a.calculatedExpr = v; touch(); });
@@ -9342,11 +9349,37 @@ function renderInspector(){
     panel.appendChild(buildRelInspector(r));
     restoreScroll();
   } else {
-    panel.appendChild(E('div',{class:'inspector-empty'},[
-      E('div',{class:'ic', html:ICONS.empty}),
-      E('div',{},['Selecione uma classe ou relacionamento no diagrama, ou crie um novo pela barra à esquerda.'])
-    ]));
+    panel.appendChild(buildModelInspector());
+    restoreScroll();
   }
+}
+// Sem seleção. No Lógico mostra as propriedades do modelo inteiro que o
+// gerador usa: o SRID padrão (das classes geográficas sem SRID próprio) e o
+// nome da geodatabase.
+function buildModelInspector(){
+  const emptyHint = E('div',{class:'inspector-empty'},[
+    E('div',{class:'ic', html:ICONS.empty}),
+    E('div',{},['Selecione uma classe ou relacionamento no diagrama, ou crie um novo pela barra à esquerda.'])
+  ]);
+  if(!logicalMode) return emptyHint;
+  const meta = state.meta;
+  const root = E('div',{style:'display:flex;flex-direction:column;flex:1;min-height:0;'});
+  const scroll = E('div',{class:'inspector-scroll'});
+  scroll.appendChild(E('div',{class:'inspector-head'},[E('span',{class:'badge'},['modelo'])]));
+  const sridField = fieldText('SRID padrão', meta.srid!=null ? String(meta.srid) : '', v=>{ meta.srid = v.replace(/\D/g,''); touch(true); });
+  const sridInp = sridField.querySelector('input');
+  sridInp.placeholder = '4326';
+  sridInp.addEventListener('input', ()=>{ const d = sridInp.value.replace(/\D/g,''); if(d!==sridInp.value) sridInp.value = d; });
+  scroll.appendChild(sridField);
+  scroll.appendChild(E('div',{class:'phys-hint'},['Código EPSG usado pelas classes geográficas que não têm SRID próprio. Vazio: 4326.']));
+  const wsField = fieldText('Nome da geodatabase', meta.workspaceName||'', v=>{ meta.workspaceName = v; touch(true); });
+  const wsInp = wsField.querySelector('input');
+  wsInp.placeholder = meta.name || 'Novo modelo';
+  scroll.appendChild(wsField);
+  scroll.appendChild(physicalNameHint(wsInp, 'workspace', 'Vazio: usa o nome do modelo ('+gdbSanitize(meta.name||'ModeloOMTG')+'.gdb).'));
+  scroll.appendChild(emptyHint);
+  root.appendChild(scroll);
+  return root;
 }
 
 /* ============================================================
@@ -9465,30 +9498,20 @@ function loadAutosave(){
   }catch(e){}
   return null;
 }
-/* Defends every REL_TYPES[...]/primitive lookup across the app from a model
-   (autosave, an opened .json, an older export) that references a
-   relationship type or geo primitive id that no longer exists — e.g. a
-   schema that predates the generalization/aggregation Simple↔Spatial split,
-   or a removed primitive. Without this, loading such a model throws deep
-   inside a render function the very first time it indexes REL_TYPES or the
-   primitive lists with that stale id ("Cannot read properties of undefined
-   (reading 'short')") — uncaught, since it happens synchronously during
-   boot's own touch()/render call, which stops the whole page from ever
-   finishing its first paint (reads to the user as "the site won't load").
-   Mutates the model in place, then it's safe to render/persist as normal —
-   the next autosave writes back the corrected type/primitive so this is a
-   one-time repair, not a recurring patch. */
+/* Repara um modelo vindo de fora (autosave, .json aberto, exportação antiga)
+   antes de ele chegar na renderização: garante a estrutura mínima (meta,
+   listas de classes/relacionamentos/atributos), converte tipos e primitivas
+   de versões anteriores e preenche propriedades que passaram a ser
+   obrigatórias. Sem isso, um id desconhecido quebrava a primeira renderização
+   ("Cannot read properties of undefined") e a página não abria. Altera o
+   modelo no lugar; o próximo autosave grava a versão corrigida. */
 const KNOWN_REL_TYPES = new Set(Object.keys(REL_TYPES));
+// Tipos que já existiram: as variantes simples/espacial de generalização e
+// agregação viraram um tipo só ("espacial" é a propriedade r.spatial), e os
+// nomes em português de versões bem antigas.
 const LEGACY_REL_TYPE_MAP = {
-  // Round O item 6: generalizationSimple/Spatial merged into one plain
-  // 'generalization' type — a model saved before this round still has one
-  // of those two strings, both mapped to the merged type so it keeps
-  // loading and rendering exactly as before (same triangle notation either
-  // way; nothing enforced the old "must be geo" rule in practice).
   generalizationSimple: 'generalization',
   generalizationSpatial: 'generalization',
-  // Round P item 6: same merge for aggregationSimple/Spatial — "espacial" is
-  // now the r.spatial property (set below) instead of a separate type.
   aggregationSimple: 'aggregation',
   aggregationSpatial: 'aggregation',
   rede: 'network',
@@ -9498,28 +9521,33 @@ const LEGACY_REL_TYPE_MAP = {
 const KNOWN_PRIMITIVES = new Set([...GEO_OBJECT_PRIMITIVES, ...GEO_FIELD_PRIMITIVES].map(p=>p.id));
 function normalizeState(s){
   if(!s) return s;
-  (s.relationships||[]).forEach(r=>{
-    // must run BEFORE the type remap below, while the old type string
-    // (aggregationSpatial) is still readable.
+  s.meta = Object.assign(emptyModel().meta, s.meta||{});
+  // "ModeloOMTG" era o valor fixo de versões anteriores, não uma escolha:
+  // limpo, a geodatabase passa a levar o nome do modelo.
+  if(s.meta.workspaceName==='ModeloOMTG') s.meta.workspaceName = '';
+  return normalizeDiagram(s);
+}
+// A parte de normalizeState que vale para qualquer modelo guardado
+// (Conceitual no topo do documento, Lógico em doc.logical).
+function normalizeDiagram(s){
+  if(!Array.isArray(s.classes)) s.classes = [];
+  if(!Array.isArray(s.relationships)) s.relationships = [];
+  s.relationships.forEach(r=>{
+    // antes da troca de tipo abaixo, enquanto o nome antigo ainda é legível
     if(r.type==='aggregationSpatial') r.spatial = true;
     if(!r.type || !KNOWN_REL_TYPES.has(r.type)){
       r.type = LEGACY_REL_TYPE_MAP[r.type] || 'association';
     }
     if(r.type==='aggregation' && typeof r.spatial!=='boolean') r.spatial = false;
-    // Round KK item 2 ("vou modificar a agregação espacial... três tipos de
-    // estrutura... isso pode ser uma propriedade dela"): every spatial
-    // aggregation now carries a structure kind — Subdivisão Espacial (the
-    // old, only, default behavior), União Espacial, or Contém. Old documents
-    // (and any new spatial aggregation, via buildRelInspector below) default
-    // to 'subdivision' so nothing changes visually until the user picks
-    // something else.
+    // toda agregação espacial tem uma estrutura (Subdivisão/União/Contém)
     if(r.type==='aggregation' && r.spatial && !r.spatialAggKind) r.spatialAggKind = 'subdivision';
     if(r.type==='cartographicGeneralization'){
       if(r.kind!=='shape' && r.kind!=='scale') r.kind = 'shape';
       if(typeof r.disjoint!=='boolean') r.disjoint = true;
     }
   });
-  (s.classes||[]).forEach(c=>{
+  s.classes.forEach(c=>{
+    if(!Array.isArray(c.attributes)) c.attributes = [];
     if(c.kind==='geo'){
       if(c.geoType!=='object' && c.geoType!=='field') c.geoType = 'object';
       if(!c.primitive || !KNOWN_PRIMITIVES.has(c.primitive)){
@@ -9544,7 +9572,7 @@ function applyBundledModels(incoming){
   MODEL_TABS.forEach(t=>{
     if(t.id==='conceptual'){ modelStash[t.id] = null; return; }
     const raw = incoming ? incoming[t.id] : null;
-    modelStash[t.id] = raw ? normalizeState({classes: raw.classes||[], relationships: raw.relationships||[]}) : null;
+    modelStash[t.id] = raw ? normalizeDiagram({classes: raw.classes, relationships: raw.relationships}) : null;
   });
   activeModel = 'conceptual';
   logicalMode = false;
@@ -9557,7 +9585,6 @@ function loadModel(m){
   const incoming = readBundledModels(m);
   state = normalizeState(m);
   MODEL_TABS.forEach(t=>{ if(t.id!=='conceptual' && state[t.id]) delete state[t.id]; });
-  if(!state.meta) state.meta = emptyModel().meta;
   selection = {type:null, id:null};
   multiSelect = new Set();
   connDrag = null;
@@ -10141,10 +10168,10 @@ function initHistoryControls(){
   if(btnU) btnU.addEventListener('click', undo);
   if(btnR) btnR.addEventListener('click', redo);
   document.addEventListener('keydown', (evt)=>{
-    const tag = document.activeElement && document.activeElement.tagName;
-    if(tag==='INPUT' || tag==='TEXTAREA' || tag==='SELECT') return; // let native text-field undo work
+    // num campo de texto vale o desfazer nativo do próprio campo
+    if(!diagramShortcutsActive()) return;
     const key = evt.key.toLowerCase();
-    if(!(evt.ctrlKey||evt.metaKey) || key!=='z' && key!=='y') return;
+    if(!(evt.ctrlKey || evt.metaKey) || (key!=='z' && key!=='y')) return;
     evt.preventDefault();
     if(key==='y' || (key==='z' && evt.shiftKey)) redo();
     else undo();
@@ -10169,7 +10196,6 @@ function boot(){
   const incoming = readBundledModels(saved);
   state = normalizeState(saved || emptyModel());
   MODEL_TABS.forEach(t=>{ if(t.id!=='conceptual' && state[t.id]) delete state[t.id]; });
-  if(!state.meta) state.meta = emptyModel().meta;
   applyBundledModels(incoming);
   syncModeButtons();
   document.getElementById('modelName').value = state.meta.name || '';
